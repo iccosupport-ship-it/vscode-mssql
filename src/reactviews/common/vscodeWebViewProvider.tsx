@@ -7,7 +7,7 @@ import { FluentProvider, Theme, teamsHighContrastTheme, webDarkTheme, webLightTh
 import { createContext, useContext, useEffect, useState } from "react";
 import { WebviewApi } from "vscode-webview";
 import { WebviewRpc } from "./rpc";
-import { customTheme } from "./vscodeToFluentTheme";
+import { getCustomColor } from "./vscodeToFluentTheme";
 
 /**
  * Context for vscode webview functionality like theming, state management, rpc and vscode api.
@@ -52,38 +52,35 @@ export function VscodeWebViewProvider<State, Reducers>({ children }: VscodeWebVi
 	const [theme, setTheme] = useState(webLightTheme);
 	const [state, setState] = useState<State>();
 
+	function updateTheme(kind: ColorThemeKind) {
+		let theme;
+		switch (kind) {
+			case ColorThemeKind.Dark:
+				theme = webDarkTheme;
+				break;
+			case ColorThemeKind.HighContrast:
+				theme = teamsHighContrastTheme;
+				break;
+			default:
+				theme = webLightTheme;
+				break;
+		}
+		setTheme({
+			...theme,
+			...getCustomColor(kind)
+		});
+	}
+
 	useEffect(() => {
 		async function getTheme() {
-			const theme = await extensionRpc.call('getTheme');
-			switch (theme) {
-				case ColorThemeKind.Dark:
-					setTheme(webDarkTheme);
-					break;
-				case ColorThemeKind.HighContrast:
-					setTheme(teamsHighContrastTheme);
-					break;
-				default:
-					setTheme(webLightTheme);
-					break;
-			}
+			const kind = await extensionRpc.call('getTheme');
+			updateTheme(kind as ColorThemeKind);
 		}
-
 		getTheme();
 	});
 
 	extensionRpc.subscribe('onDidChangeTheme', (params) => {
-		const kind = params as ColorThemeKind;
-		switch (kind) {
-			case ColorThemeKind.Dark:
-				setTheme(webDarkTheme);
-				break;
-			case ColorThemeKind.HighContrast:
-				setTheme(teamsHighContrastTheme);
-				break;
-			default:
-				setTheme(webLightTheme);
-				break;
-		}
+		updateTheme(params as ColorThemeKind);
 	});
 
 	extensionRpc.subscribe('updateState', (params) => {
@@ -99,10 +96,7 @@ export function VscodeWebViewProvider<State, Reducers>({ children }: VscodeWebVi
 		<FluentProvider style={{
 			height: '100%',
 			width: '100%',
-		}} theme={{
-			...theme,
-			...customTheme
-			}}>
+		}} theme={theme}>
 			{children}
 		</FluentProvider>
 	</VscodeWebviewContext.Provider>;
