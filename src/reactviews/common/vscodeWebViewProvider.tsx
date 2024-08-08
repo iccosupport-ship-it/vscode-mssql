@@ -7,6 +7,7 @@ import { FluentProvider, Theme, teamsHighContrastTheme, webDarkTheme, webLightTh
 import { createContext, useContext, useEffect, useState } from "react";
 import { WebviewApi } from "vscode-webview";
 import { WebviewRpc } from "./rpc";
+import { customTheme } from "./vscodeToFluentTheme";
 
 /**
  * Context for vscode webview functionality like theming, state management, rpc and vscode api.
@@ -98,8 +99,10 @@ export function VscodeWebViewProvider<State, Reducers>({ children }: VscodeWebVi
 		<FluentProvider style={{
 			height: '100%',
 			width: '100%',
-			color: 'var(--vscode-foreground)',
-		}} theme={theme}>
+		}} theme={{
+			...theme,
+			...customTheme
+			}}>
 			{children}
 		</FluentProvider>
 	</VscodeWebviewContext.Provider>;
