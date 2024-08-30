@@ -202,7 +202,7 @@ gulp.task('ext:compile-src', (done) => {
 
 // Compile angular view
 gulp.task('ext:compile-view', (done) => {
-return gulp.src([
+	return gulp.src([
 		config.paths.project.root + '/src/views/htmlcontent/**/*.ts',
 		config.paths.project.root + '/typings/**/*.d.ts'])
 		.pipe(srcmap.init())
@@ -246,7 +246,7 @@ async function generateReactWebviewsBundle() {
 		minify: prod,
 		minifyWhitespace: prod,
 		minifyIdentifiers: prod,
-		format: 'esm',
+		format: 'esm', // Default format is 'cjs'. We are using 'esm' to enable code splitting.
 		splitting: true,
 	});
 
