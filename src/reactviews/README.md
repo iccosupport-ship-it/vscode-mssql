@@ -63,3 +63,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 Every webview page needs to be wrapped inside the `VscodeWebViewProvider` component. This component provides the necessary context to the webview pages to interact with the vscode extension APIs like getting theme colors, getting webview state from the extension, performing state manipulation using reducers, making arbitrary RPC calls to the extension, etc.
 
 
+## Webview Controller
+
+The webview controller is responsible for managing the webview lifecycle, communication between the webview and the extension, and the webview state. The controller is responsible for updating the webview state and sending the updated state to the webview.
+
+1. State: The controller maintains the state of the webview. The state is updated using `reducers` and the updated state is sent to the webview. State shouldn't be updated directly in the webview as it can lead inconsistencies between the webview and the controller state.
+
+1. Reducers: The reducers are functions that take the current state and a payload and return the new state. The reducers are used to update the state of the webview. The reducers are called by the webview using `actions`.
