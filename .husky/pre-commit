@@ -1,1 +1,3 @@
 yarn lint
+yarn generateOptions
+yarn localization
