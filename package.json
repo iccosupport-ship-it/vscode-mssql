@@ -58,7 +58,8 @@
     "smoketest": "gulp ext:smoke",
     "test": "gulp test:cover --log",
     "package": "vsce package",
-    "prepare": "husky"
+    "prepare": "husky",
+    "precommit": "run-p lint localization"
   },
   "devDependencies": {
     "@angular/common": "~2.1.2",
@@ -203,23 +204,23 @@
           "icon": "media/server_page_dark.svg"
         }
       ],
-			"panel": [
-				{
-					"id": "queryResult",
-					"title": "Query Result",
-					"icon": "media/SignIn.svg"
-				}
-			]
+      "panel": [
+        {
+          "id": "queryResult",
+          "title": "Query Result",
+          "icon": "media/SignIn.svg"
+        }
+      ]
     },
     "views": {
-			"queryResult": [
-				{
-					"type": "webview",
-					"id": "queryResult",
-					"name": "%extension.queryResult%",
+      "queryResult": [
+        {
+          "type": "webview",
+          "id": "queryResult",
+          "name": "%extension.queryResult%",
           "when": "config.mssql.enableNewQueryResultFeature"
-				}
-			],
+        }
+      ],
       "objectExplorer": [
         {
           "id": "objectExplorer",
