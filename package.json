@@ -59,7 +59,7 @@
     "test": "gulp test:cover --log",
     "package": "vsce package",
     "prepare": "husky",
-    "precommit": "run-p lint localization"
+    "precommit": "run-p \"lint -- --precommit \" localization"
   },
   "devDependencies": {
     "@angular/common": "~2.1.2",
@@ -121,6 +121,7 @@
     "gulp": "^4.0.2",
     "gulp-concat": "^2.6.0",
     "gulp-eslint-new": "^2.1.0",
+    "gulp-gitmodified": "^1.2.0",
     "gulp-istanbul-report": "0.0.1",
     "gulp-rename": "^1.2.2",
     "gulp-run-command": "^0.0.10",

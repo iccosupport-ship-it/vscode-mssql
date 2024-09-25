@@ -20,6 +20,7 @@ const path = require('path');
 const esbuild = require('esbuild');
 const { typecheckPlugin } = require('@jgoz/esbuild-plugin-typecheck');
 const run = require('gulp-run-command').default;
+var gitmodified = require('gulp-gitmodified');
 require('./tasks/packagetasks');
 require('./tasks/localizationtasks');
 
@@ -72,20 +73,39 @@ const cssLoaderPlugin = {
 
 gulp.task('ext:lint', () => {
 	const fix = (argv.fix === undefined) ? false : true;
-	return gulp.src([
+	const precommit = (argv.precommit === undefined) ? false : true;
+	let task =  gulp.src([
 		'./src/**/*.ts',
 		'./src/**/*.tsx',
 		'./test/**/*.ts',
 		'!**/*.d.ts',
 		'!./src/views/htmlcontent/**/*'
-	])
+	]);
+	/**
+	 * If this task is run in the precommit hook we are only linting files that
+	 * are added (A), changed (C), modified (M)
+	 */
+	if (precommit) {
+		task = task.pipe(gitmodified(['added', 'modified', 'copied']))
+	}
+
+	// return task.on('data', function (file) {
+	// 	console.error('Modified file:', file);
+	//   });
+
+	task = task
 		.pipe(gulpESLintNew({
 			quiet: true,
-			fix: fix
+			fix: fix,
+			stats: true
 		}))
 		.pipe(gulpESLintNew.format())           // Output lint results to the console.
 		.pipe(gulpESLintNew.failAfterError())
-		.pipe(gulpESLintNew.fix());
+		.pipe(gulpESLintNew.fix())
+		.pipe(gulpESLintNew.results(results => {
+			console.log(results.stats);
+		}));
+	return task
 });
 
 // Copy icons for OE
