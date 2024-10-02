@@ -6,7 +6,6 @@
 import * as vscode from "vscode";
 import * as vscodeMssql from "vscode-mssql";
 import { NodeInfo } from "../models/contracts/objectExplorer/nodeInfo";
-import { ObjectExplorerUtils } from "./objectExplorerUtils";
 import * as Constants from "../constants/constants";
 import { IConnectionInfo, ITreeNodeInfo, ObjectMetadata } from "vscode-mssql";
 import * as path from "path";
@@ -56,6 +55,7 @@ export class TreeNodeInfo extends vscode.TreeItem implements ITreeNodeInfo {
     }
 
     public static iconPath(label: string): string {
+        const rootPath: string = path.join(__dirname, "objectTypes");
         if (label) {
             if (label === Constants.disconnectedServerLabel) {
                 // if disconnected
@@ -64,7 +64,7 @@ export class TreeNodeInfo extends vscode.TreeItem implements ITreeNodeInfo {
                 // if connected
                 label += "_green";
             }
-            return path.join(ObjectExplorerUtils.rootPath, `${label}.svg`);
+            return path.join(rootPath, `${label}.svg`);
         }
     }
 

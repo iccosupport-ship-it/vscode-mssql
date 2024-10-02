@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as path from "path";
 import { IConnectionProfile } from "../models/interfaces";
 import * as Constants from "../constants/constants";
 import * as LocalizedConstants from "../constants/locConstants";
@@ -12,11 +11,6 @@ import { TreeNodeInfo } from "./treeNodeInfo";
 import { TreeNodeType } from "./connectTreeNode";
 
 export class ObjectExplorerUtils {
-    public static readonly rootPath: string = path.join(
-        __dirname,
-        "objectTypes",
-    );
-
     public static getNodeUri(node: TreeNodeType): string {
         let profile: IConnectionProfile;
         if (node instanceof TreeNodeInfo) {
