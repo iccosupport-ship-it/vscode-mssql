@@ -46,9 +46,9 @@ interface TableDesignerContextProps {
     children: ReactNode;
 }
 
-const TableDesignerStateProvider: React.FC<TableDesignerContextProps> = ({
+const TableDesignerStateProvider = ({
     children,
-}) => {
+}: TableDesignerContextProps) => {
     const webviewState = useVscodeWebview<
         designer.TableDesignerWebviewState,
         designer.TableDesignerReducers
@@ -72,7 +72,6 @@ const TableDesignerStateProvider: React.FC<TableDesignerContextProps> = ({
     function getComponentId(componentPath: (string | number)[]): string {
         return `${tableState.tableInfo?.id}_${componentPath.join("_")}`;
     }
-
     return (
         <TableDesignerContext.Provider
             value={{
@@ -226,3 +225,4 @@ const TableDesignerStateProvider: React.FC<TableDesignerContextProps> = ({
 };
 
 export { TableDesignerContext, TableDesignerStateProvider };
+TableDesignerStateProvider.whyDidYouRender = true;

@@ -245,3 +245,4 @@ export const TableDesigner = () => {
         </div>
     );
 };
+TableDesigner.whyDidYouRender = true;

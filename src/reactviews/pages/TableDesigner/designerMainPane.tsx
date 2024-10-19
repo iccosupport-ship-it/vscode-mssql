@@ -69,7 +69,7 @@ export const DesignerMainPane = () => {
     const state = useContext(TableDesignerContext);
     const metadata = state?.state;
     if (!metadata) {
-        return null;
+        return undefined;
     }
     const [tableName, setTableName] = useState(
         (metadata.model!["name"] as InputBoxProperties).value,
@@ -192,7 +192,7 @@ export const DesignerMainPane = () => {
                         {(
                             metadata.model?.["schema"] as DropDownProperties
                         )?.values.map((option) => {
-                            return <Option>{option}</Option>;
+                            return <Option key={option}>{option}</Option>;
                         })}
                     </Dropdown>
                 </Field>
@@ -246,3 +246,4 @@ export const DesignerMainPane = () => {
         </div>
     );
 };
+DesignerMainPane.whyDidYouRender = true;

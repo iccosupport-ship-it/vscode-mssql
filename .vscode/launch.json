@@ -100,6 +100,34 @@
 			"outFiles": [
 				"${workspaceRoot}/out/test/**/*,js"
 			]
-		}
+		},
+		{
+			"name": "Launch Extension (without watch)",
+			"type": "extensionHost",
+			"request": "launch",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceRoot}"
+			],
+			"sourceMaps": true,
+			"outFiles": [
+				"${workspaceRoot}/out/src/**/*.js",
+			],
+			"rendererDebugOptions": {
+				"pauseForSourceMap": true,
+				"sourceMapRenames": true,
+				"sourceMaps": true,
+				"webRoot": "${workspaceRoot}/src/reactviews"
+			},
+			"debugWebWorkerHost": true,
+			"sourceMapRenames": true,
+			"pauseForSourceMap": true,
+			"env": {
+				// Uncomment this to use a specified version of STS, see
+				// https://github.com/microsoft/vscode-mssql/blob/main/DEVELOPMENT.md#using-mssql_sqltoolsservice-environment-variable
+				// for more details
+				// "MSSQL_SQLTOOLSSERVICE": "<Path to STS>"
+			}
+		},
 	]
 }

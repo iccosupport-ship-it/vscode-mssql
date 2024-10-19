@@ -20,7 +20,7 @@ import {
     ChevronUpFilled,
     ChevronDownFilled,
 } from "@fluentui/react-icons";
-import Editor from "@monaco-editor/react";
+import Editor, { EditorProps } from "@monaco-editor/react";
 import { TableDesignerContext } from "./tableDesignerStateProvider";
 import {
     DesignerIssue,
@@ -93,6 +93,10 @@ const useStyles = makeStyles({
         width: "100%",
     },
 });
+
+const editorOptions: EditorProps["options"] = {
+    readOnly: true,
+};
 
 export const DesignerResultPane = () => {
     const classes = useStyles();
@@ -300,9 +304,7 @@ export const DesignerResultPane = () => {
                                     ] as InputBoxProperties
                                 ).value ?? ""
                             }
-                            options={{
-                                readOnly: true,
-                            }}
+                            options={editorOptions}
                         ></Editor>
                     </div>
                 )}
@@ -352,3 +354,5 @@ export const DesignerResultPane = () => {
         </div>
     );
 };
+
+DesignerResultPane.whyDidYouRender = true;
