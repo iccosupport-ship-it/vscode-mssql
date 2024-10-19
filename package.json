@@ -111,6 +111,7 @@
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^3.1.1",
+    "@welldone-software/why-did-you-render": "^8.0.3",
     "@xmldom/xmldom": "0.8.4",
     "angular-in-memory-web-api": "0.1.13",
     "angular2-slickgrid": "github:microsoft/angular2-slickgrid#1.4.7",
@@ -143,6 +144,7 @@
     "gulp-typescript": "^5.0.1",
     "gulp-uglify": "^2.0.0",
     "husky": "^9.0.11",
+    "immer": "^10.1.1",
     "istanbul": "^0.4.5",
     "lint-staged": "^15.2.10",
     "npm-run-all": "^4.1.5",
@@ -888,7 +890,7 @@
           "type": "array",
           "description": "%mssql.selectedSubscriptions%",
           "items": {
-              "type": "string"
+            "type": "string"
           },
           "$comment": "This setting must be registered in case the user does not have the Azure Resource Groups extension installed.  All extensions using this configuration must register this setting."
         },
