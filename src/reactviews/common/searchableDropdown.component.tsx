@@ -314,6 +314,7 @@ export const SearchableDropdown = (props: SearchableDropdownProps) => {
                     aria-expanded={isMenuOpen}
                     aria-label={props.ariaLabel}
                     disabled={props.disabled}
+                    className={isMenuOpen ? "dropdown-open" : ""}
                     style={{
                         ...props.style,
                         justifyContent: "space-between",

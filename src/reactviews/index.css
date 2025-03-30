@@ -1,26 +1,65 @@
+/* Root container styles */
 #root {
     left: 0;
     right: 0;
     width: 100%;
     height: 100%;
     overflow: hidden;
-    color: "var(--vscode-foreground)";
+    color: var(--vscode-foreground);
 }
 
-/* Make fluent focus fields look more like vscode focus  */
+/* Base input styles */
+.fui-Input,
+.fui-Textarea {
+    background-color: var(--vscode-input-background) !important;
+    color: var(--vscode-input-foreground) !important;
+    border: 1px solid var(--vscode-input-border, transparent);
+    border-radius: 2px;
+}
+
+.fui-Dropdown {
+    border: none !important;
+}
+
+/* Combobox styling */
+button[role="combobox"] {
+    background-color: var(--vscode-dropdown-background) !important;
+    color: var(--vscode-dropdown-foreground) !important;
+    border: 1px solid var(--vscode-dropdown-border, transparent) !important;
+    border-radius: 2px;
+    min-height: 26px !important;
+    line-height: 19px !important;
+}
+
+button[role="combobox"].placeholder {
+    color: var(--vscode-input-placeholderForeground) !important;
+}
+
+/* Hover states */
+.fui-Input:hover,
+.fui-Textarea:hover {
+    border: 1px solid var(--vscode-input-border, transparent);
+}
+
+/* Focus states - consolidated and prioritized */
 a:focus,
-input:not([type="search"]):focus,
 select:focus,
-textarea:focus,
-button[role="combobox"]:focus,
 .fui-Combobox:focus-within,
 .fui-Input:focus-within,
-.fui-Dropdown:focus-within {
-    outline: 1px solid var(--colorCompoundBrandStroke, --vscode-focusBorder) !important;
+.fui-Dropdown:focus-within,
+.fui-Textarea:focus-within {
+    outline: 1px solid var(--colorCompoundBrandStroke, var(--vscode-focusBorder)) !important;
     border-radius: var(--borderRadiusSmall, 2px) !important;
     border: none !important;
 }
 
-input[type="search"]:focus {
+/* Special focus overrides for specific input types - these take precedence */
+input[type="search"]:focus,
+input[type="text"]:focus,
+input[type="password"]:focus,
+input:not([type="search"]):focus,
+textarea:focus,
+button[role="combobox"]:focus {
     outline: none !important;
+    border: none !important;
 }

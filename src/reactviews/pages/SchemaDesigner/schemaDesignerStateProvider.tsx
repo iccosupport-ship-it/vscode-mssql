@@ -35,6 +35,8 @@ export interface SchemaDesignerContextProps
     deleteTable: (table: SchemaDesigner.Table) => Promise<boolean>;
     deleteSelectedNodes: () => void;
     getTableWithForeignKeys: (tableId: string) => SchemaDesigner.Table | undefined;
+    updateSelectedNodes: (nodesIds: string[]) => void;
+    setCenter: (nodeId: string, zoomIn?: boolean) => void;
 }
 
 const SchemaDesignerContext = createContext<SchemaDesignerContextProps>(
@@ -168,15 +170,7 @@ const SchemaDesignerStateProvider: React.FC<SchemaDesignerProviderProps> = ({ ch
             reactFlow.addNodes(nodeWithPosition);
             reactFlow.addEdges(edgesForNewTable);
             requestAnimationFrame(async () => {
-                await reactFlow.setCenter(
-                    nodeWithPosition.position.x + flowUtils.getTableWidth() / 2,
-                    nodeWithPosition.position.y +
-                        flowUtils.getTableHeight(nodeWithPosition.data) / 2,
-                    {
-                        duration: 500,
-                        zoom: reactFlow.getZoom(),
-                    },
-                );
+                setCenter(nodeWithPosition.id);
             });
 
             eventBus.emit("getScript");
@@ -282,6 +276,28 @@ const SchemaDesignerStateProvider: React.FC<SchemaDesignerProviderProps> = ({ ch
         }
     };
 
+    const updateSelectedNodes = (nodesIds: string[]) => {
+        reactFlow.getNodes().forEach((node) => {
+            reactFlow.updateNode(node.id, {
+                selected: nodesIds.includes(node.id),
+            });
+        });
+    };
+
+    const setCenter = (nodeId: string, zoomIn: boolean = false) => {
+        const node = reactFlow.getNode(nodeId) as Node<SchemaDesigner.Table>;
+        if (node) {
+            void reactFlow.setCenter(
+                node.position.x + flowUtils.getTableWidth() / 2,
+                node.position.y + flowUtils.getTableHeight(node.data) / 2,
+                {
+                    zoom: zoomIn ? 1 : reactFlow.getZoom(),
+                    duration: 500,
+                },
+            );
+        }
+    };
+
     return (
         <SchemaDesignerContext.Provider
             value={{
@@ -304,6 +320,8 @@ const SchemaDesignerStateProvider: React.FC<SchemaDesignerProviderProps> = ({ ch
                 addTable,
                 deleteTable,
                 deleteSelectedNodes,
+                updateSelectedNodes,
+                setCenter,
             }}>
             {children}
         </SchemaDesignerContext.Provider>
