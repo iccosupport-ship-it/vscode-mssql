@@ -48,9 +48,8 @@ select:focus,
 .fui-Input:focus-within,
 .fui-Dropdown:focus-within,
 .fui-Textarea:focus-within {
-    outline: 1px solid var(--colorCompoundBrandStroke, var(--vscode-focusBorder)) !important;
+    border: 1px solid var(--colorCompoundBrandStroke, var(--vscode-focusBorder)) !important;
     border-radius: var(--borderRadiusSmall, 2px) !important;
-    border: none !important;
 }
 
 /* Special focus overrides for specific input types - these take precedence */
