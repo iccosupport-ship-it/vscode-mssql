@@ -2836,6 +2836,13 @@
   dependencies:
     "@types/react" "*"
 
+"@types/react-window@^1.8.8":
+  version "1.8.8"
+  resolved "https://registry.yarnpkg.com/@types/react-window/-/react-window-1.8.8.tgz#c20645414d142364fbe735818e1c1e0a145696e3"
+  integrity sha512-8Ls660bHR1AUA2kuRvVG9D/4XpRC6wjAaPT9dil7Ckc76eP9TKWZwwmgfq8Q1LANX3QNDnoU4Zp48A3w+zK69Q==
+  dependencies:
+    "@types/react" "*"
+
 "@types/react@*", "@types/react@^18.3.3":
   version "18.3.3"
   resolved "https://registry.yarnpkg.com/@types/react/-/react-18.3.3.tgz#9679020895318b0915d7a3ab004d92d33375c45f"
@@ -13220,10 +13227,10 @@ vite-plugin-istanbul@^7.0.0:
     source-map "^0.7.4"
     test-exclude "^7.0.1"
 
-vite@^6.2.3:
-  version "6.2.3"
-  resolved "https://registry.yarnpkg.com/vite/-/vite-6.2.3.tgz#249e92d32886981ab46bc1f049ac72abc6fa81e2"
-  integrity sha512-IzwM54g4y9JA/xAeBPNaDXiBF8Jsgl3VBQ2YQ/wOY6fyW3xMdSoltIV3Bo59DErdqdE6RxUfv8W69DvUorE4Eg==
+vite@^6.2.4:
+  version "6.2.4"
+  resolved "https://registry.yarnpkg.com/vite/-/vite-6.2.4.tgz#05809de3f918fded87f73a838761995a4d66a680"
+  integrity sha512-veHMSew8CcRzhL5o8ONjy8gkfmFJAd5Ac16oxBUjlwgX3Gq2Wqr+qNC3TjPIpy7TPV/KporLga5GT9HqdrCizw==
   dependencies:
     esbuild "^0.25.0"
     postcss "^8.5.3"
