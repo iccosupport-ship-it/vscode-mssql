@@ -46,6 +46,12 @@ export class UndoRedoStack<T> {
     pushState(newState: T, undoAction?: () => T): void {
         const previousState = this.currentState;
 
+        // Do a deep comparison to check if the state has changed
+        if (JSON.stringify(previousState) === JSON.stringify(newState)) {
+            // No change, do not push to stack
+            return;
+        }
+
         // Store the action that can undo/redo this change
         this.undoStack.push({
             undo: undoAction || (() => previousState as T),
