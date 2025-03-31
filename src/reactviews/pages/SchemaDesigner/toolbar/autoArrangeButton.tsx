@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button } from "@fluentui/react-components";
+import { ToolbarButton } from "@fluentui/react-components";
 import * as FluentIcons from "@fluentui/react-icons";
 import { locConstants } from "../../../common/locConstants";
 import { useContext } from "react";
@@ -19,9 +19,8 @@ export function AutoArrangeButton() {
         return undefined;
     }
     return (
-        <Button
+        <ToolbarButton
             icon={<FluentIcons.Flowchart16Filled />}
-            size="small"
             onClick={() => {
                 const nodes = reactFlow.getNodes() as Node<SchemaDesigner.Table>[];
                 const schema = flowUtils.extractSchemaModel(
@@ -35,6 +34,6 @@ export function AutoArrangeButton() {
             title={locConstants.schemaDesigner.autoArrange}
             appearance="subtle">
             {locConstants.schemaDesigner.autoArrange}
-        </Button>
+        </ToolbarButton>
     );
 }
