@@ -295,17 +295,25 @@ const ForeignKeyCard = ({
     allTables,
     onDelete,
     onUpdate,
+    lastAddedForeignKeyIndex,
 }: {
     foreignKey: SchemaDesigner.ForeignKey;
     index: number;
     allTables: SchemaDesigner.Table[];
     onDelete: (index: number) => void;
     onUpdate: (index: number, updatedForeignKey: SchemaDesigner.ForeignKey) => void;
+    lastAddedForeignKeyIndex: number;
 }) => {
     const classes = useStyles();
     const context = useContext(SchemaDesignerEditorContext);
     const inputRef = useRef<HTMLInputElement | null>(null);
     const [errorMessage, setErrorMessage] = useState<string>("");
+
+    useEffect(() => {
+        if (index === lastAddedForeignKeyIndex) {
+            inputRef.current?.focus();
+        }
+    }, [index, lastAddedForeignKeyIndex]);
 
     // Add a mapping between source and target columns
     const addColumnMapping = () => {
@@ -539,6 +547,7 @@ export const SchemaDesignerEditorForeignKeyPanel = () => {
                         allTables={availableTables}
                         onDelete={deleteForeignKey}
                         onUpdate={updateForeignKey}
+                        lastAddedForeignKeyIndex={lastAddedForeignKeyIndex}
                     />
                 ))}
             </div>
