@@ -29,20 +29,8 @@ export function AutoArrangeButton() {
                     reactFlow.getEdges() as Edge<SchemaDesigner.ForeignKey>[],
                 );
                 const generateComponenets = flowUtils.generateSchemaDesignerFlowComponents(schema);
-
-                nodes.forEach((node) => {
-                    const nodeId = node.id;
-                    const tableId = node.data.id;
-                    const table = generateComponenets.nodes.find((n) => n.data.id === tableId);
-                    if (table) {
-                        reactFlow.updateNode(nodeId, {
-                            position: {
-                                x: table.position.x,
-                                y: table.position.y,
-                            },
-                        });
-                    }
-                });
+                reactFlow.setNodes(generateComponenets.nodes);
+                reactFlow.setEdges(generateComponenets.edges);
             }}
             title={locConstants.schemaDesigner.autoArrange}
             appearance="subtle">
