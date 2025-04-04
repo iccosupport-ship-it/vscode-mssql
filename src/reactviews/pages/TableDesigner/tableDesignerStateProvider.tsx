@@ -7,7 +7,7 @@ import * as designer from "../../../sharedInterfaces/tableDesigner";
 import { WebviewContextProps } from "../../../sharedInterfaces/webview";
 import { getCoreRPCs } from "../../common/utils";
 import { useVscodeWebview } from "../../common/vscodeWebviewProvider";
-import { ReactNode, createContext, useRef, useState } from "react";
+import { ReactNode, createContext, useState } from "react";
 
 export interface TableDesignerContextProps
     extends WebviewContextProps<designer.TableDesignerWebviewState> {
