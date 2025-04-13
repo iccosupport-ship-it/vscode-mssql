@@ -6,30 +6,9 @@
 import * as vscode from "vscode";
 import SqlToolsServiceClient from "../languageservice/serviceclient";
 import ConnectionManager from "../controllers/connectionManager";
-import {
-    CreateSessionCompleteNotification,
-    SessionCreatedParameters,
-    CreateSessionRequest,
-    CreateSessionResponse,
-} from "../models/contracts/objectExplorer/createSessionRequest";
 import { NotificationHandler } from "vscode-languageclient";
-import {
-    ExpandRequest,
-    ExpandParams,
-    ExpandCompleteNotification,
-    ExpandResponse,
-} from "../models/contracts/objectExplorer/expandNodeRequest";
 import { ObjectExplorerProvider } from "./objectExplorerProvider";
 import { TreeItemCollapsibleState } from "vscode";
-import {
-    RefreshRequest,
-    RefreshParams,
-} from "../models/contracts/objectExplorer/refreshSessionRequest";
-import {
-    CloseSessionRequest,
-    CloseSessionParams,
-    CloseSessionResponse,
-} from "../models/contracts/objectExplorer/closeSessionRequest";
 import { TreeNodeInfo } from "./treeNodeInfo";
 import { AuthenticationTypes, IConnectionProfile } from "../models/interfaces";
 import * as LocalizedConstants from "../constants/locConstants";
@@ -49,12 +28,9 @@ import { IAccount } from "../models/contracts/azure";
 import * as AzureConstants from "../azure/constants";
 import * as ConnInfo from "../models/connectionInfo";
 import { TelemetryActions, TelemetryViews } from "../sharedInterfaces/telemetry";
-import {
-    GetSessionIdRequest,
-    GetSessionIdResponse,
-} from "../models/contracts/objectExplorer/getSessionIdRequest";
 import { Logger } from "../models/logger";
 import VscodeWrapper from "../controllers/vscodeWrapper";
+import * as ObjectExplorerContracts from "../models/contracts/objectExplorerContracts";
 
 function getParentNode(node: TreeNodeType): TreeNodeInfo {
     node = node.parentNode;
@@ -73,11 +49,14 @@ export class ObjectExplorerService {
     private _sessionIdToNodeLabelMap: Map<string, string>;
     private _rootTreeNodeArray: Array<TreeNodeInfo>;
     private _sessionIdToConnectionProfileMap: Map<string, IConnectionProfile>;
-    private _expandParamsToTreeNodeInfoMap: Map<ExpandParams, TreeNodeInfo>;
+    private _expandParamsToTreeNodeInfoMap: Map<ObjectExplorerContracts.ExpandParams, TreeNodeInfo>;
 
     // Deferred promise maps
     private _sessionIdToPromiseMap: Map<string, Deferred<vscode.TreeItem>>;
-    private _expandParamsToPromiseMap: Map<ExpandParams, Deferred<TreeNodeInfo[]>>;
+    private _expandParamsToPromiseMap: Map<
+        ObjectExplorerContracts.ExpandParams,
+        Deferred<TreeNodeInfo[]>
+    >;
 
     constructor(
         private _vscodeWrapper: VscodeWrapper,
@@ -97,22 +76,28 @@ export class ObjectExplorerService {
         this._sessionIdToConnectionProfileMap = new Map<string, IConnectionProfile>();
         this._sessionIdToNodeLabelMap = new Map<string, string>();
         this._sessionIdToPromiseMap = new Map<string, Deferred<vscode.TreeItem>>();
-        this._expandParamsToPromiseMap = new Map<ExpandParams, Deferred<TreeNodeInfo[]>>();
-        this._expandParamsToTreeNodeInfoMap = new Map<ExpandParams, TreeNodeInfo>();
+        this._expandParamsToPromiseMap = new Map<
+            ObjectExplorerContracts.ExpandParams,
+            Deferred<TreeNodeInfo[]>
+        >();
+        this._expandParamsToTreeNodeInfoMap = new Map<
+            ObjectExplorerContracts.ExpandParams,
+            TreeNodeInfo
+        >();
 
         this._client.onNotification(
-            CreateSessionCompleteNotification.type,
+            ObjectExplorerContracts.CreateSessionCompleteNotification.type,
             this.handleSessionCreatedNotification(),
         );
         this._client.onNotification(
-            ExpandCompleteNotification.type,
+            ObjectExplorerContracts.ExpandCompleteNotification.type,
             this.handleExpandSessionNotification(),
         );
     }
 
-    private handleSessionCreatedNotification(): NotificationHandler<SessionCreatedParameters> {
+    private handleSessionCreatedNotification(): NotificationHandler<ObjectExplorerContracts.SessionCreatedParameters> {
         const self = this;
-        const handler = async (result: SessionCreatedParameters) => {
+        const handler = async (result: ObjectExplorerContracts.SessionCreatedParameters) => {
             if (self._currentNode instanceof ConnectTreeNode) {
                 self.currentNode = getParentNode(self.currentNode);
             }
@@ -249,7 +234,10 @@ export class ObjectExplorerService {
         }
     }
 
-    private needsAccountRefresh(result: SessionCreatedParameters, username: string): boolean {
+    private needsAccountRefresh(
+        result: ObjectExplorerContracts.SessionCreatedParameters,
+        username: string,
+    ): boolean {
         let email = username?.includes(" - ")
             ? username.substring(username.indexOf("-") + 2)
             : username;
@@ -264,7 +252,9 @@ export class ObjectExplorerService {
         );
     }
 
-    private getParentFromExpandParams(params: ExpandParams): TreeNodeInfo | undefined {
+    private getParentFromExpandParams(
+        params: ObjectExplorerContracts.ExpandParams,
+    ): TreeNodeInfo | undefined {
         for (let key of this._expandParamsToTreeNodeInfoMap.keys()) {
             if (key.sessionId === params.sessionId && key.nodePath === params.nodePath) {
                 return this._expandParamsToTreeNodeInfoMap.get(key);
@@ -277,9 +267,9 @@ export class ObjectExplorerService {
      * Handler for async response from SQL Tools Service.
      * Public only for testing
      */
-    public handleExpandSessionNotification(): NotificationHandler<ExpandResponse> {
+    public handleExpandSessionNotification(): NotificationHandler<ObjectExplorerContracts.ExpandResponse> {
         const self = this;
-        const handler = (result: ExpandResponse) => {
+        const handler = (result: ObjectExplorerContracts.ExpandResponse) => {
             if (!result) {
                 return undefined;
             }
@@ -287,7 +277,7 @@ export class ObjectExplorerService {
             if (result.nodes && !result.errorMessage) {
                 // successfully received children from SQL Tools Service
                 const credentials = self._sessionIdToConnectionProfileMap.get(result.sessionId);
-                const expandParams: ExpandParams = {
+                const expandParams: ObjectExplorerContracts.ExpandParams = {
                     sessionId: result.sessionId,
                     nodePath: result.nodePath,
                 };
@@ -326,7 +316,7 @@ export class ObjectExplorerService {
                     self._connectionManager.vscodeWrapper.showErrorMessage(result.errorMessage);
                 }
 
-                const expandParams: ExpandParams = {
+                const expandParams: ObjectExplorerContracts.ExpandParams = {
                     sessionId: result.sessionId,
                     nodePath: result.nodePath,
                 };
@@ -363,7 +353,7 @@ export class ObjectExplorerService {
         sessionId: string,
         promise: Deferred<TreeNodeInfo[]>,
     ): Promise<boolean | undefined> {
-        const expandParams: ExpandParams = {
+        const expandParams: ObjectExplorerContracts.ExpandParams = {
             sessionId: sessionId,
             nodePath: node.nodePath,
             filters: node.filters,
@@ -371,7 +361,7 @@ export class ObjectExplorerService {
         this._expandParamsToPromiseMap.set(expandParams, promise);
         this._expandParamsToTreeNodeInfoMap.set(expandParams, node);
         const response: boolean = await this._connectionManager.client.sendRequest(
-            ExpandRequest.type,
+            ObjectExplorerContracts.ExpandRequest.type,
             expandParams,
         );
         if (response) {
@@ -452,9 +442,9 @@ export class ObjectExplorerService {
 
             const connectionDetails = ConnectionCredentials.createConnectionDetails(conn);
 
-            const response: CreateSessionResponse =
+            const response: ObjectExplorerContracts.CreateSessionResponse =
                 await this._connectionManager.client.sendRequest(
-                    GetSessionIdRequest.type,
+                    ObjectExplorerContracts.GetSessionIdRequest.type,
                     connectionDetails,
                 );
 
@@ -721,9 +711,9 @@ export class ObjectExplorerService {
             const connectionDetails =
                 ConnectionCredentials.createConnectionDetails(connectionProfile);
 
-            const sessionIdResponse: GetSessionIdResponse =
+            const sessionIdResponse: ObjectExplorerContracts.GetSessionIdResponse =
                 await this._connectionManager.client.sendRequest(
-                    GetSessionIdRequest.type,
+                    ObjectExplorerContracts.GetSessionIdRequest.type,
                     connectionDetails,
                 );
 
@@ -733,9 +723,9 @@ export class ObjectExplorerService {
 
             this._sessionIdToNodeLabelMap.set(sessionIdResponse.sessionId, nodeLabel);
 
-            const response: CreateSessionResponse =
+            const response: ObjectExplorerContracts.CreateSessionResponse =
                 await this._connectionManager.client.sendRequest(
-                    CreateSessionRequest.type,
+                    ObjectExplorerContracts.CreateSessionRequest.type,
                     connectionDetails,
                 );
             if (response) {
@@ -847,9 +837,9 @@ export class ObjectExplorerService {
             node.connectionInfo,
         );
 
-        const sessionIdResponse: GetSessionIdResponse =
+        const sessionIdResponse: ObjectExplorerContracts.GetSessionIdResponse =
             await this._connectionManager.client.sendRequest(
-                GetSessionIdRequest.type,
+                ObjectExplorerContracts.GetSessionIdRequest.type,
                 connectionDetails,
             );
 
@@ -878,13 +868,13 @@ export class ObjectExplorerService {
     }
 
     public async refreshNode(node: TreeNodeInfo): Promise<void> {
-        const refreshParams: RefreshParams = {
+        const refreshParams: ObjectExplorerContracts.RefreshParams = {
             sessionId: node.sessionId,
             nodePath: node.nodePath,
             filters: node.filters,
         };
         let response = await this._connectionManager.client.sendRequest(
-            RefreshRequest.type,
+            ObjectExplorerContracts.RefreshRequest.type,
             refreshParams,
         );
         this._expandParamsToTreeNodeInfoMap.set(refreshParams, node);
@@ -939,13 +929,14 @@ export class ObjectExplorerService {
             return;
         }
 
-        const closeSessionParams: CloseSessionParams = {
+        const closeSessionParams: ObjectExplorerContracts.CloseSessionParams = {
             sessionId: node.sessionId,
         };
-        const response: CloseSessionResponse = await this._connectionManager.client.sendRequest(
-            CloseSessionRequest.type,
-            closeSessionParams,
-        );
+        const response: ObjectExplorerContracts.CloseSessionResponse =
+            await this._connectionManager.client.sendRequest(
+                ObjectExplorerContracts.CloseSessionRequest.type,
+                closeSessionParams,
+            );
 
         if (response && response.success) {
             if (response.sessionId !== node.sessionId) {
