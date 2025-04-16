@@ -657,7 +657,7 @@ export default class MainController implements vscode.Disposable {
         );
         this.objectExplorerTree = vscode.window.createTreeView("objectExplorer", {
             treeDataProvider: this._objectExplorerProvider,
-            canSelectMany: false,
+            canSelectMany: true,
             showCollapseAll: true,
             dragAndDropController: new ObjectExplorerDragAndDropController(),
         });
