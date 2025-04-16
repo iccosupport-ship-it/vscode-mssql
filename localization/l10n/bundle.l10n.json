@@ -1002,6 +1002,12 @@
   },
   "The recent connections list has been cleared but there were errors while deleting some associated credentials. View the errors in the MSSQL output channel.": "The recent connections list has been cleared but there were errors while deleting some associated credentials. View the errors in the MSSQL output channel.",
   "Testing connection profile...": "Testing connection profile...",
+  "Connecting to profile {0}.../{0} is the profile name": {
+    "message": "Connecting to profile {0}...",
+    "comment": [
+      "{0} is the profile name"
+    ]
+  },
   "Running query is not supported when the editor is in multiple selection mode.": "Running query is not supported when the editor is in multiple selection mode.",
   "Enter new column width": "Enter new column width",
   "Invalid column width": "Invalid column width",

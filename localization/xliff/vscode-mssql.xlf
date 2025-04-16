@@ -387,6 +387,10 @@
     <trans-unit id="++CODE++d403c686f6a1048014bdd230f59963271b0123ea48245754fc9f264b962a2182">
       <source xml:lang="en">Connecting</source>
     </trans-unit>
+    <trans-unit id="++CODE++22f8375ed8791132ee0a8b698cf963731b7dd414d18e659b3423c81ae94b94fe">
+      <source xml:lang="en">Connecting to profile {0}...</source>
+      <note>{0} is the profile name</note>
+    </trans-unit>
     <trans-unit id="++CODE++4f7403da68117c9595b82a6c264837910b1421a60537bcfa77a004a58b0a4c7a">
       <source xml:lang="en">Connecting to server &quot;{0}&quot; on document &quot;{1}&quot;.</source>
       <note>{0} is the server name
