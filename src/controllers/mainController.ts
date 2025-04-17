@@ -791,7 +791,7 @@ export default class MainController implements vscode.Disposable {
                 Constants.cmdDisconnectObjectExplorerNode,
                 async (node: TreeNodeInfo) => {
                     await this._objectExplorerProvider.removeObjectExplorerNode(node, true);
-                    return this._objectExplorerProvider.refresh(undefined);
+                    return this._objectExplorerProvider.refresh(node);
                 },
             ),
         );

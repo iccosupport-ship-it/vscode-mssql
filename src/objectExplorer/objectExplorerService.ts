@@ -55,7 +55,6 @@ import {
 } from "../models/contracts/objectExplorer/getSessionIdRequest";
 import { Logger } from "../models/logger";
 import VscodeWrapper from "../controllers/vscodeWrapper";
-import { Semaphore } from "../utils/semaphore";
 
 function getParentNode(node: TreeNodeType): TreeNodeInfo {
     node = node.parentNode;
@@ -75,10 +74,10 @@ export class ObjectExplorerService {
     private _rootTreeNodeArray: Array<TreeNodeInfo>;
     private _sessionIdToConnectionProfileMap: Map<string, IConnectionProfile>;
     private _expandParamsToTreeNodeInfoMap: Map<ExpandParams, TreeNodeInfo>;
-    private _rootRefreshSemaphore: Semaphore;
 
     // Deferred promise maps
     private _sessionIdToPromiseMap: Map<string, Deferred<vscode.TreeItem>>;
+    private _sessionIdRequestToNodeMap: Map<string, TreeNodeInfo>;
     private _expandParamsToPromiseMap: Map<ExpandParams, Deferred<TreeNodeInfo[]>>;
 
     constructor(
@@ -101,6 +100,7 @@ export class ObjectExplorerService {
         this._sessionIdToPromiseMap = new Map<string, Deferred<vscode.TreeItem>>();
         this._expandParamsToPromiseMap = new Map<ExpandParams, Deferred<TreeNodeInfo[]>>();
         this._expandParamsToTreeNodeInfoMap = new Map<ExpandParams, TreeNodeInfo>();
+        this._sessionIdRequestToNodeMap = new Map<string, TreeNodeInfo>();
 
         this._client.onNotification(
             CreateSessionCompleteNotification.type,
@@ -130,19 +130,30 @@ export class ObjectExplorerService {
                 let nodeConnection = this._sessionIdToConnectionProfileMap.get(result.sessionId);
 
                 // set connection and other things
-                let node: TreeNodeInfo;
+                //let node: TreeNodeInfo;
 
+                const node = self._sessionIdRequestToNodeMap.get(result.sessionId);
                 if (self._currentNode && self._currentNode.sessionId === result.sessionId) {
-                    node = TreeNodeInfo.fromNodeInfo(
+                    TreeNodeInfo.updateFromNodeInfo(
+                        node,
                         result.rootNode,
                         result.sessionId,
-                        undefined,
+                        self._currentNode.parentNode,
                         self._currentNode.connectionInfo,
                         nodeLabel,
                         Constants.serverLabel,
                     );
+                    // node = TreeNodeInfo.fromNodeInfo(
+                    //     result.rootNode,
+                    //     result.sessionId,
+                    //     undefined,
+                    //     self._currentNode.connectionInfo,
+                    //     nodeLabel,
+                    //     Constants.serverLabel,
+                    // );
                 } else {
-                    node = TreeNodeInfo.fromNodeInfo(
+                    TreeNodeInfo.updateFromNodeInfo(
+                        node,
                         result.rootNode,
                         result.sessionId,
                         undefined,
@@ -150,6 +161,14 @@ export class ObjectExplorerService {
                         nodeLabel,
                         Constants.serverLabel,
                     );
+                    // node = TreeNodeInfo.fromNodeInfo(
+                    //     result.rootNode,
+                    //     result.sessionId,
+                    //     undefined,
+                    //     nodeConnection,
+                    //     nodeLabel,
+                    //     Constants.serverLabel,
+                    // );
                 }
                 // make a connection if not connected already
                 const nodeUri = this.getNodeIdentifier(node);
@@ -557,34 +576,25 @@ export class ObjectExplorerService {
         if (this._currentNode !== element) {
             this._currentNode = element;
         }
-
-        // Handle node with existing session
-        void new Promise(async (resolve) => {
-            if (element.sessionId) {
-                await this.getChildrenWithExistingSession(element);
-                this._objectExplorerProvider.refresh(element);
-            } else {
-                // Handle node without session
-                await this.getChildrenWithNewSession(element);
-                this._objectExplorerProvider.refresh(undefined);
-            }
-        });
-
-        const loadingNode: vscode.TreeItem = {
-            label: "Loading...",
-            collapsibleState: TreeItemCollapsibleState.None,
-            iconPath: new vscode.ThemeIcon("loading~spin"),
-        };
-        this._treeNodeToChildrenMap.set(element, [loadingNode]);
-        return [loadingNode];
+        if (element.connectionInfo.id === "35F2C911-445E-49EA-A47F-27350A856B8E") {
+            // add delay for 10 seconds
+            await new Promise((resolve) => setTimeout(resolve, 10000));
+        }
+        if (element.sessionId) {
+            return await this.getChildrenWithExistingSession(element);
+        } else {
+            return await this.getChildrenWithNewSession(element);
+        }
     }
 
     // Handle root nodes retrieval
     private async getRootNodes(): Promise<vscode.TreeItem[]> {
-        if (!this._rootRefreshSemaphore) {
-            this._rootRefreshSemaphore = new Semaphore();
-        }
-        await this._rootRefreshSemaphore.acquire();
+        // if (!this._rootRefreshSemaphore) {
+        //     this._rootRefreshSemaphore = new Semaphore();
+        // }
+        // console.log("Acquiring root refresh semaphore");
+        // await this._rootRefreshSemaphore.acquire();
+        // console.log("Acquired root refresh semaphore");
         try {
             this._logger.logDebug("Getting root OE nodes");
 
@@ -615,7 +625,7 @@ export class ObjectExplorerService {
 
             return this.sortByServerName(this._rootTreeNodeArray);
         } finally {
-            this._rootRefreshSemaphore.release();
+            //this._rootRefreshSemaphore.release();
             this._logger.logDebug("Released root refresh semaphore");
         }
     }
@@ -655,6 +665,7 @@ export class ObjectExplorerService {
     private async getChildrenWithNewSession(element: TreeNodeInfo): Promise<vscode.TreeItem[]> {
         const sessionPromise = new Deferred<TreeNodeInfo>();
         const sessionId = await this.createSession(sessionPromise, element.connectionInfo);
+        this._sessionIdRequestToNodeMap.set(sessionId, element);
 
         // If session creation failed, show sign-in node
         if (!sessionId) {
@@ -671,17 +682,9 @@ export class ObjectExplorerService {
         node.sessionId = sessionId;
 
         const children = await this.getChildrenWithExistingSession(node);
+        this._objectExplorerProvider.refresh(node);
         return children;
     }
-
-    getUpdatedServerNode = (node: TreeNodeInfo): TreeNodeInfo => {
-        const currentRootTreeNode = this._rootTreeNodeArray.find(
-            (rootNode) =>
-                Utils.isSameConnectionInfo(rootNode.connectionInfo, node.connectionInfo) &&
-                rootNode.label === node.label,
-        );
-        return currentRootTreeNode;
-    };
 
     /**
      * Create an OE session for the given connection credentials
@@ -872,41 +875,6 @@ export class ObjectExplorerService {
         await this.closeSession(node);
         const nodeUri = this.getNodeIdentifier(node);
         await this._connectionManager.disconnect(nodeUri);
-        if (!isDisconnect) {
-            const index = this._rootTreeNodeArray.indexOf(node, 0);
-            if (index > -1) {
-                this._rootTreeNodeArray.splice(index, 1);
-            }
-        } else {
-            node.nodeType = Constants.disconnectedServerNodeType;
-            node.context = ObjectExplorerService.disconnectedNodeContextValue;
-            node.sessionId = undefined;
-            if (!(node.connectionInfo as IConnectionProfile).savePassword) {
-                const profile = node.connectionInfo;
-                profile.password = "";
-                node.updateConnectionInfo(profile);
-            }
-            const label = typeof node.label === "string" ? node.label : node.label.label;
-            // make a new node to show disconnected behavior
-            let disconnectedNode = new TreeNodeInfo(
-                label,
-                ObjectExplorerService.disconnectedNodeContextValue,
-                node.collapsibleState,
-                node.nodePath,
-                node.nodeStatus,
-                Constants.disconnectedServerNodeType,
-                undefined,
-                node.connectionInfo,
-                node.parentNode,
-                undefined,
-            );
-
-            this.updateNode(disconnectedNode);
-            this._currentNode = disconnectedNode;
-            this._treeNodeToChildrenMap.set(this._currentNode, [
-                new ConnectTreeNode(this._currentNode),
-            ]);
-        }
 
         const connectionDetails = ConnectionCredentials.createConnectionDetails(
             node.connectionInfo,
@@ -930,6 +898,46 @@ export class ObjectExplorerService {
             node.connectionInfo as IConnectionProfile,
             this._connectionManager.getServerInfo(node.connectionInfo),
         );
+
+        if (!isDisconnect) {
+            const index = this._rootTreeNodeArray.indexOf(node, 0);
+            if (index > -1) {
+                this._rootTreeNodeArray.splice(index, 1);
+            }
+            this._objectExplorerProvider.refresh(undefined);
+        } else {
+            node.nodeType = Constants.disconnectedServerNodeType;
+            node.context = ObjectExplorerService.disconnectedNodeContextValue;
+            node.sessionId = undefined;
+            if (!(node.connectionInfo as IConnectionProfile).savePassword) {
+                const profile = node.connectionInfo;
+                profile.password = "";
+                node.updateConnectionInfo(profile);
+            }
+            const label = typeof node.label === "string" ? node.label : node.label.label;
+
+            node.label = label;
+            node.iconPath = ObjectExplorerUtils.iconPath(node.nodeType);
+            // // make a new node to show disconnected behavior
+            // let disconnectedNode = new TreeNodeInfo(
+            //     label,
+            //     ObjectExplorerService.disconnectedNodeContextValue,
+            //     node.collapsibleState,
+            //     node.nodePath,
+            //     node.nodeStatus,
+            //     Constants.disconnectedServerNodeType,
+            //     undefined,
+            //     node.connectionInfo,
+            //     node.parentNode,
+            //     undefined,
+            // );
+
+            this.updateNode(node);
+            this._currentNode = node;
+            this._treeNodeToChildrenMap.set(this._currentNode, [
+                new ConnectTreeNode(this._currentNode),
+            ]);
+        }
     }
 
     public async removeConnectionNodes(connections: IConnectionInfo[]): Promise<void> {

@@ -171,7 +171,7 @@ export class MsalAzureController extends AzureController {
             this._accountTokenRefreshSemaphore.set(accountKey, semaphore);
         }
 
-        await semaphore.acquire();
+        await semaphore.acquire(18000); // 3 minutes timeout
         let newAccount: IAccount;
         try {
             let azureAuth = await this.getAzureAuthInstance(getAzureActiveDirectoryConfig());

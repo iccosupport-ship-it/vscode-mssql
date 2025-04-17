@@ -24,6 +24,7 @@ export class TreeNodeInfo extends vscode.TreeItem implements ITreeNodeInfo {
     private _filterableProperties: vscodeMssql.NodeFilterProperty[];
     private _filters: vscodeMssql.NodeFilter[];
     private _originalLabel: string;
+    private isDisconnected: boolean = false;
 
     constructor(
         label: string,
@@ -94,6 +95,42 @@ export class TreeNodeInfo extends vscode.TreeItem implements ITreeNodeInfo {
             nodeInfo.filterableProperties,
             nodeInfo.metadata,
         );
+        return treeNodeInfo;
+    }
+
+    public static updateFromNodeInfo(
+        treeNodeInfo: TreeNodeInfo,
+        nodeInfo: NodeInfo,
+        sessionId: string,
+        parentNode: TreeNodeInfo,
+        connectionInfo: IConnectionInfo,
+        label?: string,
+        nodeType?: string,
+    ): TreeNodeInfo {
+        treeNodeInfo.label = label ? label : nodeInfo.label;
+        treeNodeInfo.context = {
+            type: nodeType ? nodeType : nodeInfo.nodeType,
+            filterable: nodeInfo.filterableProperties?.length > 0,
+            hasFilters: false,
+            subType: nodeInfo.objectType,
+        };
+        treeNodeInfo.nodePath = nodeInfo.nodePath;
+        treeNodeInfo.nodeStatus = nodeInfo.nodeStatus;
+        treeNodeInfo.nodeType = nodeType ? nodeType : nodeInfo.nodeType;
+        treeNodeInfo.sessionId = sessionId;
+        treeNodeInfo.parentNode = parentNode;
+        treeNodeInfo.updateConnectionInfo(connectionInfo);
+        treeNodeInfo.filterableProperties = nodeInfo.filterableProperties;
+        treeNodeInfo.updateMetadata(nodeInfo.metadata);
+        treeNodeInfo.iconPath = ObjectExplorerUtils.iconPath(treeNodeInfo.nodeType);
+        if (treeNodeInfo.connectionInfo?.database) {
+            if (treeNodeInfo.nodeType === Constants.serverLabel) {
+                treeNodeInfo.iconPath = ObjectExplorerUtils.iconPath(Constants.database_green);
+            }
+            if (treeNodeInfo.nodeType === Constants.disconnectedServerNodeType) {
+                treeNodeInfo.iconPath = ObjectExplorerUtils.iconPath(Constants.database_red);
+            }
+        }
         return treeNodeInfo;
     }
 
@@ -215,6 +252,10 @@ export class TreeNodeInfo extends vscode.TreeItem implements ITreeNodeInfo {
 
     public updateConnectionInfo(value: IConnectionInfo): void {
         this._connectionInfo = value;
+    }
+
+    public updateMetadata(value: ObjectMetadata): void {
+        this._metadata = value;
     }
 
     private _updateContextValue() {
