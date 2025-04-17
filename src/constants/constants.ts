@@ -20,6 +20,7 @@ export const connectionsArrayName = "connections";
 export const connectionGroupsArrayName = "connectionGroups";
 export const disconnectedServerNodeType = "disconnectedServer";
 export const serverLabel = "Server";
+export const databaseLabel = "Database";
 export const folderLabel = "Folder";
 export const database_green = "Database_green";
 export const database_red = "Database_red";

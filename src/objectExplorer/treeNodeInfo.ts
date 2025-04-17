@@ -149,6 +149,10 @@ export class TreeNodeInfo extends vscode.TreeItem implements ITreeNodeInfo {
         return this._metadata;
     }
 
+    protected updateMetadata(metadata: ObjectMetadata): void {
+        this._metadata = metadata;
+    }
+
     public get filterableProperties(): vscodeMssql.NodeFilterProperty[] {
         return this._filterableProperties;
     }

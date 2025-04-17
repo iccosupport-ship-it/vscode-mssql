@@ -20,7 +20,6 @@ import {
     ExpandResponse,
 } from "../models/contracts/objectExplorer/expandNodeRequest";
 import { ObjectExplorerProvider } from "./objectExplorerProvider";
-import { TreeItemCollapsibleState } from "vscode";
 import {
     RefreshRequest,
     RefreshParams,
@@ -55,6 +54,7 @@ import {
 } from "../models/contracts/objectExplorer/getSessionIdRequest";
 import { Logger } from "../models/logger";
 import VscodeWrapper from "../controllers/vscodeWrapper";
+import { ConnectionNode } from "./nodes/connectionNode";
 
 function getParentNode(node: TreeNodeType): TreeNodeInfo {
     node = node.parentNode;
@@ -254,11 +254,11 @@ export class ObjectExplorerService {
             ? username.substring(username.indexOf("-") + 2)
             : username;
         return (
-            result.errorMessage.includes(AzureConstants.AADSTS70043) ||
-            result.errorMessage.includes(AzureConstants.AADSTS50173) ||
-            result.errorMessage.includes(AzureConstants.AADSTS50020) ||
-            result.errorMessage.includes(AzureConstants.mdsUserAccountNotReceived) ||
-            result.errorMessage.includes(
+            result?.errorMessage?.includes(AzureConstants.AADSTS70043) ||
+            result?.errorMessage?.includes(AzureConstants.AADSTS50173) ||
+            result?.errorMessage?.includes(AzureConstants.AADSTS50020) ||
+            result?.errorMessage?.includes(AzureConstants.mdsUserAccountNotReceived) ||
+            result?.errorMessage?.includes(
                 Utils.formatString(AzureConstants.mdsUserAccountNotFound, email),
             )
         );
@@ -454,18 +454,7 @@ export class ObjectExplorerService {
                 );
 
             this._sessionIdToNodeLabelMap.set(response.sessionId, nodeLabel);
-            let node = new TreeNodeInfo(
-                nodeLabel,
-                ObjectExplorerService.disconnectedNodeContextValue,
-                TreeItemCollapsibleState.Collapsed,
-                undefined,
-                undefined,
-                Constants.disconnectedServerNodeType,
-                undefined,
-                conn,
-                undefined,
-                undefined,
-            );
+            let node = new ConnectionNode(conn);
             result.push(node);
         }
 
