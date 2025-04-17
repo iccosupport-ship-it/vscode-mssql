@@ -42,7 +42,7 @@ import * as Utils from "../models/utils";
 import { ConnectionCredentials } from "../models/connectionCredentials";
 import { ConnectionProfile } from "../models/connectionProfile";
 import providerSettings from "../azure/providerSettings";
-import { IConnectionInfo, TreeNodeContextValue } from "vscode-mssql";
+import { IConnectionInfo } from "vscode-mssql";
 import { sendActionEvent } from "../telemetry/telemetry";
 import { IAccount } from "../models/contracts/azure";
 import * as AzureConstants from "../azure/constants";
@@ -129,25 +129,15 @@ export class ObjectExplorerService {
                 // set connection and other things
                 let node: TreeNodeInfo;
 
-                if (self._currentNode && self._currentNode.sessionId === result.sessionId) {
-                    node = TreeNodeInfo.fromNodeInfo(
-                        result.rootNode,
-                        result.sessionId,
-                        undefined,
-                        self._currentNode.connectionInfo,
-                        nodeLabel,
-                        Constants.serverLabel,
-                    );
-                } else {
-                    node = TreeNodeInfo.fromNodeInfo(
-                        result.rootNode,
-                        result.sessionId,
-                        undefined,
-                        nodeConnection,
-                        nodeLabel,
-                        Constants.serverLabel,
-                    );
-                }
+                (this.currentNode as ConnectionNode).onConnected(
+                    result.rootNode,
+                    result.sessionId,
+                    self._currentNode,
+                    nodeConnection,
+                    nodeLabel,
+                );
+
+                node = this._currentNode;
                 // make a connection if not connected already
                 const nodeUri = this.getNodeIdentifier(node);
                 if (
@@ -459,15 +449,6 @@ export class ObjectExplorerService {
         }
 
         return result;
-    }
-
-    private static get disconnectedNodeContextValue(): TreeNodeContextValue {
-        return {
-            type: Constants.disconnectedServerNodeType,
-            filterable: false,
-            hasFilters: false,
-            subType: "",
-        };
     }
 
     /**
@@ -783,34 +764,9 @@ export class ObjectExplorerService {
                 this._rootTreeNodeArray.splice(index, 1);
             }
         } else {
-            node.nodeType = Constants.disconnectedServerNodeType;
-            node.context = ObjectExplorerService.disconnectedNodeContextValue;
-            node.sessionId = undefined;
-            if (!(node.connectionInfo as IConnectionProfile).savePassword) {
-                const profile = node.connectionInfo;
-                profile.password = "";
-                node.updateConnectionInfo(profile);
-            }
-            const label = typeof node.label === "string" ? node.label : node.label.label;
-            // make a new node to show disconnected behavior
-            let disconnectedNode = new TreeNodeInfo(
-                label,
-                ObjectExplorerService.disconnectedNodeContextValue,
-                node.collapsibleState,
-                node.nodePath,
-                node.nodeStatus,
-                Constants.disconnectedServerNodeType,
-                undefined,
-                node.connectionInfo,
-                node.parentNode,
-                undefined,
-            );
-
-            this.updateNode(disconnectedNode);
-            this._currentNode = disconnectedNode;
-            this._treeNodeToChildrenMap.set(this._currentNode, [
-                new ConnectTreeNode(this._currentNode),
-            ]);
+            (node as ConnectionNode).onDisconnected();
+            //this.updateNode(node);
+            this._currentNode = node;
         }
 
         const connectionDetails = ConnectionCredentials.createConnectionDetails(
@@ -825,6 +781,11 @@ export class ObjectExplorerService {
 
         this._sessionIdToNodeLabelMap.delete(sessionIdResponse.sessionId);
         this.cleanNodeChildren(node);
+        this._treeNodeToChildrenMap.set(this._currentNode, [
+            new ConnectTreeNode(this._currentNode),
+        ]);
+        this._objectExplorerProvider.refresh(this._currentNode);
+
         sendActionEvent(
             TelemetryViews.ObjectExplorer,
             isDisconnect ? TelemetryActions.RemoveConnection : TelemetryActions.Disconnect,
@@ -882,22 +843,11 @@ export class ObjectExplorerService {
     }
 
     public addDisconnectedNode(connectionCredentials: IConnectionInfo): void {
-        const label = (connectionCredentials as IConnectionProfile).profileName
-            ? (connectionCredentials as IConnectionProfile).profileName
-            : ConnInfo.getConnectionDisplayName(connectionCredentials);
-        const node = new TreeNodeInfo(
-            label,
-            ObjectExplorerService.disconnectedNodeContextValue,
-            vscode.TreeItemCollapsibleState.Collapsed,
-            undefined,
-            undefined,
-            Constants.disconnectedServerNodeType,
-            undefined,
-            connectionCredentials,
-            undefined,
-            undefined,
-        );
-        this.updateNode(node);
+        // const label = (connectionCredentials as IConnectionProfile).profileName
+        //     ? (connectionCredentials as IConnectionProfile).profileName
+        //     : ConnInfo.getConnectionDisplayName(connectionCredentials);
+
+        this.updateNode(new ConnectionNode(connectionCredentials));
     }
 
     /**

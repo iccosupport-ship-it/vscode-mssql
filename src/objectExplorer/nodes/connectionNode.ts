@@ -10,6 +10,7 @@ import * as ConnInfo from "../../models/connectionInfo";
 import * as Constants from "../../constants/constants";
 import { NodeInfo } from "../../models/contracts/objectExplorer/nodeInfo";
 import { ObjectExplorerUtils } from "../objectExplorerUtils";
+import { IConnectionProfile } from "../../models/interfaces";
 
 const disconnectedNodeContextValue: vscodeMssql.TreeNodeContextValue = {
     type: Constants.disconnectedServerNodeType,
@@ -68,7 +69,9 @@ export class ConnectionNode extends TreeNodeInfo {
         this.updateMetadata(nodeInfo.metadata);
 
         if (connectionInfo.database) {
-            this.iconPath = ObjectExplorerUtils.iconPath(Constants.database_red);
+            this.iconPath = ObjectExplorerUtils.iconPath(Constants.database_green);
+        } else {
+            this.iconPath = ObjectExplorerUtils.iconPath(Constants.serverLabel);
         }
     }
 
@@ -88,5 +91,17 @@ export class ConnectionNode extends TreeNodeInfo {
         this.parentNode = undefined;
         this.filterableProperties = undefined;
         this.nodeSubType = this.connectionInfo.database ? "Database" : undefined;
+
+        if (!(this.connectionInfo as IConnectionProfile).savePassword) {
+            const profile = this.connectionInfo;
+            profile.password = "";
+            this.updateConnectionInfo(profile);
+        }
+
+        if (this.connectionInfo.database) {
+            this.iconPath = ObjectExplorerUtils.iconPath(Constants.database_red);
+        } else {
+            this.iconPath = ObjectExplorerUtils.iconPath(Constants.disconnectedServerNodeType);
+        }
     }
 }
