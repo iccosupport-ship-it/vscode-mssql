@@ -10,6 +10,7 @@ export interface ObjectExplorerFilterState {
     filterProperties: vscodeMssql.NodeFilterProperty[];
     existingFilters: vscodeMssql.NodeFilter[];
     nodePath?: string;
+    savedFilters?: vscodeMssql.NodeFilter[][];
 }
 
 export interface ObjectExplorerReducers {

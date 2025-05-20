@@ -108,6 +108,8 @@ export class LocConstants {
             operator: l10n.t("Operator"),
             value: l10n.t("Value"),
             clear: l10n.t("Clear"),
+            saveAsPreset: l10n.t("Save as preset"),
+            savedFilters: l10n.t("Saved Filters"),
         };
     }
 

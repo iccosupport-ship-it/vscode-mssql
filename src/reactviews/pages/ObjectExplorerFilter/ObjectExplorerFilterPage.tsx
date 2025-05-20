@@ -40,17 +40,19 @@ import {
 } from "../../../sharedInterfaces/objectExplorerFilter";
 import * as l10n from "@vscode/l10n";
 import { locConstants } from "../../common/locConstants";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
 export const useStyles = makeStyles({
-    root: {
+    mainPanel: {
         flexDirection: "column",
         display: "flex",
-        paddingTop: "10px",
-        paddingLeft: "10px",
         "> *": {
             marginTop: "5px",
             marginBottom: "5px",
         },
+        overflowX: "auto",
+        width: "100%",
+        height: "100%",
     },
     inputs: {
         maxWidth: "150px",
@@ -246,6 +248,103 @@ export const ObjectExplorerFilterPage = () => {
         }
     }
 
+    function applyFilter() {
+        const filters: vscodeMssql.NodeFilter[] = uiFilters
+            .map((f) => {
+                let value = undefined;
+                switch (f.type) {
+                    case NodeFilterPropertyDataType.Boolean:
+                        if (f.value === "" || f.value === undefined) {
+                            value = undefined;
+                        } else {
+                            value =
+                                f.choices?.find((c) => c.displayName === f.value)?.name ??
+                                undefined;
+                        }
+                        break;
+                    case NodeFilterPropertyDataType.Number:
+                        if (f.selectedOperator === BETWEEN || f.selectedOperator === NOT_BETWEEN) {
+                            value = (f.value as string[]).map((v) => Number(v));
+                        } else {
+                            value = Number(f.value);
+                        }
+                        break;
+                    case NodeFilterPropertyDataType.String:
+                    case NodeFilterPropertyDataType.Date:
+                        value = f.value;
+                        break;
+                    case NodeFilterPropertyDataType.Choice:
+                        if (f.value === "" || f.value === undefined) {
+                            value = undefined;
+                        } else {
+                            value =
+                                f.choices?.find((c) => c.displayName === f.value)?.name ??
+                                undefined;
+                        }
+                        break;
+                }
+                return {
+                    name: f.name,
+                    value: value!,
+                    operator: getFilterOperatorEnum(f.selectedOperator),
+                };
+            })
+            .filter((f) => {
+                if (
+                    f.operator === NodeFilterOperator.Between ||
+                    f.operator === NodeFilterOperator.NotBetween
+                ) {
+                    return (f.value as string[])[0] !== "" || (f.value as string[])[1] !== "";
+                }
+                return f.value !== "" && f.value !== undefined;
+            });
+
+        let errorText = "";
+        for (let filter of filters) {
+            if (
+                filter.operator === NodeFilterOperator.Between ||
+                filter.operator === NodeFilterOperator.NotBetween
+            ) {
+                let value1 = (filter.value as string[] | number[])[0];
+                let value2 = (filter.value as string[] | number[])[1];
+                if (!value1 && value2) {
+                    errorText = locConstants.objectExplorerFiltering.firstValueEmptyError(
+                        getFilterOperatorString(filter.operator)!,
+                        filter.name,
+                    );
+                } else if (!value2 && value1) {
+                    errorText = locConstants.objectExplorerFiltering.secondValueEmptyError(
+                        getFilterOperatorString(filter.operator)!,
+                        filter.name,
+                    );
+                } else if (value1 > value2) {
+                    errorText = locConstants.objectExplorerFiltering.firstValueLessThanSecondError(
+                        getFilterOperatorString(filter.operator)!,
+                        filter.name,
+                    );
+                }
+            }
+        }
+        if (errorText) {
+            setErrorMessage(errorText);
+            return;
+        }
+        if (provider) {
+            provider.submit(filters);
+        }
+    }
+
+    function clearFilters() {
+        for (let filters of uiFilters) {
+            if (filters.selectedOperator === BETWEEN || filters.selectedOperator === NOT_BETWEEN) {
+                filters.value = ["", ""];
+            } else {
+                filters.value = "";
+            }
+        }
+        setUiFilters([...uiFilters]);
+    }
+
     useEffect(() => {
         function setIntialFocus() {
             const input = document.getElementById("input-0");
@@ -425,6 +524,7 @@ export const ObjectExplorerFilterPage = () => {
                     <Tooltip content="Clear" relationship="label">
                         <Button
                             size="small"
+                            appearance="subtle"
                             icon={<EraserRegular />}
                             onClick={() => {
                                 if (
@@ -508,190 +608,120 @@ export const ObjectExplorerFilterPage = () => {
         return undefined;
     }
     return (
-        <div className={classes.root}>
-            <Text size={400}>{l10n.t("Filter Settings")}</Text>
-            <Body1Strong>
-                {locConstants.objectExplorerFiltering.path(provider?.state?.nodePath!)}
-            </Body1Strong>
-            {errorMessage && errorMessage !== "" && (
-                <MessageBar intent={"error"}>
-                    <MessageBarBody>
-                        <MessageBarTitle>
-                            {locConstants.objectExplorerFiltering.error}
-                        </MessageBarTitle>
-                        {errorMessage}
-                    </MessageBarBody>
-                </MessageBar>
-            )}
-            <Table
-                as="table"
-                size="small"
-                {...columnSizing_unstable.getTableProps()}
-                ref={tableRef}>
-                <TableHeader>
-                    <TableRow>
-                        {columns.map((column) => {
-                            return (
-                                <TableHeaderCell
-                                    key={column.columnId}
-                                    {...columnSizing_unstable.getTableHeaderCellProps(
-                                        column.columnId,
-                                    )}>
-                                    {column.renderHeaderCell()}
-                                </TableHeaderCell>
-                            );
-                        })}
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {rows.map((_row, index) => {
-                        return (
-                            <TableRow key={`row${index}`}>
-                                {columnsDef.map((column) => {
+        <PanelGroup direction="horizontal">
+            <Panel
+                defaultSize={70}
+                style={{
+                    paddingTop: "10px",
+                    paddingLeft: "10px",
+                }}>
+                <div className={classes.mainPanel}>
+                    <Text size={400}>{l10n.t("Filter Settings")}</Text>
+                    <Body1Strong>
+                        {locConstants.objectExplorerFiltering.path(provider?.state?.nodePath!)}
+                    </Body1Strong>
+                    {errorMessage && errorMessage !== "" && (
+                        <MessageBar intent={"error"}>
+                            <MessageBarBody>
+                                <MessageBarTitle>
+                                    {locConstants.objectExplorerFiltering.error}
+                                </MessageBarTitle>
+                                {errorMessage}
+                            </MessageBarBody>
+                        </MessageBar>
+                    )}
+                    <Table
+                        as="table"
+                        size="small"
+                        {...columnSizing_unstable.getTableProps()}
+                        ref={tableRef}>
+                        <TableHeader>
+                            <TableRow>
+                                {columns.map((column) => {
                                     return (
-                                        <TableCell
+                                        <TableHeaderCell
                                             key={column.columnId}
                                             {...columnSizing_unstable.getTableHeaderCellProps(
                                                 column.columnId,
                                             )}>
-                                            {renderCell(column.columnId, uiFilters[index])}
-                                        </TableCell>
+                                            {column.renderHeaderCell()}
+                                        </TableHeaderCell>
                                     );
                                 })}
                             </TableRow>
-                        );
-                    })}
-                </TableBody>
-            </Table>
-            <div
+                        </TableHeader>
+                        <TableBody>
+                            {rows.map((_row, index) => {
+                                return (
+                                    <TableRow key={`row${index}`}>
+                                        {columnsDef.map((column) => {
+                                            return (
+                                                <TableCell
+                                                    key={column.columnId}
+                                                    {...columnSizing_unstable.getTableHeaderCellProps(
+                                                        column.columnId,
+                                                    )}>
+                                                    {renderCell(column.columnId, uiFilters[index])}
+                                                </TableCell>
+                                            );
+                                        })}
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                    <div
+                        style={{
+                            display: "flex",
+                            flexDirection: "row",
+                            marginTop: "10px",
+                            maxWidth: "350px",
+                            gap: "5px",
+                        }}>
+                        <Button size="small" appearance="secondary" onClick={() => {}}>
+                            {locConstants.objectExplorerFiltering.saveAsPreset}
+                        </Button>
+                        <Button size="small" appearance="secondary" onClick={() => clearFilters()}>
+                            {locConstants.objectExplorerFiltering.clearAll}
+                        </Button>
+                        <Button
+                            size="small"
+                            appearance="secondary"
+                            onClick={() => {
+                                provider.cancel();
+                            }}>
+                            {locConstants.common.close}
+                        </Button>
+                        <Button size="small" appearance="primary" onClick={() => applyFilter()}>
+                            {locConstants.objectExplorerFiltering.ok}
+                        </Button>
+                    </div>
+                </div>
+            </Panel>
+            <PanelResizeHandle
                 style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    marginTop: "10px",
-                    maxWidth: "300px",
-                }}>
-                <Button
-                    appearance="secondary"
-                    onClick={() => {
-                        for (let filters of uiFilters) {
-                            if (
-                                filters.selectedOperator === BETWEEN ||
-                                filters.selectedOperator === NOT_BETWEEN
-                            ) {
-                                filters.value = ["", ""];
-                            } else {
-                                filters.value = "";
-                            }
-                        }
-                        setUiFilters([...uiFilters]);
+                    width: "2px",
+                    backgroundColor: "var(--vscode-editorWidget-border)",
+                }}
+            />
+            <Panel defaultSize={30} minSize={20} maxSize={50}>
+                <div
+                    style={{
+                        padding: "10px",
+                        flexDirection: "column",
+                        display: "flex",
+                        justifyContent: "center",
                     }}>
-                    {locConstants.objectExplorerFiltering.clearAll}
-                </Button>
-                <Button
-                    appearance="secondary"
-                    onClick={() => {
-                        provider.cancel();
-                    }}>
-                    {locConstants.common.close}
-                </Button>
-                <Button
-                    appearance="primary"
-                    onClick={() => {
-                        const filters: vscodeMssql.NodeFilter[] = uiFilters
-                            .map((f) => {
-                                let value = undefined;
-                                switch (f.type) {
-                                    case NodeFilterPropertyDataType.Boolean:
-                                        if (f.value === "" || f.value === undefined) {
-                                            value = undefined;
-                                        } else {
-                                            value =
-                                                f.choices?.find((c) => c.displayName === f.value)
-                                                    ?.name ?? undefined;
-                                        }
-                                        break;
-                                    case NodeFilterPropertyDataType.Number:
-                                        if (
-                                            f.selectedOperator === BETWEEN ||
-                                            f.selectedOperator === NOT_BETWEEN
-                                        ) {
-                                            value = (f.value as string[]).map((v) => Number(v));
-                                        } else {
-                                            value = Number(f.value);
-                                        }
-                                        break;
-                                    case NodeFilterPropertyDataType.String:
-                                    case NodeFilterPropertyDataType.Date:
-                                        value = f.value;
-                                        break;
-                                    case NodeFilterPropertyDataType.Choice:
-                                        if (f.value === "" || f.value === undefined) {
-                                            value = undefined;
-                                        } else {
-                                            value =
-                                                f.choices?.find((c) => c.displayName === f.value)
-                                                    ?.name ?? undefined;
-                                        }
-                                        break;
-                                }
-                                return {
-                                    name: f.name,
-                                    value: value!,
-                                    operator: getFilterOperatorEnum(f.selectedOperator),
-                                };
-                            })
-                            .filter((f) => {
-                                if (
-                                    f.operator === NodeFilterOperator.Between ||
-                                    f.operator === NodeFilterOperator.NotBetween
-                                ) {
-                                    return (
-                                        (f.value as string[])[0] !== "" ||
-                                        (f.value as string[])[1] !== ""
-                                    );
-                                }
-                                return f.value !== "" && f.value !== undefined;
-                            });
-
-                        let errorText = "";
-                        for (let filter of filters) {
-                            if (
-                                filter.operator === NodeFilterOperator.Between ||
-                                filter.operator === NodeFilterOperator.NotBetween
-                            ) {
-                                let value1 = (filter.value as string[] | number[])[0];
-                                let value2 = (filter.value as string[] | number[])[1];
-                                if (!value1 && value2) {
-                                    errorText =
-                                        locConstants.objectExplorerFiltering.firstValueEmptyError(
-                                            getFilterOperatorString(filter.operator)!,
-                                            filter.name,
-                                        );
-                                } else if (!value2 && value1) {
-                                    errorText =
-                                        locConstants.objectExplorerFiltering.secondValueEmptyError(
-                                            getFilterOperatorString(filter.operator)!,
-                                            filter.name,
-                                        );
-                                } else if (value1 > value2) {
-                                    errorText =
-                                        locConstants.objectExplorerFiltering.firstValueLessThanSecondError(
-                                            getFilterOperatorString(filter.operator)!,
-                                            filter.name,
-                                        );
-                                }
-                            }
-                        }
-                        if (errorText) {
-                            setErrorMessage(errorText);
-                            return;
-                        }
-                        provider.submit(filters);
-                    }}>
-                    {locConstants.objectExplorerFiltering.ok}
-                </Button>
-            </div>
-        </div>
+                    <Text size={400}>{locConstants.objectExplorerFiltering.savedFilters}</Text>
+                    {provider?.state?.savedFilters?.map((filter) => {
+                        return (
+                            <Text key={filter.name} size={200}>
+                                {filter.name}
+                            </Text>
+                        );
+                    }) ?? []}
+                </div>
+            </Panel>
+        </PanelGroup>
     );
 };
