@@ -1568,6 +1568,9 @@
     <trans-unit id="++CODE++910ed5e0c43df2bc1a2c71f1d5ecd2168b919fd4dc9f6d4b1f13f660cba9c524">
       <source xml:lang="en">Save as JSON</source>
     </trans-unit>
+    <trans-unit id="++CODE++853c8501bf832457c376561a86a477c046a6ec12b388d9d42a555a3bdb58fd2c">
+      <source xml:lang="en">Save as preset</source>
+    </trans-unit>
     <trans-unit id="++CODE++bae1da28225af71a125385224716f5ff7870573e6c01494c597e8ed4168b12e3">
       <source xml:lang="en">Save results command cannot be used with multiple selections.</source>
     </trans-unit>
@@ -1576,6 +1579,9 @@
     </trans-unit>
     <trans-unit id="++CODE++5a2df8a2745d54fa2197753e1c2c22a8dea9676916677120da5c44550647180d">
       <source xml:lang="en">Saved Connections</source>
+    </trans-unit>
+    <trans-unit id="++CODE++20b4879b3c7ef7eb50cc11176220b7863f91878c8da098fe9c346feac3afc64d">
+      <source xml:lang="en">Saved Filters</source>
     </trans-unit>
     <trans-unit id="++CODE++f102986b39effb31080ae442f61febe7ed58df1515c0711ccfadfe0311ccec81">
       <source xml:lang="en">Scale</source>
