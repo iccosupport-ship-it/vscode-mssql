@@ -217,6 +217,12 @@ export default class ConnectionManager {
             );
         }
 
+        vscode.window.onDidChangeActiveTextEditor(() => {
+            this.updateContext();
+        });
+        this.onConnectionsChanged(() => {
+            this.updateContext();
+        });
         void this.initialize();
     }
 
@@ -225,6 +231,7 @@ export default class ConnectionManager {
         await this.migrateLegacyConnectionProfiles();
 
         this.initialized.resolve();
+        this.updateContext();
     }
 
     /**
@@ -772,6 +779,9 @@ export default class ConnectionManager {
             connection.credentials as IConnectionProfile,
             result.serverInfo,
         );
+        delete this._connections[fileUri];
+        // Trigger the connections changed event
+        this._onConnectionsChangedEmitter.fire();
     }
 
     public async showInstructionTextAsWarning(
@@ -1323,6 +1333,7 @@ export default class ConnectionManager {
             let connectionInfo: ConnectionInfo = new ConnectionInfo();
             connectionInfo.credentials = connectionCreds;
             connectionInfo.connecting = true;
+            this._onConnectionsChangedEmitter.fire();
             this.addActiveConnection(fileUri, connectionInfo);
 
             // Note: must call flavor changed before connecting, or the timer showing an animation doesn't occur
@@ -1403,6 +1414,7 @@ export default class ConnectionManager {
         let connectionInfo: ConnectionInfo = new ConnectionInfo();
         connectionInfo.credentials = connectionCreds;
         connectionInfo.connecting = true;
+        this._onConnectionsChangedEmitter.fire();
         // Setup the handler for the connection complete notification to call
         connectionInfo.connectHandler = (connectionResult, error) => {};
         this._connections[uri] = connectionInfo;
@@ -1519,6 +1531,7 @@ export default class ConnectionManager {
     }
 
     public onDidOpenTextDocument(doc: vscode.TextDocument): void {
+        //INteresting code
         let uri = doc.uri.toString(true);
         if (doc.languageId === "sql" && typeof this._connections[uri] === "undefined") {
             this.statusView.notConnected(uri);
@@ -1773,5 +1786,23 @@ export default class ConnectionManager {
 
             return "error";
         }
+    }
+
+    private updateContext(): void {
+        console.log("Updating mssql.isConnected context");
+        const activeEditorUri = vscode.window.activeTextEditor?.document?.uri?.toString(true);
+        if (!activeEditorUri) {
+            // No active editor, clear the context
+            vscode.commands.executeCommand("setContext", "mssql.isConnected", false);
+            this.statusView.hideRowCount;
+            return;
+        }
+        const isConnected = this.isConnected(activeEditorUri);
+        const isConnecting = this.isConnecting(activeEditorUri);
+        vscode.commands.executeCommand(
+            "setContext",
+            "mssql.isConnected",
+            isConnected || isConnecting,
+        );
     }
 }

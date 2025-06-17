@@ -136,7 +136,7 @@ export default class StatusView implements vscode.Disposable {
         }
     }
 
-    private getStatusBar(fileUri: string): FileStatusBar {
+    public getStatusBar(fileUri: string): FileStatusBar {
         if (!(fileUri in this._statusBars)) {
             // Create it if it does not exist
             this.createStatusBar(fileUri);
@@ -364,6 +364,11 @@ export default class StatusView implements vscode.Disposable {
     }
 
     private onDidChangeActiveTextEditor(editor: vscode.TextEditor): void {
+        if(!editor) {
+            // If there is no active editor, hide the last shown status bar
+            this.hideLastShownStatusBar();
+            return;
+        }
         // Change the status bar to match the open file
         if (typeof editor !== "undefined") {
             // Hide the most recently shown status bar
