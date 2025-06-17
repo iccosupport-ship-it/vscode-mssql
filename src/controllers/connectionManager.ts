@@ -224,6 +224,11 @@ export default class ConnectionManager {
             this.updateContext();
         });
         void this.initialize();
+        context.subscriptions.push(
+            vscode.commands.registerCommand("mssql.isConnected", (fileUri: string) => {
+                return this.isConnected(fileUri);
+            }),
+        );
     }
 
     private async initialize(): Promise<void> {
@@ -1533,7 +1538,12 @@ export default class ConnectionManager {
     public onDidOpenTextDocument(doc: vscode.TextDocument): void {
         //INteresting code
         let uri = doc.uri.toString(true);
-        if (doc.languageId === "sql" && typeof this._connections[uri] === "undefined") {
+        if (
+            doc.languageId === "sql" &&
+            typeof this._connections[uri] === "undefined" &&
+            this.isConnecting(uri) &&
+            this.isConnected(uri)
+        ) {
             this.statusView.notConnected(uri);
         }
     }

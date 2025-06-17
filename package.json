@@ -344,42 +344,42 @@
                 },
                 {
                     "command": "mssql.cancelQuery",
-                    "when": "editorLangId == sql && !isInDiffEditor && resourcePath in mssql.runningQueries",
+                    "when": "editorLangId == sql && !isInDiffEditor && resourcePath in mssql.runningQueries && mssql.isConnected",
                     "group": "navigation@2"
                 },
                 {
                     "command": "mssql.revealQueryResultPanel",
-                    "when": "editorLangId == sql && !isInDiffEditor && !config.mssql.useLegacyQueryResultExperience && view.queryResult.visible == false",
+                    "when": "editorLangId == sql && !isInDiffEditor && !config.mssql.useLegacyQueryResultExperience && view.queryResult.visible == false && mssql.isConnected",
                     "group": "navigation@2"
                 },
                 {
                     "command": "mssql.connect",
-                    "when": "editorLangId == sql && !isInDiffEditor && resource not in mssql.connections",
+                    "when": "editorLangId == sql && !isInDiffEditor && resource not in mssql.connections && mssql.isConnected",
                     "group": "navigation@3"
                 },
                 {
                     "command": "mssql.disconnect",
-                    "when": "editorLangId == sql && !isInDiffEditor && resource in mssql.connections",
+                    "when": "editorLangId == sql && !isInDiffEditor && resource in mssql.connections && mssql.isConnected",
                     "group": "navigation@3"
                 },
                 {
                     "command": "mssql.changeDatabase",
-                    "when": "editorLangId == sql && !isInDiffEditor",
+                    "when": "editorLangId == sql && !isInDiffEditor && mssql.isConnected",
                     "group": "navigation@4"
                 },
                 {
                     "command": "mssql.showExecutionPlanInResults",
-                    "when": "editorLangId == sql && !isInDiffEditor",
+                    "when": "editorLangId == sql && !isInDiffEditor && mssql.isConnected",
                     "group": "navigation@4"
                 },
                 {
                     "command": "mssql.enableActualPlan",
-                    "when": "editorLangId == sql && !isInDiffEditor && !(resource in mssql.executionPlan.urisWithActualPlanEnabled)",
+                    "when": "editorLangId == sql && !isInDiffEditor && !(resource in mssql.executionPlan.urisWithActualPlanEnabled) && mssql.isConnected",
                     "group": "navigation@5"
                 },
                 {
                     "command": "mssql.disableActualPlan",
-                    "when": "editorLangId == sql && !isInDiffEditor && resource in mssql.executionPlan.urisWithActualPlanEnabled",
+                    "when": "editorLangId == sql && !isInDiffEditor && resource in mssql.executionPlan.urisWithActualPlanEnabled && mssql.isConnected",
                     "group": "navigation@5"
                 }
             ],

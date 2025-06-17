@@ -364,7 +364,7 @@ export default class StatusView implements vscode.Disposable {
     }
 
     private onDidChangeActiveTextEditor(editor: vscode.TextEditor): void {
-        if(!editor) {
+        if (!editor || !this.isEditorConnected(editor.document.uri.toString(true))) {
             // If there is no active editor, hide the last shown status bar
             this.hideLastShownStatusBar();
             return;
@@ -436,5 +436,11 @@ export default class StatusView implements vscode.Disposable {
         const minutes = Math.floor(milliseconds / 60000);
         const seconds = ((milliseconds % 60000) / 1000).toFixed(0);
         return minutes + ":" + (parseInt(seconds) < 10 ? "0" : "") + seconds;
+    }
+
+    private async isEditorConnected(uri: string): Promise<boolean> {
+        const result = await vscode.commands.executeCommand("mssql.isConnected", uri);
+        console.log(`isEditorConnected: ${uri} - ${result}`);
+        return result as boolean;
     }
 }
