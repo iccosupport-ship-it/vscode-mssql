@@ -12,6 +12,7 @@ import MainController from "../controllers/mainController";
 import * as LocConstants from "../constants/locConstants";
 import { TelemetryViews, TelemetryActions } from "../sharedInterfaces/telemetry";
 import { sendActionEvent } from "../telemetry/telemetry";
+import { SchemaDesignerService } from "../services/schemaDesignerService";
 
 export class SchemaDesignerWebviewManager {
     private static instance: SchemaDesignerWebviewManager;
@@ -49,7 +50,7 @@ export class SchemaDesignerWebviewManager {
         context: vscode.ExtensionContext,
         vscodeWrapper: VscodeWrapper,
         mainController: MainController,
-        schemaDesignerService: SchemaDesigner.ISchemaDesignerService,
+        schemaDesignerService: SchemaDesignerService,
         databaseName: string,
         treeNode?: TreeNodeInfo,
         connectionUri?: string,
@@ -126,7 +127,7 @@ export class SchemaDesignerWebviewManager {
                         );
                     }
                 }
-                schemaDesignerService.disposeSession({
+                await schemaDesignerService.disposeSession({
                     sessionId: this.schemaDesignerCache.get(key).schemaDesignerDetails.sessionId,
                 });
                 this.schemaDesignerCache.delete(key);

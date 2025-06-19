@@ -14,6 +14,7 @@ import { homedir } from "os";
 import { getErrorMessage, getUniqueFilePath } from "../utils/utils";
 import { sendActionEvent, startActivity } from "../telemetry/telemetry";
 import { ActivityStatus, TelemetryActions, TelemetryViews } from "../sharedInterfaces/telemetry";
+import { SchemaDesignerService } from "../services/schemaDesignerService";
 
 export class SchemaDesignerWebviewController extends ReactWebviewPanelController<
     SchemaDesigner.SchemaDesignerWebviewState,
@@ -27,7 +28,7 @@ export class SchemaDesignerWebviewController extends ReactWebviewPanelController
         context: vscode.ExtensionContext,
         vscodeWrapper: VscodeWrapper,
         private mainController: MainController,
-        private schemaDesignerService: SchemaDesigner.ISchemaDesignerService,
+        private schemaDesignerService: SchemaDesignerService,
         private connectionString: string,
         private accessToken: string | undefined,
         private databaseName: string,
@@ -61,6 +62,11 @@ export class SchemaDesignerWebviewController extends ReactWebviewPanelController
         );
 
         this._key = `${this.connectionString}-${this.databaseName}`;
+        if (!this.connectionUri) {
+            this.connectionUri = this.mainController.connectionManager.getUriForConnection(
+                this.treeNode.connectionProfile,
+            );
+        }
 
         this.setupRequestHandlers();
     }
@@ -77,6 +83,7 @@ export class SchemaDesignerWebviewController extends ReactWebviewPanelController
                 let sessionResponse: SchemaDesigner.CreateSessionResponse;
                 if (!this.schemaDesignerCache.has(this._key)) {
                     sessionResponse = await this.schemaDesignerService.createSession({
+                        connectionUri: this.connectionUri,
                         connectionString: this.connectionString,
                         accessToken: this.accessToken,
                         databaseName: this.databaseName,
@@ -291,6 +298,17 @@ export class SchemaDesignerWebviewController extends ReactWebviewPanelController
         this.onNotification(SchemaDesigner.CloseSchemaDesignerNotification.type, () => {
             // Close the schema designer panel
             this.panel.dispose();
+        });
+
+        this.schemaDesignerService.onModelReady(async (session) => {
+            if (session.sessionId === this._sessionId) {
+                vscode.window.showInformationMessage(
+                    `Schema Designer session ready for ${this.databaseName}.`,
+                );
+                await this.connection.sendNotification(
+                    SchemaDesigner.SchemaDesignerSessionReadyNotification.type,
+                );
+            }
         });
     }
 

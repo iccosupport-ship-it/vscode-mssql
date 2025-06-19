@@ -6,12 +6,28 @@
 import { SchemaDesigner } from "../sharedInterfaces/schemaDesigner";
 import SqlToolsServiceClient from "../languageservice/serviceclient";
 import { SchemaDesignerRequests } from "../models/contracts/schemaDesigner";
+import * as vscode from "vscode";
+import { NotificationType } from "vscode-languageclient";
 
 export class SchemaDesignerService implements SchemaDesigner.ISchemaDesignerService {
+    private _onModelReady: vscode.EventEmitter<SchemaDesigner.SchemaDesignerSession> =
+        new vscode.EventEmitter<SchemaDesigner.SchemaDesignerSession>();
+
+    public readonly onModelReady: vscode.Event<SchemaDesigner.SchemaDesignerSession> =
+        this._onModelReady.event;
     private _modelReadyListeners: ((modelReady: SchemaDesigner.SchemaDesignerSession) => void)[] =
         [];
 
-    constructor(private _sqlToolsClient: SqlToolsServiceClient) {}
+    constructor(private _sqlToolsClient: SqlToolsServiceClient) {
+        this._sqlToolsClient.onNotification(
+            new NotificationType<SchemaDesigner.SchemaDesignerSession, void>(
+                "schemaDesigner/modelReady",
+            ),
+            (modelReady: SchemaDesigner.SchemaDesignerSession) => {
+                this._onModelReady.fire(modelReady);
+            },
+        );
+    }
 
     async createSession(
         request: SchemaDesigner.CreateSessionRequest,

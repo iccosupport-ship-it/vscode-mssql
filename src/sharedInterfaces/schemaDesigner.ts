@@ -177,6 +177,10 @@ export namespace SchemaDesigner {
         /**
          * Connection URI which is used to connect to the database
          */
+        connectionUri: string;
+        /**
+         * Connection URI which is used to connect to the database
+         */
         connectionString: string;
         /**
          * Access token for the connection
@@ -451,5 +455,9 @@ export namespace SchemaDesigner {
         export const type = new RequestType<void, CreateSessionResponse, void>(
             "initializeSchemaDesigner",
         );
+    }
+
+    export namespace SchemaDesignerSessionReadyNotification {
+        export const type = new NotificationType<void>("schemaDesignerSessionReady");
     }
 }
