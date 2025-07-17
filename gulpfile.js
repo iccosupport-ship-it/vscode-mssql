@@ -21,7 +21,8 @@ const esbuild = require('esbuild');
 const { typecheckPlugin } = require('@jgoz/esbuild-plugin-typecheck');
 const run = require('gulp-run-command').default;
 require('./tasks/packagetasks');
-require('./tasks/localizationtasks');
+const bundleWebviews = require('./scripts/bundleViews').buildWebviews;
+const runtimeLoc = require('./scripts/generateRuntimeLoc').generateRuntimeLocalizationFiles;
 
 function getTimeString() {
 	const now = new Date();
@@ -176,69 +177,13 @@ return gulp.src([
 		.pipe(gulp.dest('out/src/views/htmlcontent'));
 });
 
-async function generateReactWebviewsBundle() {
-	const ctx = await esbuild.context({
-		/**
-		 * Entry points for React webviews. This generates individual bundles (both .js and .css files)
-		 * for each entry point, to be used by the webview's HTML content.
-		 */
-		entryPoints: {
-			'addFirewallRule': 'src/reactviews/pages/AddFirewallRule/index.tsx',
-			'connectionDialog': 'src/reactviews/pages/ConnectionDialog/index.tsx',
-			'connectionGroup': 'src/reactviews/pages/ConnectionGroup/index.tsx',
-			'containerDeployment': 'src/reactviews/pages/ContainerDeployment/index.tsx',
-			'executionPlan': 'src/reactviews/pages/ExecutionPlan/index.tsx',
-			'tableDesigner': 'src/reactviews/pages/TableDesigner/index.tsx',
-			'objectExplorerFilter': 'src/reactviews/pages/ObjectExplorerFilter/index.tsx',
-			'queryResult': 'src/reactviews/pages/QueryResult/index.tsx',
-			'userSurvey': 'src/reactviews/pages/UserSurvey/index.tsx',
-			'schemaDesigner': 'src/reactviews/pages/SchemaDesigner/index.tsx',
-			'schemaCompare': 'src/reactviews/pages/SchemaCompare/index.tsx',
-		},
-		bundle: true,
-		outdir: 'out/src/reactviews/assets',
-		platform: 'browser',
-		loader: {
-			'.tsx': 'tsx',
-			'.ts': 'ts',
-			'.css': 'css',
-			'.svg': 'file',
-			'.js': 'js',
-			'.png': 'file',
-			'.gif': 'file',
-		},
-		tsconfig: './tsconfig.react.json',
-		plugins: [
-			esbuildProblemMatcherPlugin('React App'),
-			typecheckPlugin()
-		],
-		sourcemap: prod ? false : 'inline',
-		metafile: true,
-		minify: prod,
-		minifyWhitespace: prod,
-		minifyIdentifiers: prod,
-		format: 'esm',
-		splitting: true,
-	});
-
-	const result = await ctx.rebuild();
-
-	/**
-	 * Generating esbuild metafile for webviews. You can analyze the metafile https://esbuild.github.io/analyze/
-	 * to see the bundle size and other details.
-	 */
-	const fs = require('fs').promises;
-	if (result.metafile) {
-		await fs.writeFile('./webviews-metafile.json', JSON.stringify(result.metafile));
-	}
-
-
-	await ctx.dispose();
-}
-
 // Compile react views
 gulp.task('ext:compile-reactviews',
-	gulp.series(generateReactWebviewsBundle)
+	gulp.parallel(bundleWebviews, (done) => {
+		// execute tsc -p tsconfig.extension.json --watch
+		exec('tsc -p tsconfig.extension.json');
+		done();
+	})
 );
 
 
@@ -389,7 +334,13 @@ gulp.task('ext:copy-js', () => {
 // Copy the files which aren't used in compilation
 gulp.task('ext:copy', gulp.series('ext:copy-tests', 'ext:copy-js', 'ext:copy-config', 'ext:copy-systemjs-config', 'ext:copy-dependencies', 'ext:copy-html', 'ext:copy-css', 'ext:copy-images'));
 
-gulp.task('ext:build', gulp.series('ext:generate-runtime-localization-files', 'ext:copy', 'ext:clean-library-ts-files', 'ext:compile', 'ext:compile-view', 'ext:compile-reactviews')); // removed lint before copy
+gulp.task('ext:build', gulp.series(
+	(done) => {
+	runtimeLoc();
+	done();
+},
+'ext:copy',
+'ext:clean-library-ts-files', 'ext:compile', 'ext:compile-view', 'ext:compile-reactviews')); // removed lint before copy
 
 gulp.task('ext:test', async () => {
 	let workspace = process.env['WORKSPACE'];

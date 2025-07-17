@@ -29,3 +29,8 @@ webviews-metafile.json
 images/ux
 FEATURES.md
 .nyc_output
+eslint
+eslint.config.mjs
+development.md
+scripts
+*.vsix

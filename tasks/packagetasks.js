@@ -3,9 +3,10 @@ var fs = require('fs');
 var cproc = require('child_process');
 var del = require('del');
 
+
 function installSqlToolsService(platform) {
-	var install = require('../out/src/languageservice/serviceInstallerUtil');
-	return install.installService(platform);
+	const serviceInstallerUtil = require('../out/src/languageservice/serviceInstallerUtil');
+	return serviceInstallerUtil.installService(platform);
 }
 
 gulp.task('ext:install-service', () => {
@@ -27,8 +28,8 @@ function doPackageSync(packageName) {
 }
 
 function cleanServiceInstallFolder() {
-	var install = require('../out/src/languageservice/serviceInstallerUtil');
-	var serviceInstallFolder = install.getServiceInstallDirectoryRoot();
+	const serviceInstallerUtil = require('../out/src/languageservice/serviceInstallerUtil');
+	var serviceInstallFolder = serviceInstallerUtil.getServiceInstallDirectoryRoot();
 	console.log('Deleting Service Install folder: ' + serviceInstallFolder);
 	return del(serviceInstallFolder + '/*');
 }
