@@ -208,10 +208,9 @@ export const QueryResultPane = () => {
     const calculateGridHeight = (gridCount: number, availableHeight: number) => {
         if (gridCount > 1) {
             // Calculate the grid height, ensuring it's not smaller than the minimum height
-            return Math.max(
-                (availableHeight - gridCount * TABLE_ALIGN_PX) / gridCount,
-                MIN_GRID_HEIGHT,
-            );
+            const totalSpacingBetweenGrids = (gridCount - 1) * TABLE_ALIGN_PX;
+            const calculatedHeight = (availableHeight - totalSpacingBetweenGrids) / gridCount;
+            return Math.max(calculatedHeight, MIN_GRID_HEIGHT);
         }
         // gridCount is 1
         return availableHeight - TABLE_ALIGN_PX;
