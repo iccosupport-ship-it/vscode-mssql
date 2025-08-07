@@ -32,6 +32,7 @@ import { VscodeWebviewContext } from "../../../common/vscodeWebviewProvider";
 import { QueryResultContextProps } from "../queryResultStateProvider";
 import { CopyKeybind } from "./plugins/copyKeybind.plugin";
 import { AutoColumnSize } from "./plugins/autoColumnSize.plugin";
+import { RowDetailView } from "./plugins/rowDetailView.plugin";
 import { MouseButton } from "../../../common/utils";
 // import { MouseWheelSupport } from './plugins/mousewheelTableScroll.plugin';
 
@@ -66,6 +67,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
     protected _tableContainer: HTMLElement;
     private selectionModel: CellSelectionModel<T>;
     public headerFilter: HeaderFilter<T>;
+    private rowDetailView: RowDetailView<T>;
 
     constructor(
         parent: HTMLElement,
@@ -176,6 +178,48 @@ export class Table<T extends Slick.SlickData> implements IThemable {
                 this.webViewState,
             ),
         );
+
+        // Initialize row detail view plugin
+        console.log("Initializing row detail view plugin");
+        this.rowDetailView = new RowDetailView<T>({
+            panelRows: 8,
+            singleRowExpand: true,
+            useRowClick: true,
+        });
+        console.log("Row detail view plugin created:", this.rowDetailView);
+
+        // Setup row detail event handlers
+        this.rowDetailView.onAsyncResponse.subscribe((_e, args) => {
+            console.log("onAsyncResponse triggered with args:", args);
+            // Handle the row detail expansion when user clicks the toggle button
+            const rowData = args.item;
+            console.log("Row data:", rowData);
+
+            // Find the row index by searching through the data
+            let rowIndex = -1;
+            const dataLength = this._grid.getDataLength();
+            console.log("Searching through", dataLength, "rows");
+            for (let i = 0; i < dataLength; i++) {
+                if (this._grid.getDataItem(i) === rowData) {
+                    rowIndex = i;
+                    break;
+                }
+            }
+
+            console.log("Found row index:", rowIndex);
+            if (rowIndex >= 0) {
+                // Show the full row as JSON
+                const rowJson = JSON.stringify(rowData, null, 2);
+                console.log("Calling expandRow with:", rowIndex, "JSON length:", rowJson.length);
+                this.rowDetailView.expandRow(rowIndex, rowJson, `Row ${rowIndex + 1} Details`);
+            } else {
+                console.error("Could not find row index for data:", rowData);
+            }
+        });
+
+        console.log("Registering row detail view plugin");
+        this.registerPlugin(this.rowDetailView);
+        console.log("Row detail view plugin registered");
 
         if (configuration && configuration.columns) {
             this.columns = configuration.columns;
@@ -363,6 +407,13 @@ export class Table<T extends Slick.SlickData> implements IThemable {
                 originalEvent.button === MouseButton.LeftClick
             ) {
                 this.handleLinkClick(cell);
+
+                // Handle cell click for row details (but not row number column)
+                console.log("Mouse click detected:", cell, "shiftKey:", originalEvent.shiftKey);
+                if (cell.cell > 0 && originalEvent.shiftKey) {
+                    console.log("Calling handleCellDetailClick");
+                    this.handleCellDetailClick(cell);
+                }
             }
         });
     }
@@ -378,6 +429,23 @@ export class Table<T extends Slick.SlickData> implements IThemable {
                 columnInfo.isXml ? xmlLanguageId : jsonLanguageId,
             );
         }
+    }
+
+    private handleCellDetailClick(cell: Slick.Cell): void {
+        console.log("handleCellDetailClick called with:", cell);
+        const columnInfo = this.resultSetSummary.columnInfo[cell.cell - 1];
+        if (!columnInfo) {
+            console.log("No column info found for cell:", cell.cell);
+            return;
+        }
+
+        const cellValue = this.getCellValue(cell.row, cell.cell);
+        const columnName = columnInfo.columnName || `Column ${cell.cell}`;
+        const title = `Cell Details - ${columnName} (Row ${cell.row + 1})`;
+
+        console.log("Expanding row detail with:", title, cellValue);
+        // Show cell content in row detail
+        this.expandRowDetail(cell.row, cellValue, title);
     }
 
     public getCellValue(row: number, column: number): string {
@@ -692,6 +760,28 @@ export class Table<T extends Slick.SlickData> implements IThemable {
 
     public set ariaLabel(value: string) {
         this._tableContainer.setAttribute("aria-label", value);
+    }
+
+    public expandRowDetail(row: number, content: string, title: string = "Row Details"): void {
+        if (this.rowDetailView) {
+            this.rowDetailView.expandRow(row, content, title);
+        }
+    }
+
+    public collapseRowDetail(row: number): void {
+        if (this.rowDetailView) {
+            this.rowDetailView.collapseRow(row);
+        }
+    }
+
+    public collapseAllRowDetails(): void {
+        if (this.rowDetailView) {
+            this.rowDetailView.collapseAll();
+        }
+    }
+
+    public getRowDetailView(): RowDetailView<T> {
+        return this.rowDetailView;
     }
 
     public get container(): HTMLElement {

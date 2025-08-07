@@ -216,6 +216,11 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         };
         let rowNumberColumn = new RowNumberColumn<Slick.SlickData>({
             autoCellSelection: false,
+            onRowDetailToggle: (row: number, data: any) => {
+                // Handle row number click - show full row as JSON
+                const rowJson = JSON.stringify(data, null, 2);
+                table.expandRowDetail(row, rowJson, `Row ${row + 1} Details`);
+            },
         });
         columns.unshift(rowNumberColumn.getColumnDefinition());
 
@@ -264,6 +269,11 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
             tableOptions,
             props.gridParentRef,
         );
+
+        // Add row detail selector column (the expand/collapse toggle) after table is created
+        let currentColumns = table.columns;
+        currentColumns.unshift(table.getRowDetailView().getColumnDefinition());
+        table.columns = currentColumns;
         void setupState();
         collection.setCollectionChangedCallback((startIndex, count) => {
             let refreshedRows = range(startIndex, startIndex + count);

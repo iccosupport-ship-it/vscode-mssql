@@ -13,6 +13,10 @@ export interface IRowNumberColumnOptions {
      * and when the header is clicked, the entire table will be selected. If the value is false, the auto selection will not happen.
      */
     autoCellSelection?: boolean;
+    /**
+     * Callback for when row number is clicked for row details
+     */
+    onRowDetailToggle?: (row: number, data: T) => void;
 }
 
 const defaultOptions: IRowNumberColumnOptions = {
@@ -45,13 +49,22 @@ export class RowNumberColumn<T extends Slick.SlickData> implements Slick.Plugin<
     }
 
     private handleClick(_e: MouseEvent, args: Slick.OnClickEventArgs<T>): void {
-        if (
-            this.grid.getColumns()[args.cell].id === "rowNumber" &&
-            this.options?.autoCellSelection
-        ) {
-            this.grid.setActiveCell(args.row, 1);
-            if (this.grid.getSelectionModel()) {
-                this.grid.setSelectedRows([args.row]);
+        console.log("RowNumberColumn click detected:", args, this.grid.getColumns()[args.cell]);
+        if (this.grid.getColumns()[args.cell].id === "rowNumber") {
+            console.log("Row number column clicked");
+            // If row detail toggle callback is provided, call it
+            if (this.options?.onRowDetailToggle) {
+                const data = this.grid.getDataItem(args.row);
+                console.log("Calling onRowDetailToggle with:", args.row, data);
+                this.options.onRowDetailToggle(args.row, data);
+            }
+
+            // Handle cell selection if enabled
+            if (this.options?.autoCellSelection) {
+                this.grid.setActiveCell(args.row, 1);
+                if (this.grid.getSelectionModel()) {
+                    this.grid.setSelectedRows([args.row]);
+                }
             }
         }
     }
@@ -91,6 +104,8 @@ export class RowNumberColumn<T extends Slick.SlickData> implements Slick.Plugin<
 
     private formatter(row: number): string {
         // row is zero-based, we need make it 1 based for display in the result grid
-        return `<span>${row + 1}</span>`;
+        const clickable = this.options?.onRowDetailToggle ? "row-number-clickable" : "";
+        const title = this.options?.onRowDetailToggle ? "Click to show row details" : "";
+        return `<span class="${clickable}" title="${title}">${row + 1}</span>`;
     }
 }
