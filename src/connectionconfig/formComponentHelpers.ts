@@ -127,6 +127,72 @@ export function groupAdvancedOptions(
     return Array.from(groupMap.values());
 }
 
+export function updateDatabaseFieldType(
+    components: Partial<Record<keyof IConnectionDialogProfile, ConnectionDialogFormItemSpec>>,
+    databases: string[],
+    loadingStatus: string,
+    loadDatabasesCallback?: () => void,
+    canLoadDatabases?: boolean,
+): void {
+    const databaseField = components.database;
+    if (!databaseField) {
+        return;
+    }
+
+    // Add refresh button if not already present
+    if (!databaseField.actionButtons || databaseField.actionButtons.length === 0) {
+        databaseField.actionButtons = [
+            {
+                label: "Load databases",
+                id: "loadDatabases",
+                callback: loadDatabasesCallback || (() => {}),
+            },
+        ];
+    }
+
+    // Update button label and state based on loading status and connection readiness
+    if (databaseField.actionButtons && databaseField.actionButtons.length > 0) {
+        const refreshButton = databaseField.actionButtons[0];
+        if (loadingStatus === "Loading") {
+            refreshButton.label = "Loading...";
+            refreshButton.hidden = false;
+        } else if (canLoadDatabases === false) {
+            refreshButton.label = "Load databases";
+            refreshButton.hidden = true; // Hide button when can't connect
+        } else {
+            refreshButton.label = "Load databases";
+            refreshButton.hidden = false;
+        }
+    }
+
+    // If we have databases available, make it a searchable dropdown
+    if (databases && databases.length > 0) {
+        databaseField.type = FormItemType.SearchableDropdown;
+        databaseField.options = databases.map((db) => ({
+            displayName: db,
+            value: db,
+        }));
+        databaseField.searchBoxPlaceholder = "Search databases...";
+        databaseField.placeholder = undefined;
+    } else {
+        // Otherwise, keep it as a text input
+        databaseField.type = FormItemType.Input;
+        databaseField.options = undefined;
+        databaseField.searchBoxPlaceholder = undefined;
+
+        // Show appropriate placeholder
+        if (loadingStatus === "Loading") {
+            databaseField.placeholder = "Loading databases...";
+        } else if (loadingStatus === "Failed") {
+            databaseField.placeholder = "Enter database name (load failed)";
+        } else if (canLoadDatabases === false) {
+            databaseField.placeholder = "Enter database name (need server + credentials to load)";
+        } else {
+            databaseField.placeholder = "Enter database name or click Load databases";
+        }
+    }
+}
+
 export function convertToFormComponent(
     connOption: ConnectionOption,
 ): FormItemSpec<

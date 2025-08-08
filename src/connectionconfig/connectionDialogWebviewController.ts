@@ -58,7 +58,11 @@ import {
     IConnectionProfile,
     IConnectionProfileWithSource,
 } from "../models/interfaces";
-import { generateConnectionComponents, groupAdvancedOptions } from "./formComponentHelpers";
+import {
+    generateConnectionComponents,
+    groupAdvancedOptions,
+    updateDatabaseFieldType as updateDatabaseFieldTypeHelper,
+} from "./formComponentHelpers";
 import { FormWebviewController } from "../forms/formWebviewController";
 import { ConnectionCredentials } from "../models/connectionCredentials";
 import { Deferred } from "../protocol";
@@ -140,6 +144,8 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
         this.registerRpcHandlers();
         void this.initializeDialog(connectionToEdit, initialConnectionGroup)
             .then(() => {
+                // Update database field type after initial form setup
+                this.updateDatabaseFieldType(this.state);
                 this.updateState();
                 this.initialized.resolve();
             })
@@ -272,6 +278,11 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
 
             await this.checkReadyToConnect();
 
+            // Auto-load databases when loading a saved/recent connection
+            if (this.canLoadDatabases(this.state)) {
+                await this.loadDatabasesForConnection(this.state);
+            }
+
             return state;
         });
 
@@ -281,6 +292,12 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
 
         this.registerReducer("loadAzureServers", async (state, payload) => {
             await this.loadAzureServersForSubscription(state, payload.subscriptionId);
+
+            return state;
+        });
+
+        this.registerReducer("loadDatabases", async (state, _payload) => {
+            await this.loadDatabasesForConnection(state);
 
             return state;
         });
@@ -587,8 +604,14 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
 
     override async afterSetFormProperty(
         propertyName: keyof IConnectionDialogProfile,
+        updateValidation?: boolean,
     ): Promise<void> {
         await this.handleAzureMFAEdits(propertyName);
+
+        // Auto-load databases on blur for connection-relevant fields (only on blur, not on keystroke)
+        if (updateValidation) {
+            await this.handleConnectionFieldBlur(propertyName);
+        }
     }
 
     private async checkReadyToConnect(): Promise<void> {
@@ -977,6 +1000,11 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
 
             await this.checkReadyToConnect();
 
+            // Auto-load databases when loading a connection to edit
+            if (this.canLoadDatabases(this.state)) {
+                await this.loadDatabasesForConnection(this.state);
+            }
+
             this.updateState();
         }
     }
@@ -1342,6 +1370,208 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
                 undefined, // errorType
             );
         }
+    }
+
+    private async loadDatabasesForConnection(state: ConnectionDialogWebviewState) {
+        // Always attempt to load - button will only be enabled when connection info is sufficient
+        state.loadingDatabasesStatus = ApiStatus.Loading;
+        this.updateState();
+
+        try {
+            // Create a temporary connection to list databases
+            const tempConnection = this.createTempConnectionFromState(state);
+            const tempUri = `temp_${Date.now()}`;
+
+            // For Azure connections, refresh the token first
+            if (
+                tempConnection.authenticationType === AuthenticationType.AzureMFA &&
+                tempConnection.accountId
+            ) {
+                try {
+                    // Refresh token using the account ID from the connection profile
+                    const accounts = await this._mainController.azureAccountService.getAccounts();
+                    const account = accounts.find(
+                        (a) => a.displayInfo.userId === tempConnection.accountId,
+                    );
+                    if (account) {
+                        await this._mainController.azureAccountService.getAccountSecurityToken(
+                            account,
+                            tempConnection.tenantId,
+                        );
+                        this.logger.verbose(
+                            `Successfully refreshed Azure token for ${tempConnection.accountId}`,
+                        );
+                    }
+                } catch (tokenError) {
+                    this.logger.verbose(
+                        `Token refresh failed, will attempt connection anyway: ${getErrorMessage(tokenError)}`,
+                    );
+                }
+            }
+
+            // Try to connect temporarily to get the database list
+            await this._mainController.connectionManager.connect(tempUri, tempConnection);
+
+            // List databases using the temporary connection
+            const databases = await this._mainController.connectionManager.listDatabases(tempUri);
+
+            // Clean up the temporary connection
+            await this._mainController.connectionManager.disconnect(tempUri);
+
+            state.databases = databases;
+            state.loadingDatabasesStatus = ApiStatus.Loaded;
+
+            this.logger.log(
+                `Loaded ${databases.length} databases for server ${tempConnection.server}`,
+            );
+        } catch (error) {
+            const errorMessage = getErrorMessage(error);
+            this.logger.error(
+                `Error loading databases for server ${state.connectionProfile.server}: ${errorMessage}`,
+            );
+
+            state.databases = [];
+            state.loadingDatabasesStatus = ApiStatus.Error;
+
+            // Show user-friendly error message for common Azure authentication issues
+            if (
+                errorMessage.includes("expired tokens") ||
+                errorMessage.includes("re-authenticate")
+            ) {
+                state.formError =
+                    "Azure tokens have expired. Please sign in again to load databases.";
+            } else if (
+                errorMessage.includes("Login failed") ||
+                errorMessage.includes("authentication")
+            ) {
+                state.formError =
+                    "Authentication failed. Please check your credentials and try again.";
+            } else if (
+                errorMessage.includes("server was not found") ||
+                errorMessage.includes("network")
+            ) {
+                state.formError =
+                    "Cannot connect to server. Please check the server name and network connection.";
+            } else {
+                state.formError = `Failed to load databases: ${errorMessage}`;
+            }
+
+            sendErrorEvent(
+                TelemetryViews.ConnectionDialog,
+                TelemetryActions.LoadConnectionProperties,
+                error,
+                true, // includeErrorMessage
+                undefined, // errorCode
+                undefined, // errorType
+                {
+                    operation: "loadDatabases",
+                    server: state.connectionProfile.server,
+                },
+            );
+        }
+
+        this.updateState();
+    }
+
+    private canLoadDatabases(state: ConnectionDialogWebviewState): boolean {
+        const profile = state.connectionProfile;
+
+        // Must have server
+        if (!profile.server?.trim()) {
+            return false;
+        }
+
+        // For SQL Authentication, must have both user and password
+        if (profile.authenticationType === AuthenticationType.SqlLogin) {
+            if (!profile.user?.trim() || !profile.password?.trim()) {
+                return false;
+            }
+        }
+
+        // For Azure MFA, must have accountId and optionally tenantId (if multiple tenants exist)
+        if (profile.authenticationType === AuthenticationType.AzureMFA) {
+            if (!profile.accountId?.trim()) {
+                return false;
+            }
+            // tenantId is not always required - it's auto-selected if there's only one tenant
+        }
+
+        // Windows authentication doesn't need additional credentials
+        // Other auth types are also allowed to pass through
+        return true;
+    }
+
+    private async handleConnectionFieldBlur(
+        propertyName: keyof IConnectionDialogProfile,
+    ): Promise<void> {
+        // Fields that affect database connectivity
+        const connectionFields: (keyof IConnectionDialogProfile)[] = [
+            "server",
+            "user",
+            "password",
+            "authenticationType",
+            "accountId",
+            "tenantId",
+        ];
+
+        // Only trigger auto-load for connection-relevant fields
+        if (!connectionFields.includes(propertyName)) {
+            return;
+        }
+
+        // Skip if already loading or if we can't load databases
+        if (
+            this.state.loadingDatabasesStatus === ApiStatus.Loading ||
+            !this.canLoadDatabases(this.state)
+        ) {
+            return;
+        }
+
+        // Auto-load databases when connection fields are complete
+        await this.loadDatabasesForConnection(this.state);
+    }
+
+    private createTempConnectionFromState(state: ConnectionDialogWebviewState): IConnectionInfo {
+        return {
+            server: state.connectionProfile.server,
+            database: "master", // Use master database to list all databases
+            user: state.connectionProfile.user,
+            password: state.connectionProfile.password,
+            authenticationType: state.connectionProfile.authenticationType,
+            encrypt: state.connectionProfile.encrypt,
+            trustServerCertificate: state.connectionProfile.trustServerCertificate,
+            // Azure MFA specific fields
+            accountId: state.connectionProfile.accountId,
+            tenantId: state.connectionProfile.tenantId,
+            azureAuthType: state.connectionProfile.azureAuthType,
+            // Include other relevant connection properties
+            connectTimeout: state.connectionProfile.connectTimeout,
+            commandTimeout: state.connectionProfile.commandTimeout,
+        } as any; // Cast to any to avoid extensive interface matching
+    }
+
+    private updateDatabaseFieldType(state: ConnectionDialogWebviewState): void {
+        const components = state.formComponents;
+        if (components.database) {
+            updateDatabaseFieldTypeHelper(
+                components as any, // Safe cast - we know database field exists
+                state.databases,
+                state.loadingDatabasesStatus === ApiStatus.Loading
+                    ? "Loading"
+                    : state.loadingDatabasesStatus === ApiStatus.Error
+                      ? "Failed"
+                      : "Complete",
+                () => this.loadDatabasesForConnection(state),
+                this.canLoadDatabases(state),
+            );
+        }
+    }
+
+    // Override updateState to always update database field type
+    updateState(newState?: ConnectionDialogWebviewState) {
+        const stateToUse = newState || this.state;
+        this.updateDatabaseFieldType(stateToUse);
+        super.updateState(newState);
     }
 
     //#endregion

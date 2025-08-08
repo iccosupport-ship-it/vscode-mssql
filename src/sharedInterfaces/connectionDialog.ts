@@ -43,6 +43,8 @@ export class ConnectionDialogWebviewState
     public loadingAzureSubscriptionsStatus: ApiStatus = ApiStatus.NotStarted;
     public azureServers: AzureSqlServerInfo[] = [];
     public loadingAzureServersStatus: ApiStatus = ApiStatus.NotStarted;
+    public databases: string[] = [];
+    public loadingDatabasesStatus: ApiStatus = ApiStatus.NotStarted;
     public savedConnections: IConnectionDialogProfile[] = [];
     public recentConnections: IConnectionDialogProfile[] = [];
     public connectionStatus: ApiStatus = ApiStatus.NotStarted;
@@ -208,6 +210,7 @@ export interface ConnectionDialogReducers extends FormReducers<IConnectionDialog
     loadAzureServers: {
         subscriptionId: string;
     };
+    loadDatabases: {};
     addFirewallRule: {
         firewallRuleSpec: FirewallRuleSpec;
     };
