@@ -103,7 +103,7 @@ export const TextView: React.FC<TextViewProps> = ({ uri, resultSetSummaries, fon
                                     batchId: batchId,
                                     resultId: resultId,
                                     rowStart: 0,
-                                    numberOfRows: Math.min(resultSetSummary.rowCount, 1000), // Limit to first 1000 rows for performance
+                                    numberOfRows: resultSetSummary.rowCount,
                                 },
                             );
 
