@@ -154,6 +154,7 @@
         "@azure/msal-node": "^2.12.0",
         "@microsoft/ads-extension-telemetry": "^3.0.2",
         "@microsoft/vscode-azext-azureauth": "^4.1.1",
+        "@tanstack/react-table": "^8.21.3",
         "axios": "^1.8.2",
         "dotenv": "^16.4.5",
         "error-ex": "^1.3.0",
@@ -1201,6 +1202,12 @@
                         "%mssql.defaultQueryResultsViewMode.text.description%"
                     ],
                     "description": "%mssql.defaultQueryResultsViewMode.description%",
+                    "scope": "application"
+                },
+                "mssql.enableBetaResultsGrid": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "%mssql.enableBetaResultsGrid.description%",
                     "scope": "application"
                 },
                 "mssql.selectedAzureSubscriptions": {

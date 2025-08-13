@@ -48,6 +48,7 @@ export interface QueryResultReactProvider extends Omit<ExecutionPlanProvider, "g
 
 export enum QueryResultPaneTabs {
     Results = "results",
+    ResultsBeta = "resultsBeta",
     Messages = "messages",
     ExecutionPlan = "executionPlan",
 }
@@ -85,6 +86,7 @@ export interface QueryResultWebviewState extends ExecutionPlanWebviewState {
     fontSettings: FontSettings;
     autoSizeColumns?: boolean;
     inMemoryDataProcessingThreshold?: number;
+    enableBetaResultsGrid?: boolean;
 }
 
 export interface QueryResultReducers extends Omit<ExecutionPlanReducers, "getExecutionPlan"> {

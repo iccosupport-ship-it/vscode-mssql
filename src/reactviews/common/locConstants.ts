@@ -355,6 +355,7 @@ export class LocConstants {
     public get queryResult() {
         return {
             results: l10n.t("Results"),
+            resultsBeta: l10n.t("Results (Beta)"),
             messages: l10n.t("Messages"),
             timestamp: l10n.t("Timestamp"),
             message: l10n.t("Message"),

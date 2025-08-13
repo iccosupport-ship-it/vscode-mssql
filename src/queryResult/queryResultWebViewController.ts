@@ -55,6 +55,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
             },
             executionPlanState: {},
             fontSettings: {},
+            enableBetaResultsGrid: true,
         });
 
         void this.initialize();
@@ -79,6 +80,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
                         autoSizeColumns: this.getAutoSizeColumnsConfig(),
                         inMemoryDataProcessingThreshold:
                             this.getInMemoryDataProcessingThresholdConfig(),
+                        enableBetaResultsGrid: this.isBetaResultsGridEnabled,
                     };
                 }
             }),
@@ -130,6 +132,14 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
                         this._queryResultStateMap.set(uri, state);
                     }
                 }
+                if (e.affectsConfiguration("mssql.enableBetaResultsGrid")) {
+                    for (const [uri, state] of this._queryResultStateMap) {
+                        state.enableBetaResultsGrid = this.isBetaResultsGridEnabled;
+                        this._queryResultStateMap.set(uri, state);
+                    }
+                    // Update current state as well
+                    this.state.enableBetaResultsGrid = this.isBetaResultsGridEnabled;
+                }
             }),
         );
     }
@@ -148,6 +158,13 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         return this.vscodeWrapper
             .getConfiguration()
             .get(Constants.configOpenQueryResultsInTabByDefaultDoNotShowPrompt);
+    }
+
+    private get isBetaResultsGridEnabled(): boolean {
+        return (
+            this.vscodeWrapper.getConfiguration().get(Constants.configEnableBetaResultsGrid) ??
+            false
+        );
     }
 
     private get shouldShowDefaultQueryResultToDocumentPrompt(): boolean {
@@ -271,6 +288,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
             },
             autoSizeColumns: this.getAutoSizeColumnsConfig(),
             inMemoryDataProcessingThreshold: this.getInMemoryDataProcessingThresholdConfig(),
+            enableBetaResultsGrid: this.isBetaResultsGridEnabled,
         };
         this._queryResultStateMap.set(uri, currentState);
     }
@@ -353,6 +371,10 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
 
             throw error;
         }
+
+        // Ensure the state always has the current enableBetaResultsGrid setting
+        res.enableBetaResultsGrid = this.isBetaResultsGridEnabled;
+
         return res;
     }
 

@@ -27,6 +27,7 @@ import { QueryResultContext } from "./queryResultStateProvider";
 import * as qr from "../../../sharedInterfaces/queryResult";
 import { useVscodeWebview } from "../../common/vscodeWebviewProvider";
 import ResultGrid, { ResultGridHandle } from "./resultGrid";
+import BetaResultGrid, { BetaResultGridHandle } from "./betaResultGrid";
 import CommandBar from "./commandBar";
 import { TextView } from "./textView";
 import { locConstants } from "../../common/locConstants";
@@ -185,7 +186,7 @@ export const QueryResultPane = () => {
             return;
         }
         const observer = new ResizeObserver(() => {
-            if (!gridRefs.current || !ribbonRef.current) {
+            if (!ribbonRef.current) {
                 return;
             }
 
@@ -196,12 +197,33 @@ export const QueryResultPane = () => {
             if (resultPaneParent.clientWidth && availableHeight) {
                 const gridHeight = calculateGridHeight(gridCount, availableHeight);
                 const gridWidth = calculateGridWidth(resultPaneParent, gridCount, availableHeight);
-                if (gridCount > 1) {
-                    gridRefs.current.forEach((gridRef) => {
-                        gridRef?.resizeGrid(gridWidth, gridHeight);
-                    });
-                } else if (gridCount === 1) {
-                    gridRefs.current[0]?.resizeGrid(gridWidth, gridHeight);
+
+                // Handle regular grids
+                if (
+                    state.tabStates?.resultPaneTab === qr.QueryResultPaneTabs.Results &&
+                    gridRefs.current
+                ) {
+                    if (gridCount > 1) {
+                        gridRefs.current.forEach((gridRef) => {
+                            gridRef?.resizeGrid(gridWidth, gridHeight);
+                        });
+                    } else if (gridCount === 1) {
+                        gridRefs.current[0]?.resizeGrid(gridWidth, gridHeight);
+                    }
+                }
+
+                // Handle beta grids
+                if (
+                    state.tabStates?.resultPaneTab === qr.QueryResultPaneTabs.ResultsBeta &&
+                    betaGridRefs.current
+                ) {
+                    if (gridCount > 1) {
+                        betaGridRefs.current.forEach((gridRef) => {
+                            gridRef?.resizeGrid(gridWidth, gridHeight);
+                        });
+                    } else if (gridCount === 1) {
+                        betaGridRefs.current[0]?.resizeGrid(gridWidth, gridHeight);
+                    }
                 }
             }
         });
@@ -248,6 +270,7 @@ export const QueryResultPane = () => {
 
     //#region Result Display (Grid or Text)
     const gridRefs = useRef<ResultGridHandle[]>([]);
+    const betaGridRefs = useRef<BetaResultGridHandle[]>([]);
 
     const getCurrentViewMode = (): qr.QueryResultViewMode => {
         return state?.tabStates?.resultViewMode ?? qr.QueryResultViewMode.Grid;
@@ -477,6 +500,106 @@ export const QueryResultPane = () => {
         }
         return results;
     };
+
+    const renderBetaResultPanel = () => {
+        // Calculate total grid count
+        let totalGridCount = 0;
+        for (const batchIdStr in state?.resultSetSummaries ?? {}) {
+            const batchId = parseInt(batchIdStr);
+            totalGridCount += Object.keys(state?.resultSetSummaries[batchId] ?? {}).length;
+        }
+
+        const results = [];
+        let count = 0;
+        for (const batchIdStr in state?.resultSetSummaries ?? {}) {
+            const batchId = parseInt(batchIdStr);
+            for (const resultIdStr in state?.resultSetSummaries[batchId] ?? {}) {
+                const resultId = parseInt(resultIdStr);
+
+                const divId = `beta-grid-parent-${batchId}-${resultId}`;
+                const gridId = `betaResultGrid-${batchId}-${resultId}`;
+
+                results.push(
+                    <React.Fragment key={`beta-result-${batchId}-${resultId}`}>
+                        <div
+                            id={divId}
+                            className={classes.queryResultContainer}
+                            style={{
+                                height:
+                                    resultPaneParentRef.current && ribbonRef.current
+                                        ? `${calculateGridHeight(
+                                              totalGridCount,
+                                              getAvailableHeight(
+                                                  resultPaneParentRef.current!,
+                                                  ribbonRef.current!,
+                                              ),
+                                          )}px`
+                                        : "",
+                                fontFamily: state.fontSettings.fontFamily
+                                    ? state.fontSettings.fontFamily
+                                    : "var(--vscode-editor-font-family)",
+                                fontSize: `${state.fontSettings.fontSize ?? 12}px`,
+                            }}>
+                            <BetaResultGrid
+                                loadFunc={async (offset: number, count: number): Promise<any[]> => {
+                                    console.debug("getRows rpc call (beta)", {
+                                        uri: state?.uri,
+                                        batchId: batchId,
+                                        resultId: resultId,
+                                        rowStart: offset,
+                                        numberOfRows: count,
+                                    });
+                                    const response = await webViewState.extensionRpc.sendRequest(
+                                        qr.GetRowsRequest.type,
+                                        {
+                                            uri: state?.uri,
+                                            batchId: batchId,
+                                            resultId: resultId,
+                                            rowStart: offset,
+                                            numberOfRows: count,
+                                        },
+                                    );
+
+                                    if (!response) {
+                                        return [];
+                                    }
+                                    let r = response as qr.ResultSetSubset;
+                                    var columnLength =
+                                        state?.resultSetSummaries[batchId][resultId]?.columnInfo
+                                            ?.length;
+                                    return r.rows.map((r) => {
+                                        let dataWithSchema: {
+                                            [key: string]: any;
+                                        } = {};
+                                        // skip the first column since its a number column
+                                        for (let i = 1; columnLength && i < columnLength + 1; i++) {
+                                            const displayValue = r[i - 1].displayValue ?? "";
+                                            const ariaLabel = displayValue;
+                                            dataWithSchema[(i - 1).toString()] = {
+                                                displayValue: displayValue,
+                                                ariaLabel: ariaLabel,
+                                                isNull: r[i - 1].isNull,
+                                                invariantCultureDisplayValue: displayValue,
+                                            };
+                                        }
+                                        return dataWithSchema;
+                                    });
+                                }}
+                                ref={(gridRef) => (betaGridRefs.current[count] = gridRef!)}
+                                resultSetSummary={state?.resultSetSummaries[batchId][resultId]}
+                                uri={state?.uri}
+                                webViewState={webViewState}
+                                linkHandler={linkHandler}
+                                gridId={gridId}
+                            />
+                        </div>
+                    </React.Fragment>,
+                );
+                count++;
+            }
+        }
+        return results;
+    };
     //#endregion
 
     //#region Message Grid
@@ -680,6 +803,14 @@ export const QueryResultPane = () => {
                             {locConstants.queryResult.results}
                         </Tab>
                     )}
+                    {Object.keys(state.resultSetSummaries).length > 0 &&
+                        state.enableBetaResultsGrid && (
+                            <Tab
+                                value={qr.QueryResultPaneTabs.ResultsBeta}
+                                key={qr.QueryResultPaneTabs.ResultsBeta}>
+                                {locConstants.queryResult.resultsBeta}
+                            </Tab>
+                        )}
                     <Tab
                         value={qr.QueryResultPaneTabs.Messages}
                         key={qr.QueryResultPaneTabs.Messages}>
@@ -726,6 +857,9 @@ export const QueryResultPane = () => {
                 {state.tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Results &&
                     Object.keys(state.resultSetSummaries).length > 0 &&
                     renderResultPanel()}
+                {state.tabStates!.resultPaneTab === qr.QueryResultPaneTabs.ResultsBeta &&
+                    Object.keys(state.resultSetSummaries).length > 0 &&
+                    renderBetaResultPanel()}
                 {state.tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Messages && (
                     <div
                         className={classes.messagesContainer}

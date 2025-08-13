@@ -300,9 +300,38 @@ export class SqlOutputContentProvider {
                     defaultLocation: this.isOpenQueryResultsInTabByDefaultEnabled ? "tab" : "pane",
                 });
             });
+            // Track whether we've already switched to results tab for this query
+            let hasShownResults = false;
+
+            // Reset the flag when a new query starts
+            queryRunner.eventEmitter.on("start", async () => {
+                hasShownResults = false;
+            });
+
             queryRunner.eventEmitter.on("resultSet", async (resultSet: ResultSetSummary) => {
                 this._queryResultWebviewController.addResultSetSummary(queryRunner.uri, resultSet);
-                this._queryResultWebviewController.updatePanelState(queryRunner.uri);
+
+                // Switch to results tab only once on the first result set with data
+                if (resultSet.rowCount > 0 && !hasShownResults) {
+                    hasShownResults = true;
+
+                    // Switch to results tab to show progressive data
+                    this._queryResultWebviewController.getQueryResultState(
+                        queryRunner.uri,
+                    ).tabStates.resultPaneTab = QueryResultPaneTabs.Results;
+                    this._queryResultWebviewController.state =
+                        this._queryResultWebviewController.getQueryResultState(queryRunner.uri);
+
+                    if (!this._queryResultWebviewController.hasPanel(queryRunner.uri)) {
+                        await this._queryResultWebviewController.revealToForeground();
+                    }
+
+                    // Update panel state for the initial tab switch
+                    this._queryResultWebviewController.updatePanelState(queryRunner.uri);
+                } else if (hasShownResults && resultSet.rowCount > 0) {
+                    // Only update for result sets with actual data to avoid unnecessary renders
+                    this._queryResultWebviewController.updatePanelState(queryRunner.uri);
+                }
             });
             queryRunner.eventEmitter.on("batchStart", async (batch) => {
                 let time = new Date().toLocaleTimeString();
