@@ -2043,6 +2043,9 @@
     <trans-unit id="++CODE++219c4a6c86a716e99d5dc9611b61e584deb11b57e972d87d4b773387ebc3cadd">
       <source xml:lang="en">Results</source>
     </trans-unit>
+    <trans-unit id="++CODE++ad25a454669b254e3099b08e4f331415543d0c67252d07d58f7bde5dc59360ab">
+      <source xml:lang="en">Results (Beta)</source>
+    </trans-unit>
     <trans-unit id="++CODE++942087cc2d41e01304b7195558d093d10c72af8e838c7556d6a02d471ee71852">
       <source xml:lang="en">Retry</source>
     </trans-unit>
@@ -3136,6 +3139,9 @@
     </trans-unit>
     <trans-unit id="mssql.walkthroughs.getStarted.enableModernFeatures.altText">
       <source xml:lang="en">Enable modern features in MSSQL</source>
+    </trans-unit>
+    <trans-unit id="mssql.enableBetaResultsGrid.description">
+      <source xml:lang="en">Enable the beta Results Grid using Glide Data Grid with advanced features like sorting, filtering, and enhanced copy/export capabilities.</source>
     </trans-unit>
     <trans-unit id="mssql.walkthroughs.getStarted.enableModernFeatures.description">
       <source xml:lang="en">Enable the new set of data development features that provide a modern way to work with your SQL database in VS Code.&#10;[Enable New Experiences](command:mssql.enableRichExperiences)</source>
