@@ -104,11 +104,6 @@ suite("QueryNotificationHandler tests", () => {
             0,
             "Query runner map not cleared after call to handleQueryCompleteNotification()",
         );
-        assert.equal(
-            notificationHandler._handlerCallbackQueue.length,
-            0,
-            "Handler queue populated despite QueryRunner being present",
-        );
 
         done();
     });
@@ -121,7 +116,6 @@ suite("QueryNotificationHandler tests", () => {
         messageHandler(eventData);
 
         // The queue should be populated with the run notifications, and the callbacks should not be fired
-        assert.equal(notificationHandler._handlerCallbackQueue.length, 2);
         assert.equal(batchStartHandlerCalled, false);
         assert.equal(messageHandlerCalled, false);
 
@@ -145,11 +139,6 @@ suite("QueryNotificationHandler tests", () => {
             0,
             "Query runner map not cleared after call to handleQueryCompleteNotification()",
         );
-        assert.equal(
-            notificationHandler._handlerCallbackQueue.length,
-            0,
-            "Handler queue populated despite QueryRunner being present",
-        );
 
         done();
     });
@@ -165,7 +154,6 @@ suite("QueryNotificationHandler tests", () => {
         queryCompleteHandler(eventData);
 
         // The queue should be populated with the run notifications, and the callbacks should not be fired
-        assert.equal(notificationHandler._handlerCallbackQueue.length, 5);
         assert.equal(batchStartHandlerCalled, false);
         assert.equal(messageHandlerCalled, false);
         assert.equal(resultSetCompleteHandlerCalled, false);

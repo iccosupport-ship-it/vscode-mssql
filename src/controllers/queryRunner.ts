@@ -254,6 +254,8 @@ export default class QueryRunner {
         this._totalElapsedMilliseconds = 0;
         this._statusView.executingQuery(this.uri);
 
+        this._notificationHandler.registerRunner(this, this._ownerUri);
+
         let onSuccess = (_result: unknown) => {
             // The query has started, so lets fire up the result pane
             QueryRunner._runningQueries.push(vscode.Uri.parse(this._ownerUri).fsPath);
@@ -263,28 +265,9 @@ export default class QueryRunner {
                 QueryRunner._runningQueries,
             );
             this.eventEmitter.emit("start", this.uri);
-            this._notificationHandler.registerRunner(this, this._ownerUri);
         };
-        let onError = (error: unknown) => {
-            // Only update internal state and emit events, do not call executedQuery here
-            this._isExecuting = false;
-            this._hasCompleted = true;
-            this.removeRunningQuery();
-            // Removed call to unregisterRunner (does not exist)
-            const promise = this._uriToQueryPromiseMap.get(this._ownerUri);
-            if (promise) {
-                promise.reject(error);
-                this._uriToQueryPromiseMap.delete(this._ownerUri);
-            }
-            this.eventEmitter.emit(
-                "complete",
-                Utils.parseNumAsTimeString(this._totalElapsedMilliseconds),
-                true,
-            );
-            // TODO: localize
-            let errorMsg = error instanceof Error ? error.message : String(error);
-            this._vscodeWrapper.showErrorMessage("Execution failed: " + errorMsg);
-            // Ensure the returned promise is rejected so the test can catch it
+        let onError = (error: Error) => {
+            this._handleCancelDisposeCleanup(undefined, error);
             throw error;
         };
 
