@@ -4,7 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import $ from "jquery";
-import { forwardRef, useContext, useEffect, useImperativeHandle, useRef, useState } from "react";
+import {
+    forwardRef,
+    useContext,
+    useEffect,
+    useImperativeHandle,
+    useRef,
+    useState,
+    memo,
+} from "react";
 import "../../media/slickgrid.css";
 import { ACTIONBAR_WIDTH_PX, range, Table } from "./table/table";
 import { defaultTableStyles } from "./table/interfaces";
@@ -56,248 +64,280 @@ export interface ResultGridHandle {
     showGrid: () => void;
 }
 
-const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultGridProps, ref) => {
-    let table: Table<any>;
+const ResultGrid = memo(
+    forwardRef<ResultGridHandle, ResultGridProps>((props: ResultGridProps, ref) => {
+        let table: Table<any>;
 
-    const context = useContext(QueryResultContext);
-    if (!context) {
-        return undefined;
-    }
-    const gridContainerRef = useRef<HTMLDivElement>(null);
-    const [refreshKey, setRefreshKey] = useState(0);
-    if (!props.gridParentRef) {
-        return undefined;
-    }
-    const refreshGrid = () => {
-        if (gridContainerRef.current) {
-            while (gridContainerRef.current.firstChild) {
-                gridContainerRef.current.removeChild(gridContainerRef.current.firstChild);
+        const context = useContext(QueryResultContext);
+        if (!context) {
+            return undefined;
+        }
+        const gridContainerRef = useRef<HTMLDivElement>(null);
+        const [refreshKey, setRefreshKey] = useState(0);
+        if (!props.gridParentRef) {
+            return undefined;
+        }
+        const refreshGrid = () => {
+            if (gridContainerRef.current) {
+                while (gridContainerRef.current.firstChild) {
+                    gridContainerRef.current.removeChild(gridContainerRef.current.firstChild);
+                }
             }
-        }
-    };
-    const resizeGrid = (width: number, height: number) => {
-        if (!table) {
-            context.log("resizeGrid - table is not initialized");
-            refreshGrid();
-            setRefreshKey(refreshKey + 1);
-        }
-        let gridParent: HTMLElement | null;
-        if (!props.resultSetSummary) {
-            return;
-        }
-        gridParent = document.getElementById(
-            `grid-parent-${props.resultSetSummary.batchId}-${props.resultSetSummary.id}`,
-        );
-        if (gridParent) {
-            gridParent.style.height = `${height}px`;
-        }
-        const dimension = new DOM.Dimension(width, height);
-        table?.layout(dimension);
-    };
-
-    const hideGrid = () => {
-        let gridParent: HTMLElement | null;
-        if (!props.resultSetSummary) {
-            return;
-        }
-        gridParent = document.getElementById(
-            `grid-parent-${props.resultSetSummary.batchId}-${props.resultSetSummary.id}`,
-        );
-        if (gridParent) {
-            gridParent.style.display = "none";
-        }
-    };
-
-    const showGrid = () => {
-        let gridParent: HTMLElement | null;
-        if (!props.resultSetSummary) {
-            return;
-        }
-        gridParent = document.getElementById(
-            `grid-parent-${props.resultSetSummary.batchId}-${props.resultSetSummary.id}`,
-        );
-        if (gridParent) {
-            gridParent.style.display = "";
-        }
-    };
-
-    const createTable = () => {
-        const setupState = async () => {
-            await table.setupFilterState();
-            await table.restoreColumnWidths();
-            await table.setupScrollPosition();
-            table.headerFilter.enabled =
-                table.grid.getDataLength() < context.state.inMemoryDataProcessingThreshold!;
-
-            table.rerenderGrid();
         };
-        const DEFAULT_FONT_SIZE = 12;
-        context?.log(`resultGrid: ${context.state.fontSettings.fontSize}`);
-
-        const ROW_HEIGHT = context.state.fontSettings.fontSize! + 12; // 12 px is the padding
-        const COLUMN_WIDTH = Math.max(
-            (context.state.fontSettings.fontSize! / DEFAULT_FONT_SIZE) * 120,
-            120,
-        ); // Scale width with font size, but keep a minimum of 120px
-        if (!props.resultSetSummary || !props.linkHandler) {
-            return;
-        }
-
-        let columns: Slick.Column<Slick.SlickData>[] = props.resultSetSummary.columnInfo.map(
-            (c, i) => {
-                return {
-                    id: i.toString(),
-                    name:
-                        c.columnName === "Microsoft SQL Server 2005 XML Showplan"
-                            ? locConstants.queryResult.showplanXML
-                            : escape(c.columnName),
-                    field: i.toString(),
-                    formatter:
-                        c.isXml || c.isJson
-                            ? hyperLinkFormatter
-                            : (
-                                  row: number | undefined,
-                                  cell: any | undefined,
-                                  value: DbCellValue,
-                                  columnDef: any | undefined,
-                                  dataContext: any | undefined,
-                              ):
-                                  | string
-                                  | {
-                                        text: string;
-                                        addClasses: string;
-                                    } => {
-                                  if (isXmlCell(value, context?.log) && props.resultSetSummary) {
-                                      props.resultSetSummary.columnInfo[i].isXml = true;
-                                      return hyperLinkFormatter(
-                                          row,
-                                          cell,
-                                          value,
-                                          columnDef,
-                                          dataContext,
-                                      );
-                                  } else if (isJsonCell(value) && props.resultSetSummary) {
-                                      //TODO use showJsonAsLink config
-                                      props.resultSetSummary.columnInfo[i].isJson = true;
-                                      return hyperLinkFormatter(
-                                          row,
-                                          cell,
-                                          value,
-                                          columnDef,
-                                          dataContext,
-                                      );
-                                  } else {
-                                      return textFormatter(
-                                          row,
-                                          cell,
-                                          value,
-                                          columnDef,
-                                          dataContext,
-                                          DBCellValue.isDBCellValue(value) && value.isNull
-                                              ? NULL_CELL_CSS_CLASS
-                                              : undefined,
-                                      );
-                                  }
-                              },
-                };
-            },
-        );
-
-        let div = document.createElement("div");
-        div.id = "grid";
-        div.className = "grid-panel";
-        div.style.display = "inline-block";
-
-        let tableOptions: Slick.GridOptions<Slick.SlickData> = {
-            rowHeight: ROW_HEIGHT,
-            showRowNumber: true,
-            forceFitColumns: false,
-            defaultColumnWidth: COLUMN_WIDTH,
-        };
-        let rowNumberColumn = new RowNumberColumn<Slick.SlickData>({
-            autoCellSelection: false,
-        });
-        columns.unshift(rowNumberColumn.getColumnDefinition());
-
-        let collection = new VirtualizedCollection<any>(
-            50,
-            (_index) => {},
-            props.resultSetSummary?.rowCount ?? 0,
-            props.loadFunc,
-        );
-
-        let dataProvider = new HybridDataProvider(
-            collection,
-            (_startIndex, _count) => {
-                if (props.resultSetSummary?.rowCount && props.resultSetSummary?.rowCount > 0) {
-                    return props.loadFunc(_startIndex, _count);
-                } else {
-                    console.info(`No rows to load: start index: ${_startIndex}, count: ${_count}`);
-                    return Promise.resolve([]);
-                }
-            },
-            (data: DbCellValue) => {
-                if (!data || data.isNull) {
-                    return undefined;
-                }
-                // If the string only contains whitespaces, it will be treated as empty string to make the filtering easier.
-                // Note: this is the display string and does not impact the export/copy features.
-                return data.displayValue.trim() === "" ? "" : data.displayValue;
-            },
-            {
-                inMemoryDataProcessing: true,
-                inMemoryDataCountThreshold: context.state.inMemoryDataProcessingThreshold,
-            },
-            undefined,
-            undefined,
-        );
-        table = new Table(
-            div,
-            defaultTableStyles,
-            props.uri!,
-            props.resultSetSummary!,
-            props.webViewState!,
-            context,
-            props.linkHandler!,
-            props.gridId,
-            { dataProvider: dataProvider, columns: columns },
-            tableOptions,
-            props.gridParentRef,
-        );
-        void setupState();
-        collection.setCollectionChangedCallback((startIndex, count) => {
-            let refreshedRows = range(startIndex, startIndex + count);
-            table.invalidateRows(refreshedRows, true);
-        });
-        table.updateRowCount();
-        gridContainerRef.current?.appendChild(div);
-        if (
-            props.gridParentRef &&
-            props.gridParentRef.current &&
-            props.gridParentRef.current.clientWidth
-        ) {
-            table.layout(
-                new DOM.Dimension(
-                    props.gridParentRef.current.clientWidth - ACTIONBAR_WIDTH_PX,
-                    props.gridParentRef.current.clientHeight,
-                ),
+        const resizeGrid = (width: number, height: number) => {
+            if (!table) {
+                context.log("resizeGrid - table is not initialized");
+                return;
+            }
+            let gridParent: HTMLElement | null;
+            if (!props.resultSetSummary) {
+                return;
+            }
+            gridParent = document.getElementById(
+                `grid-parent-${props.resultSetSummary.batchId}-${props.resultSetSummary.id}`,
             );
-        }
-    };
+            if (gridParent) {
+                gridParent.style.height = `${height}px`;
+            }
+            const dimension = new DOM.Dimension(width, height);
+            table?.layout(dimension);
+        };
 
-    useImperativeHandle(ref, () => ({
-        refreshGrid,
-        resizeGrid,
-        hideGrid,
-        showGrid,
-    }));
+        const hideGrid = () => {
+            if (gridContainerRef.current) {
+                gridContainerRef.current.style.display = "none";
+            }
+        };
 
-    useEffect(() => {
-        createTable();
-    }, [refreshKey]);
+        const showGrid = () => {
+            if (gridContainerRef.current) {
+                gridContainerRef.current.style.display = "";
+            }
+        };
 
-    return <div id="gridContainter" ref={gridContainerRef}></div>;
-});
+        const createTable = () => {
+            // Clear any existing content first
+            if (gridContainerRef.current) {
+                while (gridContainerRef.current.firstChild) {
+                    gridContainerRef.current.removeChild(gridContainerRef.current.firstChild);
+                }
+            }
+            const setupState = async () => {
+                await table.setupFilterState();
+                await table.restoreColumnWidths();
+                await table.setupScrollPosition();
+                table.headerFilter.enabled =
+                    table.grid.getDataLength() < context.state.inMemoryDataProcessingThreshold!;
+
+                table.rerenderGrid();
+            };
+            const DEFAULT_FONT_SIZE = 12;
+            context?.log(`resultGrid: ${context.state.fontSettings.fontSize}`);
+
+            const ROW_HEIGHT = context.state.fontSettings.fontSize! + 12; // 12 px is the padding
+            const COLUMN_WIDTH = Math.max(
+                (context.state.fontSettings.fontSize! / DEFAULT_FONT_SIZE) * 120,
+                120,
+            ); // Scale width with font size, but keep a minimum of 120px
+            if (!props.resultSetSummary || !props.linkHandler) {
+                return;
+            }
+
+            let columns: Slick.Column<Slick.SlickData>[] = props.resultSetSummary.columnInfo.map(
+                (c, i) => {
+                    return {
+                        id: i.toString(),
+                        name:
+                            c.columnName === "Microsoft SQL Server 2005 XML Showplan"
+                                ? locConstants.queryResult.showplanXML
+                                : escape(c.columnName),
+                        field: i.toString(),
+                        formatter:
+                            c.isXml || c.isJson
+                                ? hyperLinkFormatter
+                                : (
+                                      row: number | undefined,
+                                      cell: any | undefined,
+                                      value: DbCellValue,
+                                      columnDef: any | undefined,
+                                      dataContext: any | undefined,
+                                  ):
+                                      | string
+                                      | {
+                                            text: string;
+                                            addClasses: string;
+                                        } => {
+                                      if (
+                                          isXmlCell(value, context?.log) &&
+                                          props.resultSetSummary
+                                      ) {
+                                          props.resultSetSummary.columnInfo[i].isXml = true;
+                                          return hyperLinkFormatter(
+                                              row,
+                                              cell,
+                                              value,
+                                              columnDef,
+                                              dataContext,
+                                          );
+                                      } else if (isJsonCell(value) && props.resultSetSummary) {
+                                          //TODO use showJsonAsLink config
+                                          props.resultSetSummary.columnInfo[i].isJson = true;
+                                          return hyperLinkFormatter(
+                                              row,
+                                              cell,
+                                              value,
+                                              columnDef,
+                                              dataContext,
+                                          );
+                                      } else {
+                                          return textFormatter(
+                                              row,
+                                              cell,
+                                              value,
+                                              columnDef,
+                                              dataContext,
+                                              DBCellValue.isDBCellValue(value) && value.isNull
+                                                  ? NULL_CELL_CSS_CLASS
+                                                  : undefined,
+                                          );
+                                      }
+                                  },
+                    };
+                },
+            );
+
+            let div = document.createElement("div");
+            div.id = `grid-${props.gridId}`;
+            div.className = "grid-panel";
+            div.style.display = "inline-block";
+
+            let tableOptions: Slick.GridOptions<Slick.SlickData> = {
+                rowHeight: ROW_HEIGHT,
+                showRowNumber: true,
+                forceFitColumns: false,
+                defaultColumnWidth: COLUMN_WIDTH,
+            };
+            let rowNumberColumn = new RowNumberColumn<Slick.SlickData>({
+                autoCellSelection: false,
+            });
+            columns.unshift(rowNumberColumn.getColumnDefinition());
+
+            let collection = new VirtualizedCollection<any>(
+                50,
+                (_index) => {},
+                props.resultSetSummary?.rowCount ?? 0,
+                props.loadFunc,
+            );
+
+            let dataProvider = new HybridDataProvider(
+                collection,
+                (_startIndex, _count) => {
+                    if (props.resultSetSummary?.rowCount && props.resultSetSummary?.rowCount > 0) {
+                        return props.loadFunc(_startIndex, _count);
+                    } else {
+                        console.info(
+                            `No rows to load: start index: ${_startIndex}, count: ${_count}`,
+                        );
+                        return Promise.resolve([]);
+                    }
+                },
+                (data: DbCellValue) => {
+                    if (!data || data.isNull) {
+                        return undefined;
+                    }
+                    // If the string only contains whitespaces, it will be treated as empty string to make the filtering easier.
+                    // Note: this is the display string and does not impact the export/copy features.
+                    return data.displayValue.trim() === "" ? "" : data.displayValue;
+                },
+                {
+                    inMemoryDataProcessing: true,
+                    inMemoryDataCountThreshold: context.state.inMemoryDataProcessingThreshold,
+                },
+                undefined,
+                undefined,
+            );
+            table = new Table(
+                div,
+                defaultTableStyles,
+                props.uri!,
+                props.resultSetSummary!,
+                props.webViewState!,
+                context,
+                props.linkHandler!,
+                props.gridId,
+                { dataProvider: dataProvider, columns: columns },
+                tableOptions,
+                props.gridParentRef,
+            );
+            void setupState();
+            collection.setCollectionChangedCallback((startIndex, count) => {
+                let refreshedRows = range(startIndex, startIndex + count);
+                table.invalidateRows(refreshedRows, true);
+            });
+            table.updateRowCount();
+
+            // Store table reference on the div for later access
+            (div as any)._table = table;
+
+            gridContainerRef.current?.appendChild(div);
+            if (
+                props.gridParentRef &&
+                props.gridParentRef.current &&
+                props.gridParentRef.current.clientWidth
+            ) {
+                const newHeight = props.gridParentRef.current.clientHeight;
+                const newWidth = props.gridParentRef.current.clientWidth - ACTIONBAR_WIDTH_PX;
+
+                table.layout(new DOM.Dimension(newWidth, newHeight));
+
+                // Adjust height of all previous grid containers to match the new height
+                const allGridContainers = document.querySelectorAll('[id^="gridContainer-"]');
+                allGridContainers.forEach((container) => {
+                    if (
+                        container !== gridContainerRef.current &&
+                        container instanceof HTMLElement
+                    ) {
+                        container.style.height = `${newHeight}px`;
+                        // Also update the table layout if it exists
+                        const gridDiv = container.querySelector('[id^="grid-"]');
+                        if (gridDiv && (gridDiv as any)._table) {
+                            (gridDiv as any)._table.layout(new DOM.Dimension(newWidth, newHeight));
+                        }
+                    }
+                });
+            }
+        };
+
+        useImperativeHandle(ref, () => ({
+            refreshGrid,
+            resizeGrid,
+            hideGrid,
+            showGrid,
+        }));
+
+        useEffect(() => {
+            createTable();
+        }, [
+            props.resultSetSummary?.batchId,
+            props.resultSetSummary?.id,
+            props.uri,
+            props.gridId,
+            context.state.fontSettings.fontSize,
+            context.state.inMemoryDataProcessingThreshold,
+        ]);
+
+        return <div id={`gridContainer-${props.gridId}`} ref={gridContainerRef}></div>;
+    }),
+    (prevProps, nextProps) => {
+        // Custom comparison function to prevent unnecessary re-renders
+        return (
+            prevProps.gridId === nextProps.gridId &&
+            prevProps.uri === nextProps.uri &&
+            prevProps.resultSetSummary?.batchId === nextProps.resultSetSummary?.batchId &&
+            prevProps.resultSetSummary?.id === nextProps.resultSetSummary?.id
+        );
+    },
+);
 
 function isJsonCell(value: DbCellValue): boolean {
     return !!(value && !value.isNull && value.displayValue?.match(IsJsonRegex));
