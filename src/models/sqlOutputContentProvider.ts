@@ -579,6 +579,26 @@ export class SqlOutputContentProvider {
         );
     }
 
+    public revealQueryResultPanel(uri: string): void {
+        const openInNewTabConfig = vscode.workspace
+            .getConfiguration()
+            .get(Constants.configOpenQueryResultsInTabByDefault);
+
+        if (openInNewTabConfig) {
+            this._queryResultWebviewController.revealPanel(uri);
+        }
+
+        const isContainedInWebviewView =
+            this._queryResultWebviewController.getQueryResultState(uri);
+        if (isContainedInWebviewView && !this._queryResultWebviewController.hasPanel(uri)) {
+            vscode.commands.executeCommand("queryResult.focus", {
+                preserveFocus: true,
+            });
+        } else {
+            this._queryResultWebviewController.revealPanel(uri);
+        }
+    }
+
     /**
      * Switches SQLCMD Mode to on/off
      * @param queryUri Uri of the query

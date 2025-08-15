@@ -62,7 +62,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         context.subscriptions.push(
             vscode.window.onDidChangeActiveTextEditor(async (editor) => {
                 const uri = editor?.document?.uri?.toString(true);
-                if (uri && this._queryResultStateMap.has(uri)) {
+                if (uri && this._queryResultStateMap.has(uri) && !this.hasPanel(uri)) {
                     this.state = this.getQueryResultState(uri);
                 } else {
                     this.state = {
@@ -82,8 +82,11 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
                     };
                 }
 
-                if (this.hasPanel(uri)) {
-                    await this.createPanelController(uri);
+                const switchResultTabWithActiveEditor = vscode.workspace
+                    .getConfiguration()
+                    .get(Constants.configQueryResultSwitchResultTabWithActiveEditor);
+                if (switchResultTabWithActiveEditor) {
+                    this.revealPanel(uri);
                 }
             }),
         );
@@ -339,6 +342,12 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
 
     public hasPanel(uri: string): boolean {
         return this._queryResultWebviewPanelControllerMap.has(uri);
+    }
+
+    public revealPanel(uri: string): void {
+        if (this.hasPanel(uri)) {
+            this._queryResultWebviewPanelControllerMap.get(uri).revealToForeground();
+        }
     }
 
     public getQueryResultState(uri: string): qr.QueryResultWebviewState {
