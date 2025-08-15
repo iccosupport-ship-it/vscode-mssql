@@ -7,7 +7,7 @@ import * as vscode from "vscode";
 import * as Constants from "../constants/constants";
 import * as LocalizedConstants from "../constants/locConstants";
 import * as Interfaces from "./interfaces";
-import QueryRunner from "../controllers/queryRunner";
+import QueryRunner, { QueryExecutionCompleteEvent } from "../controllers/queryRunner";
 import ResultsSerializer from "../models/resultsSerializer";
 import StatusView from "../views/statusView";
 import VscodeWrapper from "./../controllers/vscodeWrapper";
@@ -278,7 +278,7 @@ export class SqlOutputContentProvider {
             // We do not have a query runner for this editor, so create a new one
             // and map it to the results uri
             queryRunner = new QueryRunner(uri, title, statusView ? statusView : this._statusView);
-            queryRunner.eventEmitter.on("start", async (_panelUri) => {
+            queryRunner.onStart(async (_panelUri) => {
                 this._lastSendMessageTime = Date.now();
                 this._queryResultWebviewController.addQueryResultState(
                     queryRunner.uri,
@@ -300,11 +300,13 @@ export class SqlOutputContentProvider {
                     defaultLocation: this.isOpenQueryResultsInTabByDefaultEnabled ? "tab" : "pane",
                 });
             });
-            queryRunner.eventEmitter.on("resultSet", async (resultSet: ResultSetSummary) => {
-                this._queryResultWebviewController.addResultSetSummary(queryRunner.uri, resultSet);
+
+            queryRunner.onResultSet((result: ResultSetSummary) => {
+                this._queryResultWebviewController.addResultSetSummary(queryRunner.uri, result);
                 this._queryResultWebviewController.updatePanelState(queryRunner.uri);
             });
-            queryRunner.eventEmitter.on("batchStart", async (batch) => {
+
+            queryRunner.onBatchStart(async (batch: Interfaces.BatchSummary) => {
                 let time = new Date().toLocaleTimeString();
                 if (batch.executionElapsed && batch.executionEnd) {
                     time = new Date(batch.executionStart).toLocaleTimeString();
@@ -338,7 +340,8 @@ export class SqlOutputContentProvider {
                     await this._queryResultWebviewController.revealToForeground();
                 }
             });
-            queryRunner.eventEmitter.on("message", async (message) => {
+
+            queryRunner.onMessage(async (message) => {
                 this._queryResultWebviewController
                     .getQueryResultState(queryRunner.uri)
                     .messages.push(message);
@@ -357,50 +360,47 @@ export class SqlOutputContentProvider {
                     this._lastSendMessageTime = Date.now();
                 }
             });
-            queryRunner.eventEmitter.on(
-                "complete",
-                async (totalMilliseconds, hasError, isRefresh?) => {
-                    if (!isRefresh) {
-                        // only update query history with new queries
-                        this._vscodeWrapper.executeCommand(
-                            Constants.cmdRefreshQueryHistory,
-                            queryRunner.uri,
-                            hasError,
-                        );
-                    }
 
-                    this._queryResultWebviewController
-                        .getQueryResultState(queryRunner.uri)
-                        .messages.push({
-                            message: LocalizedConstants.elapsedTimeLabel(totalMilliseconds),
-                            isError: false, // Elapsed time messages are never displayed as errors
-                        });
-                    // if there is an error, show the error message and set the tab to the messages tab
-                    let tabState: QueryResultPaneTabs;
-                    if (hasError) {
-                        tabState = QueryResultPaneTabs.Messages;
-                    } else {
-                        tabState =
-                            Object.keys(
-                                this._queryResultWebviewController.getQueryResultState(
-                                    queryRunner.uri,
-                                ).resultSetSummaries,
-                            ).length > 0
-                                ? QueryResultPaneTabs.Results
-                                : QueryResultPaneTabs.Messages;
-                    }
-
-                    this._queryResultWebviewController.getQueryResultState(
+            queryRunner.onComplete(async (params: QueryExecutionCompleteEvent) => {
+                if (!params.isRefresh) {
+                    // only update query history with new queries
+                    this._vscodeWrapper.executeCommand(
+                        Constants.cmdRefreshQueryHistory,
                         queryRunner.uri,
-                    ).tabStates.resultPaneTab = tabState;
-                    this._queryResultWebviewController.state =
-                        this._queryResultWebviewController.getQueryResultState(queryRunner.uri);
-                    this._queryResultWebviewController.updatePanelState(queryRunner.uri);
-                    if (!this._queryResultWebviewController.hasPanel(queryRunner.uri)) {
-                        await this._queryResultWebviewController.revealToForeground();
-                    }
-                },
-            );
+                        params.hasError,
+                    );
+                }
+
+                this._queryResultWebviewController
+                    .getQueryResultState(queryRunner.uri)
+                    .messages.push({
+                        message: LocalizedConstants.elapsedTimeLabel(params.totalMilliseconds),
+                        isError: false, // Elapsed time messages are never displayed as errors
+                    });
+                // if there is an error, show the error message and set the tab to the messages tab
+                let tabState: QueryResultPaneTabs;
+                if (params.hasError) {
+                    tabState = QueryResultPaneTabs.Messages;
+                } else {
+                    tabState =
+                        Object.keys(
+                            this._queryResultWebviewController.getQueryResultState(queryRunner.uri)
+                                .resultSetSummaries,
+                        ).length > 0
+                            ? QueryResultPaneTabs.Results
+                            : QueryResultPaneTabs.Messages;
+                }
+
+                this._queryResultWebviewController.getQueryResultState(
+                    queryRunner.uri,
+                ).tabStates.resultPaneTab = tabState;
+                this._queryResultWebviewController.state =
+                    this._queryResultWebviewController.getQueryResultState(queryRunner.uri);
+                this._queryResultWebviewController.updatePanelState(queryRunner.uri);
+                if (!this._queryResultWebviewController.hasPanel(queryRunner.uri)) {
+                    await this._queryResultWebviewController.revealToForeground();
+                }
+            });
             this._queryResultsMap.set(uri, new QueryRunnerState(queryRunner));
         }
 

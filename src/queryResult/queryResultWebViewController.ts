@@ -60,7 +60,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         void this.initialize();
 
         context.subscriptions.push(
-            vscode.window.onDidChangeActiveTextEditor((editor) => {
+            vscode.window.onDidChangeActiveTextEditor(async (editor) => {
                 const uri = editor?.document?.uri?.toString(true);
                 if (uri && this._queryResultStateMap.has(uri)) {
                     this.state = this.getQueryResultState(uri);
@@ -80,6 +80,10 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
                         inMemoryDataProcessingThreshold:
                             this.getInMemoryDataProcessingThresholdConfig(),
                     };
+                }
+
+                if (this.hasPanel(uri)) {
+                    await this.createPanelController(uri);
                 }
             }),
         );

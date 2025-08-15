@@ -67,6 +67,33 @@ export class QueryExecuteResultSetCompleteNotificationParams {
     ownerUri: string;
 }
 
+// ------------------------------- < Query ResultSet Available Notification > ------------------------------------
+export namespace QueryExecuteResultSetAvailableNotification {
+    export const type = new NotificationType<
+        QueryExecuteResultSetAvailableNotificationParams,
+        void
+    >("query/resultSetAvailable");
+}
+
+export class QueryExecuteResultSetAvailableNotificationParams {
+    resultSetSummary: ResultSetSummary;
+    ownerUri: string;
+}
+
+// ------------------------------- < Query ResultSet Updated Notification > ------------------------------------
+export namespace QueryExecuteResultSetUpdatedNotification {
+    export const type = new NotificationType<QueryExecuteResultSetUpdatedNotificationParams, void>(
+        "query/resultSetUpdated",
+    );
+}
+
+export class QueryExecuteResultSetUpdatedNotificationParams {
+    resultSetSummary: ResultSetSummary;
+    ownerUri: string;
+    executionPlans?: any[];
+    executionPlanErrorMessage?: string;
+}
+
 // ------------------------------- < Query Message Notification > ------------------------------------
 export namespace QueryExecuteMessageNotification {
     export const type = new NotificationType<QueryExecuteMessageParams, void>("query/message");

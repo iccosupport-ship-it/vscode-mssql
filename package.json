@@ -204,7 +204,8 @@
                 {
                     "type": "webview",
                     "id": "queryResult",
-                    "name": "%extension.queryResult%"
+                    "name": "%extension.queryResult%",
+                    "when": "!config.mssql.openQueryResultsInTabByDefault"
                 }
             ],
             "objectExplorer": [

@@ -14,10 +14,14 @@ import {
     QueryExecuteBatchStartNotification,
     QueryExecuteBatchCompleteNotification,
     QueryExecuteResultSetCompleteNotification,
+    QueryExecuteResultSetAvailableNotification,
+    QueryExecuteResultSetUpdatedNotification,
     QueryExecuteMessageNotification,
     QueryExecuteCompleteNotificationResult,
     QueryExecuteBatchNotificationParams,
     QueryExecuteResultSetCompleteNotificationParams,
+    QueryExecuteResultSetAvailableNotificationParams,
+    QueryExecuteResultSetUpdatedNotificationParams,
     QueryExecuteMessageParams,
 } from "../models/contracts/queryExecute";
 import { NotificationHandler } from "vscode-languageclient";
@@ -62,6 +66,14 @@ export class QueryNotificationHandler {
         client.onNotification(
             QueryExecuteResultSetCompleteNotification.type,
             this.handleResultSetCompleteNotification(),
+        );
+        client.onNotification(
+            QueryExecuteResultSetAvailableNotification.type,
+            this.handleResultSetAvailableNotification(),
+        );
+        client.onNotification(
+            QueryExecuteResultSetUpdatedNotification.type,
+            this.handleResultSetUpdatedNotification(),
         );
         client.onNotification(
             QueryExecuteMessageNotification.type,
@@ -109,5 +121,17 @@ export class QueryNotificationHandler {
 
     public handleMessageNotification(): NotificationHandler<QueryExecuteMessageParams> {
         return this.makeHandler<QueryExecuteMessageParams>((r, e) => r.handleMessage(e));
+    }
+
+    public handleResultSetAvailableNotification(): NotificationHandler<QueryExecuteResultSetAvailableNotificationParams> {
+        return this.makeHandler<QueryExecuteResultSetAvailableNotificationParams>((r, e) =>
+            r.handleResultSetAvailable(e),
+        );
+    }
+
+    public handleResultSetUpdatedNotification(): NotificationHandler<QueryExecuteResultSetUpdatedNotificationParams> {
+        return this.makeHandler<QueryExecuteResultSetUpdatedNotificationParams>((r, e) =>
+            r.handleResultSetUpdated(e),
+        );
     }
 }
