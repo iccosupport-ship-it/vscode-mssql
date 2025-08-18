@@ -378,6 +378,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
             state.resultSetSummaries[batchId] = {};
         }
         state.resultSetSummaries[batchId][resultId] = resultSetSummary;
+        state.tabStates.resultPaneTab = qr.QueryResultPaneTabs.Results;
     }
 
     public setSqlOutputContentProvider(provider: SqlOutputContentProvider): void {

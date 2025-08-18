@@ -320,6 +320,7 @@ const ResultGrid = memo(
         }, [
             props.resultSetSummary?.batchId,
             props.resultSetSummary?.id,
+            props.resultSetSummary?.rowCount,
             props.uri,
             props.gridId,
             context.state.fontSettings.fontSize,
@@ -330,12 +331,14 @@ const ResultGrid = memo(
     }),
     (prevProps, nextProps) => {
         // Custom comparison function to prevent unnecessary re-renders
-        return (
+        const areEqual =
             prevProps.gridId === nextProps.gridId &&
             prevProps.uri === nextProps.uri &&
             prevProps.resultSetSummary?.batchId === nextProps.resultSetSummary?.batchId &&
-            prevProps.resultSetSummary?.id === nextProps.resultSetSummary?.id
-        );
+            prevProps.resultSetSummary?.id === nextProps.resultSetSummary?.id &&
+            prevProps.resultSetSummary?.rowCount === nextProps.resultSetSummary?.rowCount;
+
+        return areEqual;
     },
 );
 

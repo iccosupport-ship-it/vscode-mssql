@@ -354,7 +354,12 @@ export class LocConstants {
 
     public get queryResult() {
         return {
-            results: l10n.t("Results"),
+            results: (count: number) =>
+                l10n.t({
+                    message: "Results ({0})",
+                    args: [count],
+                    comment: ["{0} is the number of results"],
+                }),
             messages: l10n.t("Messages"),
             timestamp: l10n.t("Timestamp"),
             message: l10n.t("Message"),
