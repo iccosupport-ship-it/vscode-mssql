@@ -307,13 +307,6 @@ export const QueryResultPane = () => {
                 {viewMode === qr.QueryResultViewMode.Grid && (
                     <ResultGrid
                         loadFunc={async (offset: number, count: number): Promise<any[]> => {
-                            console.debug("getRows rpc call", {
-                                uri: state?.uri,
-                                batchId: batchId,
-                                resultId: resultId,
-                                rowStart: offset,
-                                numberOfRows: count,
-                            });
                             const response = await webViewState.extensionRpc.sendRequest(
                                 qr.GetRowsRequest.type,
                                 {
@@ -665,6 +658,18 @@ export const QueryResultPane = () => {
         }, 10);
     }, [state?.uri]);
 
+    const getCount = () => {
+        let count = 0;
+        const batchIds = Object.keys(state?.resultSetSummaries ?? {});
+        for (const batchId of batchIds) {
+            const summary = state.resultSetSummaries[parseInt(batchId)];
+            if (summary) {
+                count += Object.keys(summary).length;
+            }
+        }
+        return count;
+    };
+
     return !state || !hasResultsOrMessages(state) ? (
         <div className={classes.noResultsContainer}>
             <div className={classes.heroIcon} aria-hidden>
@@ -696,7 +701,7 @@ export const QueryResultPane = () => {
                         <Tab
                             value={qr.QueryResultPaneTabs.Results}
                             key={qr.QueryResultPaneTabs.Results}>
-                            {locConstants.queryResult.results}
+                            {locConstants.queryResult.results(getCount())}
                         </Tab>
                     )}
                     <Tab

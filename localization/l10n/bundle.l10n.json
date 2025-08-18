@@ -343,7 +343,12 @@
   "Privacy Statement": "Privacy Statement",
   "Microsoft will process the feedback you submit pursuant to your organization’s instructions in order to improve your and your organization’s experience with this product. If you have any questions...": "Microsoft will process the feedback you submit pursuant to your organization’s instructions in order to improve your and your organization’s experience with this product. If you have any questions...",
   "Microsoft will process the feedback you submit pursuant to your organization’s instructions in order to improve your and your organization’s experience with this product. If you have any questions about the use of feedback data, please contact your tenant administrator. Processing of feedback data is governed by the Microsoft Products and Services Data Protection Addendum between your organization and Microsoft, and the feedback you submit is considered Personal Data under that addendum.": "Microsoft will process the feedback you submit pursuant to your organization’s instructions in order to improve your and your organization’s experience with this product. If you have any questions about the use of feedback data, please contact your tenant administrator. Processing of feedback data is governed by the Microsoft Products and Services Data Protection Addendum between your organization and Microsoft, and the feedback you submit is considered Personal Data under that addendum.",
-  "Results": "Results",
+  "Results ({0})/{0} is the number of results": {
+    "message": "Results ({0})",
+    "comment": [
+      "{0} is the number of results"
+    ]
+  },
   "Messages": "Messages",
   "Timestamp": "Timestamp",
   "Message": "Message",
@@ -1047,6 +1052,7 @@
   "CSV": "CSV",
   "JSON": "JSON",
   "Excel": "Excel",
+  "Results": "Results",
   "Select all": "Select all",
   "Executing query...": "Executing query...",
   "Query executed": "Query executed",
