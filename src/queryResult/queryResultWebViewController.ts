@@ -338,6 +338,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         if (this._queryResultWebviewPanelControllerMap.has(uri)) {
             this._queryResultWebviewPanelControllerMap.delete(uri);
         }
+        this._sqlOutputContentProvider.removeRunner(uri);
     }
 
     public hasPanel(uri: string): boolean {

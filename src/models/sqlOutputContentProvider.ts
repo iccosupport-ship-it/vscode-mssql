@@ -22,12 +22,10 @@ import * as qr from "../sharedInterfaces/queryResult";
 // tslint:disable-next-line:no-require-imports
 const pd = require("pretty-data").pd;
 
-const deletionTimeoutTime = 1.8e6; // in ms, currently 30 minutes
 const MESSAGE_INTERVAL_IN_MS = 300;
 
 // holds information about the state of a query runner
 export class QueryRunnerState {
-    timeout: NodeJS.Timer;
     flaggedForDeletion: boolean;
     constructor(public queryRunner: QueryRunner) {
         this.flaggedForDeletion = false;
@@ -477,37 +475,27 @@ export class SqlOutputContentProvider {
      * @param doc   The document that was closed
      */
     public onDidCloseTextDocument(doc: vscode.TextDocument): void {
-        for (let [key, value] of this._queryResultsMap.entries()) {
+        for (let [_key, value] of this._queryResultsMap.entries()) {
             // closes text document related to a results window we are holding
             if (doc.uri.toString(true) === value.queryRunner.uri) {
                 value.flaggedForDeletion = true;
             }
-
-            // "closes" a results window we are holding
-            if (doc.uri.toString(true) === key) {
-                value.timeout = this.setRunnerDeletionTimeout(key);
-            }
         }
     }
 
-    private setRunnerDeletionTimeout(uri: string): NodeJS.Timer {
-        const self = this;
-        return setTimeout(() => {
-            let queryRunnerState = self._queryResultsMap.get(uri);
-            if (queryRunnerState.flaggedForDeletion) {
-                self._queryResultsMap.delete(uri);
+    public removeRunner(uri: string): void {
+        let queryRunnerState = this._queryResultsMap.get(uri);
+        if (queryRunnerState.flaggedForDeletion) {
+            this._queryResultsMap.delete(uri);
 
-                if (queryRunnerState.queryRunner.isExecutingQuery) {
-                    // We need to cancel it, which will dispose it
-                    this.cancelQuery(queryRunnerState.queryRunner);
-                } else {
-                    // We need to explicitly dispose the query
-                    void queryRunnerState.queryRunner.dispose();
-                }
+            if (queryRunnerState.queryRunner.isExecutingQuery) {
+                // We need to cancel it, which will dispose it
+                this.cancelQuery(queryRunnerState.queryRunner);
             } else {
-                queryRunnerState.timeout = this.setRunnerDeletionTimeout(uri);
+                // We need to explicitly dispose the query
+                void queryRunnerState.queryRunner.dispose();
             }
-        }, deletionTimeoutTime);
+        }
     }
 
     /**
