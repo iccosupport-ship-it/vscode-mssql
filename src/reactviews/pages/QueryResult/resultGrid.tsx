@@ -4,15 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import $ from "jquery";
-import {
-    forwardRef,
-    useContext,
-    useEffect,
-    useImperativeHandle,
-    useRef,
-    useState,
-    memo,
-} from "react";
+import { forwardRef, useContext, useEffect, useImperativeHandle, useRef, memo } from "react";
 import "../../media/slickgrid.css";
 import { ACTIONBAR_WIDTH_PX, range, Table } from "./table/table";
 import { defaultTableStyles } from "./table/interfaces";
@@ -73,7 +65,6 @@ const ResultGrid = memo(
             return undefined;
         }
         const gridContainerRef = useRef<HTMLDivElement>(null);
-        const [refreshKey, setRefreshKey] = useState(0);
         if (!props.gridParentRef) {
             return undefined;
         }
