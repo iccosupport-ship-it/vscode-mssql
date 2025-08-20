@@ -1522,13 +1522,6 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
         }
     }
 
-    private async handleConnectionFieldBlur(
-        _propertyName: keyof IConnectionDialogProfile,
-    ): Promise<void> {
-        // No auto-loading of databases on field blur - users must click "Load Databases" button
-        return;
-    }
-
     private createTempConnectionFromState(state: ConnectionDialogWebviewState): IConnectionInfo {
         return {
             server: state.connectionProfile.server,
