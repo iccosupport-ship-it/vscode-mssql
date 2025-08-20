@@ -24,7 +24,6 @@ import {
     ConnectionDialogFormItemSpec,
     ConnectionStringDialogProps,
     GetConnectionDisplayNameRequest,
-    LoadDatabasesRequest,
 } from "../sharedInterfaces/connectionDialog";
 import { ConnectionCompleteParams } from "../models/contracts/connection";
 import { FormItemActionButton, FormItemOptions } from "../sharedInterfaces/form";
@@ -355,10 +354,6 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
             return state;
         });
 
-        this.connection.onRequest(LoadDatabasesRequest.type, async () => {
-            return await this.loadDatabasesForConnection();
-        });
-
         this.registerReducer("addFirewallRule", async (state, payload) => {
             (state.dialog as AddFirewallRuleDialogProps).props.addFirewallRuleStatus =
                 ApiStatus.Loading;
@@ -664,10 +659,6 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
         updateValidation?: boolean,
     ): Promise<void> {
         await this.handleAzureMFAEdits(propertyName);
-
-        if (updateValidation) {
-            await this.handleConnectionFieldBlur(propertyName);
-        }
     }
 
     private async checkReadyToConnect(): Promise<void> {
@@ -1489,6 +1480,12 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
                 await this._mainController.connectionManager.connectDialog(tempConnection);
 
             if (completeParams.errorMessage) {
+                this.logger.error(
+                    `Failed to connect to server ${tempConnection.server}: ${completeParams.errorMessage}`,
+                );
+                vscode.window.showErrorMessage(
+                    `Error loading databases for server ${this.state.connectionProfile.server}: ${completeParams.errorMessage}`,
+                );
                 return [];
             }
 
@@ -1518,79 +1515,18 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
                 undefined, // errorCode
                 undefined, // errorType
             );
+            vscode.window.showErrorMessage(
+                `Error loading databases for server ${this.state.connectionProfile.server}: ${errorMessage}`,
+            );
             throw error;
         }
     }
 
     private async handleConnectionFieldBlur(
-        propertyName: keyof IConnectionDialogProfile,
+        _propertyName: keyof IConnectionDialogProfile,
     ): Promise<void> {
-        // Fields that affect database connectivity
-        const connectionFields: (keyof IConnectionDialogProfile)[] = [
-            "server",
-            "user",
-            "password",
-            "authenticationType",
-            "accountId",
-            "tenantId",
-        ];
-
-        // Only trigger auto-load for connection-relevant fields
-        if (!connectionFields.includes(propertyName)) {
-            return;
-        }
-
-        // Auto-load databases when connection fields are complete
-        try {
-            updateDatabaseFieldType(this.state.formComponents, [], "Loading");
-            this.updateState();
-
-            const databases = await this.loadDatabasesForConnection();
-            updateDatabaseFieldType(
-                this.state.formComponents,
-                databases,
-                "Loaded",
-                async () => {
-                    try {
-                        updateDatabaseFieldType(this.state.formComponents, [], "Loading");
-                        this.updateState();
-                        const newDatabases = await this.loadDatabasesForConnection();
-                        updateDatabaseFieldType(this.state.formComponents, newDatabases, "Loaded");
-                        this.updateState();
-                    } catch (error) {
-                        this.logger.error(`Error reloading databases: ${getErrorMessage(error)}`);
-                        updateDatabaseFieldType(this.state.formComponents, [], "Error");
-                        this.updateState();
-                    }
-                },
-                true,
-            );
-            this.updateState();
-        } catch (error) {
-            this.logger.error(`Error auto-loading databases: ${getErrorMessage(error)}`);
-            updateDatabaseFieldType(
-                this.state.formComponents,
-                [],
-                "Error",
-                async () => {
-                    try {
-                        updateDatabaseFieldType(this.state.formComponents, [], "Loading");
-                        this.updateState();
-                        const databases = await this.loadDatabasesForConnection();
-                        updateDatabaseFieldType(this.state.formComponents, databases, "Loaded");
-                        this.updateState();
-                    } catch (retryError) {
-                        this.logger.error(
-                            `Error retrying database load: ${getErrorMessage(retryError)}`,
-                        );
-                        updateDatabaseFieldType(this.state.formComponents, [], "Error");
-                        this.updateState();
-                    }
-                },
-                true,
-            );
-            this.updateState();
-        }
+        // No auto-loading of databases on field blur - users must click "Load Databases" button
+        return;
     }
 
     private createTempConnectionFromState(state: ConnectionDialogWebviewState): IConnectionInfo {

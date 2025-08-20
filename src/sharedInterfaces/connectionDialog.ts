@@ -165,7 +165,6 @@ export interface ConnectionDialogContextProps
     openConnectionStringDialog: () => void;
     signIntoAzureForFirewallRule: () => void;
     signIntoAzureForBrowse: () => void;
-    loadDatabases: () => Promise<string[]>;
 
     // Request handlers
     getConnectionDisplayName: (connection: IConnectionDialogProfile) => Promise<string>;
@@ -236,8 +235,4 @@ export namespace GetConnectionDisplayNameRequest {
     export const type = new RequestType<IConnectionDialogProfile, string, void>(
         "getConnectionDisplayName",
     );
-}
-
-export namespace LoadDatabasesRequest {
-    export const type = new RequestType<void, string[], void>("loadDatabases");
 }

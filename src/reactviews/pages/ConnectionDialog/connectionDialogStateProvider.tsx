@@ -10,7 +10,6 @@ import {
     ConnectionInputMode,
     GetConnectionDisplayNameRequest,
     IConnectionDialogProfile,
-    LoadDatabasesRequest,
 } from "../../../sharedInterfaces/connectionDialog";
 
 import { FirewallRuleSpec } from "../../../sharedInterfaces/firewallRule";
@@ -117,9 +116,6 @@ const ConnectionDialogStateProvider: React.FC<ConnectionDialogProviderProps> = (
                 },
                 signIntoAzureForBrowse: function (): void {
                     webviewContext.extensionRpc.action("signIntoAzureForBrowse");
-                },
-                loadDatabases: function (): Promise<string[]> {
-                    return webviewContext.extensionRpc.sendRequest(LoadDatabasesRequest.type);
                 },
             }}>
             {children}
