@@ -2185,6 +2185,9 @@
     <trans-unit id="++CODE++4f5103123c8a9080ba6c1595ab5f058a1aa4715fe8c1aa2b956b6512f28cc365">
       <source xml:lang="en">Search connection groups</source>
     </trans-unit>
+    <trans-unit id="++CODE++a7544f8da725700b8f71655fe027005c9e31fdc234207937a12f952d013e87d2">
+      <source xml:lang="en">Search databases...</source>
+    </trans-unit>
     <trans-unit id="++CODE++49ff54ad141b9f4b74b176a98807c6b9a1282dfe026c3f38015dd596c54c4a84">
       <source xml:lang="en">Search options...</source>
     </trans-unit>
