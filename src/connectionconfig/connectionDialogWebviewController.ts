@@ -24,6 +24,7 @@ import {
     ConnectionDialogFormItemSpec,
     ConnectionStringDialogProps,
     GetConnectionDisplayNameRequest,
+    LoadDatabasesRequest,
 } from "../sharedInterfaces/connectionDialog";
 import { ConnectionCompleteParams } from "../models/contracts/connection";
 import { FormItemActionButton, FormItemOptions } from "../sharedInterfaces/form";
@@ -61,7 +62,7 @@ import {
 import {
     generateConnectionComponents,
     groupAdvancedOptions,
-    updateDatabaseFieldType as updateDatabaseFieldTypeHelper,
+    updateDatabaseFieldType,
 } from "./formComponentHelpers";
 import { FormWebviewController } from "../forms/formWebviewController";
 import { ConnectionCredentials } from "../models/connectionCredentials";
@@ -144,8 +145,6 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
         this.registerRpcHandlers();
         void this.initializeDialog(connectionToEdit, initialConnectionGroup)
             .then(() => {
-                // Update database field type after initial form setup
-                this.updateDatabaseFieldType(this.state);
                 this.updateState();
                 this.initialized.resolve();
             })
@@ -176,6 +175,50 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
             getAccounts(this._mainController.azureAccountService, this.logger),
             this.getAzureActionButtons(),
             this.getConnectionGroups(this._mainController),
+        );
+
+        // Configure the database field with load databases functionality
+        updateDatabaseFieldType(
+            this.state.formComponents,
+            [],
+            "NotStarted",
+            async () => {
+                try {
+                    const databases = await this.loadDatabasesForConnection();
+                    // Update the database field with the loaded databases
+                    updateDatabaseFieldType(
+                        this.state.formComponents,
+                        databases,
+                        "Loaded",
+                        async () => {
+                            const newDatabases = await this.loadDatabasesForConnection();
+                            updateDatabaseFieldType(
+                                this.state.formComponents,
+                                newDatabases,
+                                "Loaded",
+                            );
+                            this.updateState();
+                        },
+                        true,
+                    );
+                    this.updateState();
+                } catch (error) {
+                    this.logger.error(`Error loading databases: ${getErrorMessage(error)}`);
+                    updateDatabaseFieldType(
+                        this.state.formComponents,
+                        [],
+                        "Error",
+                        async () => {
+                            const databases = await this.loadDatabasesForConnection();
+                            updateDatabaseFieldType(this.state.formComponents, databases, "Loaded");
+                            this.updateState();
+                        },
+                        true,
+                    );
+                    this.updateState();
+                }
+            },
+            this.state.readyToConnect,
         );
 
         this.state.connectionComponents = {
@@ -272,16 +315,32 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
             this.state.connectionProfile = payload.connection;
             this.state.selectedInputMode = ConnectionInputMode.Parameters;
 
+            // Clear database dropdown when loading a new connection
+            updateDatabaseFieldType(
+                this.state.formComponents,
+                [],
+                "NotStarted",
+                async () => {
+                    try {
+                        updateDatabaseFieldType(this.state.formComponents, [], "Loading");
+                        this.updateState();
+                        const databases = await this.loadDatabasesForConnection();
+                        updateDatabaseFieldType(this.state.formComponents, databases, "Loaded");
+                        this.updateState();
+                    } catch (error) {
+                        this.logger.error(`Error loading databases: ${getErrorMessage(error)}`);
+                        updateDatabaseFieldType(this.state.formComponents, [], "Error");
+                        this.updateState();
+                    }
+                },
+                this.state.readyToConnect,
+            );
+
             await this.updateItemVisibility();
             await this.handleAzureMFAEdits("azureAuthType");
             await this.handleAzureMFAEdits("accountId");
 
             await this.checkReadyToConnect();
-
-            // Auto-load databases when loading a saved/recent connection
-            if (this.canLoadDatabases(this.state)) {
-                await this.loadDatabasesForConnection(this.state);
-            }
 
             return state;
         });
@@ -296,10 +355,8 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
             return state;
         });
 
-        this.registerReducer("loadDatabases", async (state, _payload) => {
-            await this.loadDatabasesForConnection(state);
-
-            return state;
+        this.connection.onRequest(LoadDatabasesRequest.type, async () => {
+            return await this.loadDatabasesForConnection();
         });
 
         this.registerReducer("addFirewallRule", async (state, payload) => {
@@ -608,7 +665,6 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
     ): Promise<void> {
         await this.handleAzureMFAEdits(propertyName);
 
-        // Auto-load databases on blur for connection-relevant fields (only on blur, not on keystroke)
         if (updateValidation) {
             await this.handleConnectionFieldBlur(propertyName);
         }
@@ -1005,11 +1061,6 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
 
             await this.checkReadyToConnect();
 
-            // Auto-load databases when loading a connection to edit
-            if (this.canLoadDatabases(this.state)) {
-                await this.loadDatabasesForConnection(this.state);
-            }
-
             this.updateState();
         }
     }
@@ -1025,6 +1076,27 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
 
     private loadEmptyConnection() {
         this.state.connectionProfile = this.getDefaultConnection();
+
+        // Clear database dropdown when loading empty connection
+        updateDatabaseFieldType(
+            this.state.formComponents,
+            [],
+            "NotStarted",
+            async () => {
+                try {
+                    updateDatabaseFieldType(this.state.formComponents, [], "Loading");
+                    this.updateState();
+                    const databases = await this.loadDatabasesForConnection();
+                    updateDatabaseFieldType(this.state.formComponents, databases, "Loaded");
+                    this.updateState();
+                } catch (error) {
+                    this.logger.error(`Error loading databases: ${getErrorMessage(error)}`);
+                    updateDatabaseFieldType(this.state.formComponents, [], "Error");
+                    this.updateState();
+                }
+            },
+            false, // Not ready to connect when loading empty connection
+        );
     }
 
     private async initializeConnectionForDialog(
@@ -1380,15 +1452,10 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
         }
     }
 
-    private async loadDatabasesForConnection(state: ConnectionDialogWebviewState) {
-        // Always attempt to load - button will only be enabled when connection info is sufficient
-        state.loadingDatabasesStatus = ApiStatus.Loading;
-        this.updateState();
-
+    private async loadDatabasesForConnection(): Promise<string[]> {
         try {
             // Create a temporary connection to list databases
-            const tempConnection = this.createTempConnectionFromState(state);
-            const tempUri = `temp_${Date.now()}`;
+            const tempConnection = this.createTempConnectionFromState(this.state);
 
             // For Azure connections, refresh the token first
             if (
@@ -1418,52 +1485,31 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
             }
 
             // Try to connect temporarily to get the database list
-            await this._mainController.connectionManager.connect(tempUri, tempConnection);
+            const completeParams =
+                await this._mainController.connectionManager.connectDialog(tempConnection);
+
+            if (completeParams.errorMessage) {
+                return [];
+            }
 
             // List databases using the temporary connection
-            const databases = await this._mainController.connectionManager.listDatabases(tempUri);
+            const databases = await this._mainController.connectionManager.listDatabases(
+                completeParams.ownerUri,
+            );
 
             // Clean up the temporary connection
-            await this._mainController.connectionManager.disconnect(tempUri);
-
-            state.databases = databases;
-            state.loadingDatabasesStatus = ApiStatus.Loaded;
+            await this._mainController.connectionManager.disconnect(completeParams.ownerUri);
 
             this.logger.log(
                 `Loaded ${databases.length} databases for server ${tempConnection.server}`,
             );
+
+            return ["", ...databases];
         } catch (error) {
             const errorMessage = getErrorMessage(error);
             this.logger.error(
-                `Error loading databases for server ${state.connectionProfile.server}: ${errorMessage}`,
+                `Error loading databases for server ${this.state.connectionProfile.server}: ${errorMessage}`,
             );
-
-            state.databases = [];
-            state.loadingDatabasesStatus = ApiStatus.Error;
-
-            // Show user-friendly error message for common Azure authentication issues
-            if (
-                errorMessage.includes("expired tokens") ||
-                errorMessage.includes("re-authenticate")
-            ) {
-                state.formError =
-                    "Azure tokens have expired. Please sign in again to load databases.";
-            } else if (
-                errorMessage.includes("Login failed") ||
-                errorMessage.includes("authentication")
-            ) {
-                state.formError =
-                    "Authentication failed. Please check your credentials and try again.";
-            } else if (
-                errorMessage.includes("server was not found") ||
-                errorMessage.includes("network")
-            ) {
-                state.formError =
-                    "Cannot connect to server. Please check the server name and network connection.";
-            } else {
-                state.formError = `Failed to load databases: ${errorMessage}`;
-            }
-
             sendErrorEvent(
                 TelemetryViews.ConnectionDialog,
                 TelemetryActions.LoadConnectionProperties,
@@ -1471,42 +1517,9 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
                 true, // includeErrorMessage
                 undefined, // errorCode
                 undefined, // errorType
-                {
-                    operation: "loadDatabases",
-                    server: state.connectionProfile.server,
-                },
             );
+            throw error;
         }
-
-        this.updateState();
-    }
-
-    private canLoadDatabases(state: ConnectionDialogWebviewState): boolean {
-        const profile = state.connectionProfile;
-
-        // Must have server
-        if (!profile.server?.trim()) {
-            return false;
-        }
-
-        // For SQL Authentication, must have both user and password
-        if (profile.authenticationType === AuthenticationType.SqlLogin) {
-            if (!profile.user?.trim() || !profile.password?.trim()) {
-                return false;
-            }
-        }
-
-        // For Azure MFA, must have accountId and optionally tenantId (if multiple tenants exist)
-        if (profile.authenticationType === AuthenticationType.AzureMFA) {
-            if (!profile.accountId?.trim()) {
-                return false;
-            }
-            // tenantId is not always required - it's auto-selected if there's only one tenant
-        }
-
-        // Windows authentication doesn't need additional credentials
-        // Other auth types are also allowed to pass through
-        return true;
     }
 
     private async handleConnectionFieldBlur(
@@ -1527,16 +1540,57 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
             return;
         }
 
-        // Skip if already loading or if we can't load databases
-        if (
-            this.state.loadingDatabasesStatus === ApiStatus.Loading ||
-            !this.canLoadDatabases(this.state)
-        ) {
-            return;
-        }
-
         // Auto-load databases when connection fields are complete
-        await this.loadDatabasesForConnection(this.state);
+        try {
+            updateDatabaseFieldType(this.state.formComponents, [], "Loading");
+            this.updateState();
+
+            const databases = await this.loadDatabasesForConnection();
+            updateDatabaseFieldType(
+                this.state.formComponents,
+                databases,
+                "Loaded",
+                async () => {
+                    try {
+                        updateDatabaseFieldType(this.state.formComponents, [], "Loading");
+                        this.updateState();
+                        const newDatabases = await this.loadDatabasesForConnection();
+                        updateDatabaseFieldType(this.state.formComponents, newDatabases, "Loaded");
+                        this.updateState();
+                    } catch (error) {
+                        this.logger.error(`Error reloading databases: ${getErrorMessage(error)}`);
+                        updateDatabaseFieldType(this.state.formComponents, [], "Error");
+                        this.updateState();
+                    }
+                },
+                true,
+            );
+            this.updateState();
+        } catch (error) {
+            this.logger.error(`Error auto-loading databases: ${getErrorMessage(error)}`);
+            updateDatabaseFieldType(
+                this.state.formComponents,
+                [],
+                "Error",
+                async () => {
+                    try {
+                        updateDatabaseFieldType(this.state.formComponents, [], "Loading");
+                        this.updateState();
+                        const databases = await this.loadDatabasesForConnection();
+                        updateDatabaseFieldType(this.state.formComponents, databases, "Loaded");
+                        this.updateState();
+                    } catch (retryError) {
+                        this.logger.error(
+                            `Error retrying database load: ${getErrorMessage(retryError)}`,
+                        );
+                        updateDatabaseFieldType(this.state.formComponents, [], "Error");
+                        this.updateState();
+                    }
+                },
+                true,
+            );
+            this.updateState();
+        }
     }
 
     private createTempConnectionFromState(state: ConnectionDialogWebviewState): IConnectionInfo {
@@ -1556,30 +1610,6 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
             connectTimeout: state.connectionProfile.connectTimeout,
             commandTimeout: state.connectionProfile.commandTimeout,
         } as any; // Cast to any to avoid extensive interface matching
-    }
-
-    private updateDatabaseFieldType(state: ConnectionDialogWebviewState): void {
-        const components = state.formComponents;
-        if (components.database) {
-            updateDatabaseFieldTypeHelper(
-                components as any, // Safe cast - we know database field exists
-                state.databases,
-                state.loadingDatabasesStatus === ApiStatus.Loading
-                    ? "Loading"
-                    : state.loadingDatabasesStatus === ApiStatus.Error
-                      ? "Failed"
-                      : "Complete",
-                () => this.loadDatabasesForConnection(state),
-                this.canLoadDatabases(state),
-            );
-        }
-    }
-
-    // Override updateState to always update database field type
-    updateState(newState?: ConnectionDialogWebviewState) {
-        const stateToUse = newState || this.state;
-        this.updateDatabaseFieldType(stateToUse);
-        super.updateState(newState);
     }
 
     //#endregion

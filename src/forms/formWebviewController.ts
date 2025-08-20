@@ -123,8 +123,8 @@ export abstract class FormWebviewController<
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async afterSetFormProperty(
-        propertyName: keyof TForm,
-        updateValidation?: boolean,
+        _propertyName: keyof TForm,
+        _updateValidation?: boolean,
     ): Promise<void> {
         return;
     }

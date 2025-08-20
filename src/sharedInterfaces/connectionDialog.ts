@@ -43,8 +43,6 @@ export class ConnectionDialogWebviewState
     public loadingAzureSubscriptionsStatus: ApiStatus = ApiStatus.NotStarted;
     public azureServers: AzureSqlServerInfo[] = [];
     public loadingAzureServersStatus: ApiStatus = ApiStatus.NotStarted;
-    public databases: string[] = [];
-    public loadingDatabasesStatus: ApiStatus = ApiStatus.NotStarted;
     public savedConnections: IConnectionDialogProfile[] = [];
     public recentConnections: IConnectionDialogProfile[] = [];
     public connectionStatus: ApiStatus = ApiStatus.NotStarted;
@@ -167,6 +165,7 @@ export interface ConnectionDialogContextProps
     openConnectionStringDialog: () => void;
     signIntoAzureForFirewallRule: () => void;
     signIntoAzureForBrowse: () => void;
+    loadDatabases: () => Promise<string[]>;
 
     // Request handlers
     getConnectionDisplayName: (connection: IConnectionDialogProfile) => Promise<string>;
@@ -210,7 +209,6 @@ export interface ConnectionDialogReducers extends FormReducers<IConnectionDialog
     loadAzureServers: {
         subscriptionId: string;
     };
-    loadDatabases: {};
     addFirewallRule: {
         firewallRuleSpec: FirewallRuleSpec;
     };
@@ -238,4 +236,8 @@ export namespace GetConnectionDisplayNameRequest {
     export const type = new RequestType<IConnectionDialogProfile, string, void>(
         "getConnectionDisplayName",
     );
+}
+
+export namespace LoadDatabasesRequest {
+    export const type = new RequestType<void, string[], void>("loadDatabases");
 }

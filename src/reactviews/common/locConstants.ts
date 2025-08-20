@@ -262,6 +262,7 @@ export class LocConstants {
             signIntoAzureToBrowse: l10n.t(
                 "You must be signed into Azure in order to browse SQL databases.",
             ),
+            loadDatabases: l10n.t("Load Databases"),
         };
     }
 
