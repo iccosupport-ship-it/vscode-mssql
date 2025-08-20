@@ -684,7 +684,6 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
 
     override async afterSetFormProperty(
         propertyName: keyof IConnectionDialogProfile,
-        _updateValidation?: boolean,
     ): Promise<void> {
         await this.handleAzureMFAEdits(propertyName);
     }
