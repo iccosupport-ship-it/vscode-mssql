@@ -1556,7 +1556,7 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
                 `Loaded ${databases.length} databases for server ${tempConnection.server}`,
             );
 
-            return ["", ...databases];
+            return databases;
         } catch (error) {
             const errorMessage = getErrorMessage(error);
             this.logger.error(
@@ -1688,10 +1688,14 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
         // If we have databases available, make it a searchable dropdown
         if (databases && databases.length > 0) {
             databaseField.type = FormItemType.SearchableDropdown;
-            databaseField.options = databases.map((db) => ({
-                displayName: db,
-                value: db,
-            }));
+            // Add an empty option first to allow users to select "no database"
+            databaseField.options = [
+                { displayName: "(default)", value: "" },
+                ...databases.map((db) => ({
+                    displayName: db,
+                    value: db,
+                })),
+            ];
             databaseField.searchBoxPlaceholder = "Search databases...";
             databaseField.placeholder = undefined;
         } else {
