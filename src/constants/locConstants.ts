@@ -654,6 +654,9 @@ export class ConnectionDialog {
     public static createConnectionGroup = l10n.t("+ Create Connection Group");
     public static selectConnectionGroup = l10n.t("Select a connection group");
     public static searchConnectionGroups = l10n.t("Search connection groups");
+    public static loadDatabases = l10n.t("Load Databases");
+    public static loading = l10n.t("Loading...");
+    public static searchDatabase = l10n.t("Search databases...");
 
     public static errorLoadingAzureDatabases(subscriptionName: string, subscriptionId: string) {
         return l10n.t({

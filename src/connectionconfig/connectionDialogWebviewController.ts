@@ -173,53 +173,7 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
         );
 
         // Configure the database field with load databases functionality
-        this.updateDatabaseFieldType(
-            [],
-            "NotStarted",
-            async () => {
-                try {
-                    // Show loading state immediately
-                    this.updateDatabaseFieldType([], "Loading");
-                    this.updateState();
-
-                    const databases = await this.loadDatabasesForConnection();
-                    // Update the database field with the loaded databases
-                    this.updateDatabaseFieldType(
-                        databases,
-                        "Loaded",
-                        async () => {
-                            // Show loading state for reload
-                            this.updateDatabaseFieldType([], "Loading");
-                            this.updateState();
-
-                            const newDatabases = await this.loadDatabasesForConnection();
-                            this.updateDatabaseFieldType(newDatabases, "Loaded");
-                            this.updateState();
-                        },
-                        true,
-                    );
-                    this.updateState();
-                } catch (error) {
-                    this.logger.error(`Error loading databases: ${getErrorMessage(error)}`);
-                    this.updateDatabaseFieldType(
-                        [],
-                        "Error",
-                        async () => {
-                            // Show loading state for retry
-                            this.updateDatabaseFieldType([], "Loading");
-                            this.updateState();
-
-                            const databases = await this.loadDatabasesForConnection();
-                            this.updateDatabaseFieldType(databases, "Loaded");
-                            this.updateState();
-                        },
-                        true,
-                    );
-                    this.updateState();
-                }
-            },
-            this.state.readyToConnect,
-        );
+        this.setupDatabaseFieldWithLoader(this.state.readyToConnect);
 
         this.state.connectionComponents = {
             mainOptions: [...ConnectionDialogWebviewController.mainOptions],
@@ -316,52 +270,7 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
             this.state.selectedInputMode = ConnectionInputMode.Parameters;
 
             // Clear database dropdown when loading a new connection
-            this.updateDatabaseFieldType(
-                [],
-                "NotStarted",
-                async () => {
-                    try {
-                        // Show loading state immediately
-                        this.updateDatabaseFieldType([], "Loading");
-                        this.updateState();
-
-                        const databases = await this.loadDatabasesForConnection();
-                        this.updateDatabaseFieldType(
-                            databases,
-                            "Loaded",
-                            async () => {
-                                // Show loading state for reload
-                                this.updateDatabaseFieldType([], "Loading");
-                                this.updateState();
-
-                                const newDatabases = await this.loadDatabasesForConnection();
-                                this.updateDatabaseFieldType(newDatabases, "Loaded");
-                                this.updateState();
-                            },
-                            true,
-                        );
-                        this.updateState();
-                    } catch (error) {
-                        this.logger.error(`Error loading databases: ${getErrorMessage(error)}`);
-                        this.updateDatabaseFieldType(
-                            [],
-                            "Error",
-                            async () => {
-                                // Show loading state for retry
-                                this.updateDatabaseFieldType([], "Loading");
-                                this.updateState();
-
-                                const databases = await this.loadDatabasesForConnection();
-                                this.updateDatabaseFieldType(databases, "Loaded");
-                                this.updateState();
-                            },
-                            true,
-                        );
-                        this.updateState();
-                    }
-                },
-                this.state.readyToConnect,
-            );
+            this.setupDatabaseFieldWithLoader(this.state.readyToConnect);
 
             await this.updateItemVisibility();
             await this.handleAzureMFAEdits("azureAuthType");
@@ -1096,52 +1005,7 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
         this.state.connectionProfile = this.getDefaultConnection();
 
         // Clear database dropdown when loading empty connection
-        this.updateDatabaseFieldType(
-            [],
-            "NotStarted",
-            async () => {
-                try {
-                    // Show loading state immediately
-                    this.updateDatabaseFieldType([], "Loading");
-                    this.updateState();
-
-                    const databases = await this.loadDatabasesForConnection();
-                    this.updateDatabaseFieldType(
-                        databases,
-                        "Loaded",
-                        async () => {
-                            // Show loading state for reload
-                            this.updateDatabaseFieldType([], "Loading");
-                            this.updateState();
-
-                            const newDatabases = await this.loadDatabasesForConnection();
-                            this.updateDatabaseFieldType(newDatabases, "Loaded");
-                            this.updateState();
-                        },
-                        true,
-                    );
-                    this.updateState();
-                } catch (error) {
-                    this.logger.error(`Error loading databases: ${getErrorMessage(error)}`);
-                    this.updateDatabaseFieldType(
-                        [],
-                        "Error",
-                        async () => {
-                            // Show loading state for retry
-                            this.updateDatabaseFieldType([], "Loading");
-                            this.updateState();
-
-                            const databases = await this.loadDatabasesForConnection();
-                            this.updateDatabaseFieldType(databases, "Loaded");
-                            this.updateState();
-                        },
-                        true,
-                    );
-                    this.updateState();
-                }
-            },
-            false, // Not ready to connect when loading empty connection
-        );
+        this.setupDatabaseFieldWithLoader(false); // Not ready to connect when loading empty connection
     }
 
     private async initializeConnectionForDialog(
@@ -1647,9 +1511,59 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
         return toProfile;
     }
 
+    private setupDatabaseFieldWithLoader(canLoadDatabases: boolean = true): void {
+        this.updateDatabaseFieldType(
+            [],
+            ApiStatus.NotStarted,
+            async () => {
+                try {
+                    // Show loading state immediately
+                    this.updateDatabaseFieldType([], ApiStatus.Loading);
+                    this.updateState();
+
+                    const databases = await this.loadDatabasesForConnection();
+                    // Update the database field with the loaded databases
+                    this.updateDatabaseFieldType(
+                        databases,
+                        ApiStatus.Loaded,
+                        async () => {
+                            // Show loading state for reload
+                            this.updateDatabaseFieldType([], ApiStatus.Loading);
+                            this.updateState();
+
+                            const newDatabases = await this.loadDatabasesForConnection();
+                            this.updateDatabaseFieldType(newDatabases, ApiStatus.Loaded);
+                            this.updateState();
+                        },
+                        true,
+                    );
+                    this.updateState();
+                } catch (error) {
+                    this.logger.error(`Error loading databases: ${getErrorMessage(error)}`);
+                    this.updateDatabaseFieldType(
+                        [],
+                        ApiStatus.Error,
+                        async () => {
+                            // Show loading state for retry
+                            this.updateDatabaseFieldType([], ApiStatus.Loading);
+                            this.updateState();
+
+                            const databases = await this.loadDatabasesForConnection();
+                            this.updateDatabaseFieldType(databases, ApiStatus.Loaded);
+                            this.updateState();
+                        },
+                        true,
+                    );
+                    this.updateState();
+                }
+            },
+            canLoadDatabases,
+        );
+    }
+
     private updateDatabaseFieldType(
         databases: string[],
-        loadingStatus: string,
+        loadingStatus: ApiStatus,
         loadDatabasesCallback?: () => void,
         canLoadDatabases?: boolean,
     ): void {
@@ -1662,7 +1576,7 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
         if (!databaseField.actionButtons || databaseField.actionButtons.length === 0) {
             databaseField.actionButtons = [
                 {
-                    label: "Load databases",
+                    label: Loc.loadDatabases,
                     id: "loadDatabases",
                     callback: loadDatabasesCallback || (() => {}),
                 },
@@ -1672,14 +1586,14 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
         // Update button label and state based on loading status and connection readiness
         if (databaseField.actionButtons && databaseField.actionButtons.length > 0) {
             const refreshButton = databaseField.actionButtons[0];
-            if (loadingStatus === "Loading") {
-                refreshButton.label = "Loading...";
+            if (loadingStatus === ApiStatus.Loading) {
+                refreshButton.label = Loc.loading;
                 refreshButton.hidden = false;
             } else if (canLoadDatabases === false) {
-                refreshButton.label = "Load databases";
+                refreshButton.label = Loc.loadDatabases;
                 refreshButton.hidden = true; // Hide button when can't connect
             } else {
-                refreshButton.label = "Load databases";
+                refreshButton.label = Loc.loadDatabases;
                 refreshButton.hidden = false;
             }
         }
@@ -1695,29 +1609,15 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
                     value: db,
                 })),
             ];
-            databaseField.searchBoxPlaceholder = "Search databases...";
+            databaseField.searchBoxPlaceholder = Loc.searchDatabase;
             databaseField.placeholder = undefined;
         } else {
             // Otherwise, keep it as a text input
             databaseField.type = FormItemType.Input;
             databaseField.options = undefined;
             databaseField.searchBoxPlaceholder = undefined;
-
-            // Show appropriate placeholder
-            if (loadingStatus === "Loading") {
-                databaseField.placeholder = "Loading databases...";
-            } else if (loadingStatus === "Failed") {
-                databaseField.placeholder = "Enter database name (load failed)";
-            } else if (canLoadDatabases === false) {
-                databaseField.placeholder =
-                    "Enter database name (need server + credentials to load)";
-            } else {
-                databaseField.placeholder = "Enter database name or click Load databases";
-            }
         }
     }
-
-    //#endregion
 
     //#endregion
 }
