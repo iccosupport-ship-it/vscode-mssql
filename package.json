@@ -1943,7 +1943,7 @@
                 },
                 "mssql.queryResult.switchResultTabWithActiveEditor": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "%mssql.queryResult.switchResultTabWithActiveEditor%"
                 }
             }
