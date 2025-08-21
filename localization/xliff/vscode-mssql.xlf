@@ -3390,6 +3390,9 @@
     <trans-unit id="mssql.stopContainer">
       <source xml:lang="en">Stop Container</source>
     </trans-unit>
+    <trans-unit id="mssql.queryResult.switchResultTabWithActiveEditor">
+      <source xml:lang="en">Switch to the result tab of the active editor when executing a query.</source>
+    </trans-unit>
     <trans-unit id="mssql.walkthroughs.getStarted.createNewTable.altText">
       <source xml:lang="en">Table Designer</source>
     </trans-unit>
