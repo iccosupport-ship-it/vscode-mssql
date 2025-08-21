@@ -350,7 +350,7 @@ export function registerCommonRequestHandlers(
         ) {
             state = (await createExecutionPlanGraphs(
                 state,
-                webviewViewController.getExecutionPlanService(),
+                webviewViewController.executionPlanService,
                 Object.values(currentResultState.executionPlanState.xmlPlans),
                 "QueryResults",
             )) as qr.QueryResultWebviewState;

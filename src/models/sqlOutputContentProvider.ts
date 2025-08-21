@@ -19,12 +19,16 @@ import { QueryResultWebviewController } from "../queryResult/queryResultWebViewC
 import { IMessage, QueryResultPaneTabs } from "../sharedInterfaces/queryResult";
 import { TelemetryActions, TelemetryViews } from "../sharedInterfaces/telemetry";
 import * as qr from "../sharedInterfaces/queryResult";
+import UntitledSqlDocumentService from "../controllers/untitledSqlDocumentService";
+import { StateChangeNotification } from "../sharedInterfaces/webview";
+import { ExecutionPlanService } from "../services/executionPlanService";
 // tslint:disable-next-line:no-require-imports
 const pd = require("pretty-data").pd;
 
+const MESSAGE_INTERVAL_IN_MS = 300;
+
 // holds information about the state of a query runner
 export class QueryRunnerState {
-    timeout: NodeJS.Timer;
     flaggedForDeletion: boolean;
     listeners: vscode.Disposable[];
     constructor(public queryRunner: QueryRunner) {
@@ -43,15 +47,66 @@ class ResultsConfig implements Interfaces.IResultsConfig {
 export class SqlOutputContentProvider {
     private _queryResultsMap: Map<string, QueryRunnerState> = new Map<string, QueryRunnerState>();
     private _queryResultWebviewController: QueryResultWebviewController;
-    private _executionPlanOptions: ExecutionPlanOptions = {};
+    public actualPlanStatuses: string[] = [];
+    private _lastSendMessageTime: number;
 
     constructor(
+        private _context: vscode.ExtensionContext,
         private _statusView: StatusView,
         private _vscodeWrapper: VscodeWrapper,
+        private _untitledSqlDocumentService: UntitledSqlDocumentService,
+        private _executionPlanService: ExecutionPlanService,
     ) {
         if (!_vscodeWrapper) {
             this._vscodeWrapper = new VscodeWrapper();
         }
+
+        this._queryResultWebviewController = new QueryResultWebviewController(
+            this._context,
+            this._vscodeWrapper,
+            this._untitledSqlDocumentService,
+            this._executionPlanService,
+        );
+
+        this._queryResultWebviewController.setSqlOutputContentProvider(this);
+
+        this._context.subscriptions.push(
+            vscode.window.registerWebviewViewProvider(
+                "queryResult",
+                this._queryResultWebviewController,
+            ),
+        );
+
+        // Query Results copy messages command
+        this._context.subscriptions.push(
+            vscode.commands.registerCommand(Constants.cmdCopyAll, async (context) => {
+                const uri = context.uri;
+                await this._queryResultWebviewController.copyAllMessagesToClipboard(uri);
+            }),
+        );
+
+        // Query Results copy messages command
+        this._context.subscriptions.push(
+            vscode.commands.registerCommand(Constants.cmdEnableActualPlan, async (context) => {
+                this.onToggleActualPlan(true);
+            }),
+        );
+
+        // Query Results copy messages command
+        this._context.subscriptions.push(
+            vscode.commands.registerCommand(Constants.cmdDisableActualPlan, async (context) => {
+                this.onToggleActualPlan(false);
+            }),
+        );
+
+        this._context.subscriptions.push(
+            vscode.commands.registerCommand(
+                Constants.cmdrevealQueryResultPanel,
+                (uri: vscode.Uri) => {
+                    this.revealQueryResultPanel(uri.toString(true));
+                },
+            ),
+        );
     }
 
     public setQueryResultWebviewController(
@@ -194,7 +249,17 @@ export class SqlOutputContentProvider {
             title,
             async (queryRunner: QueryRunner) => {
                 if (queryRunner) {
-                    await queryRunner.runQuery(selection, executionPlanOptions, promise);
+                    await queryRunner.runQuery(
+                        selection,
+                        {
+                            includeActualExecutionPlanXml:
+                                executionPlanOptions?.includeActualExecutionPlanXml ??
+                                this.actualPlanStatuses.includes(uri),
+                            includeEstimatedExecutionPlanXml:
+                                executionPlanOptions?.includeEstimatedExecutionPlanXml ?? false,
+                        },
+                        promise,
+                    );
                 }
             },
             executionPlanOptions,
@@ -238,16 +303,14 @@ export class SqlOutputContentProvider {
             uri,
             title,
         );
-        if (executionPlanOptions) {
-            this._executionPlanOptions = executionPlanOptions;
-        } else {
-            this._executionPlanOptions = {};
-        }
+
         this._queryResultWebviewController.addQueryResultState(
             uri,
             title,
-            this.getIsExecutionPlan(),
-            this._executionPlanOptions?.includeActualExecutionPlanXml ?? false,
+            executionPlanOptions?.includeEstimatedExecutionPlanXml ||
+                this.actualPlanStatuses.includes(uri) ||
+                executionPlanOptions?.includeActualExecutionPlanXml,
+            this.actualPlanStatuses.includes(uri),
         );
         if (queryRunner) {
             void queryCallback(queryRunner);
@@ -278,12 +341,6 @@ export class SqlOutputContentProvider {
             queryRunner = new QueryRunner(uri, title, statusView ? statusView : this._statusView);
 
             const startListener = queryRunner.onStart(async (_panelUri) => {
-                this._queryResultWebviewController.addQueryResultState(
-                    queryRunner.uri,
-                    title,
-                    this.getIsExecutionPlan(),
-                    this._executionPlanOptions?.includeActualExecutionPlanXml ?? false,
-                );
                 this._queryResultWebviewController.getQueryResultState(
                     queryRunner.uri,
                 ).tabStates.resultPaneTab = QueryResultPaneTabs.Messages;
@@ -347,14 +404,17 @@ export class SqlOutputContentProvider {
                     .messages.push(message);
 
                 // Set state for messages at fixed intervals to avoid spamming the webview
-                this._queryResultWebviewController.getQueryResultState(
-                    queryRunner.uri,
-                ).tabStates.resultPaneTab = QueryResultPaneTabs.Messages;
-                this._queryResultWebviewController.state =
-                    this._queryResultWebviewController.getQueryResultState(queryRunner.uri);
-                this._queryResultWebviewController.updatePanelState(queryRunner.uri);
-                if (!this._queryResultWebviewController.hasPanel(queryRunner.uri)) {
-                    await this._queryResultWebviewController.revealToForeground();
+                if (this._lastSendMessageTime < Date.now() - MESSAGE_INTERVAL_IN_MS) {
+                    this._queryResultWebviewController.getQueryResultState(
+                        queryRunner.uri,
+                    ).tabStates.resultPaneTab = QueryResultPaneTabs.Messages;
+                    this._queryResultWebviewController.state =
+                        this._queryResultWebviewController.getQueryResultState(queryRunner.uri);
+                    this._queryResultWebviewController.updatePanelState(queryRunner.uri);
+                    if (!this._queryResultWebviewController.hasPanel(queryRunner.uri)) {
+                        await this._queryResultWebviewController.revealToForeground();
+                    }
+                    this._lastSendMessageTime = Date.now();
                 }
             });
             const onCompleteListener = queryRunner.onComplete(async (e) => {
@@ -470,10 +530,24 @@ export class SqlOutputContentProvider {
         this._queryResultsMap.delete(untitledResultsUri);
     }
 
-    public updateQueryRunnerUri(oldUri: string, newUri: string): void {
+    public async updateQueryRunnerUri(oldUri: string, newUri: string): Promise<void> {
         let queryRunner = this.getQueryRunner(oldUri);
         if (queryRunner) {
             queryRunner.updateQueryRunnerUri(oldUri, newUri);
+        }
+
+        let state = this._queryResultWebviewController.getQueryResultState(oldUri);
+        if (state) {
+            state.uri = newUri;
+
+            await this._queryResultWebviewController.sendNotification(
+                StateChangeNotification.type<qr.QueryResultWebviewState>(),
+                state,
+            );
+
+            //Update the URI in the query result webview state
+            this._queryResultWebviewController.setQueryResultState(newUri, state);
+            this._queryResultWebviewController.deleteQueryResultState(oldUri);
         }
     }
 
@@ -484,13 +558,26 @@ export class SqlOutputContentProvider {
      * @param doc   The document that was closed
      */
     public onDidCloseTextDocument(doc: vscode.TextDocument): void {
+        const closedDocumentUri = doc.uri.toString(true);
         for (let [_key, value] of this._queryResultsMap.entries()) {
             // closes text document related to a results window we are holding
-            if (doc.uri.toString(true) === value.queryRunner.uri) {
+            if (closedDocumentUri === value.queryRunner.uri) {
                 value.flaggedForDeletion = true;
             }
         }
+
+        if (this.actualPlanStatuses.includes(closedDocumentUri)) {
+            this.actualPlanStatuses = this.actualPlanStatuses.filter(
+                (uri) => uri !== closedDocumentUri,
+            );
+            vscode.commands.executeCommand(
+                "setContext",
+                "mssql.executionPlan.urisWithActualPlanEnabled",
+                this.actualPlanStatuses,
+            );
+        }
     }
+    qu;
 
     public removeRunner(uri: string): void {
         let queryRunnerState = this._queryResultsMap.get(uri);
@@ -569,11 +656,24 @@ export class SqlOutputContentProvider {
         }
     }
 
-    public getIsExecutionPlan(): boolean {
-        return (
-            (this._executionPlanOptions?.includeEstimatedExecutionPlanXml ?? false) ||
-            (this._executionPlanOptions?.includeActualExecutionPlanXml ?? false)
-        );
+    public revealQueryResultPanel(uri: string): void {
+        const openInNewTabConfig = vscode.workspace
+            .getConfiguration()
+            .get(Constants.configOpenQueryResultsInTabByDefault);
+
+        if (openInNewTabConfig) {
+            this._queryResultWebviewController.revealPanel(uri);
+        }
+
+        const isContainedInWebviewView =
+            this._queryResultWebviewController.getQueryResultState(uri);
+        if (isContainedInWebviewView && !this._queryResultWebviewController.hasPanel(uri)) {
+            vscode.commands.executeCommand("queryResult.focus", {
+                preserveFocus: true,
+            });
+        } else {
+            this._queryResultWebviewController.revealPanel(uri);
+        }
     }
 
     /**
@@ -588,6 +688,28 @@ export class SqlOutputContentProvider {
             });
         }
         return Promise.resolve(false);
+    }
+
+    public onToggleActualPlan(isEnable: boolean): void {
+        const uri = this._vscodeWrapper.activeTextEditorUri;
+        let actualPlanStatuses = this.actualPlanStatuses;
+
+        // adds the current uri to the list of uris with actual plan enabled
+        // or removes the uri if the user is disabling it
+        if (isEnable && !actualPlanStatuses.includes(uri)) {
+            actualPlanStatuses.push(uri);
+        } else {
+            this.actualPlanStatuses = actualPlanStatuses.filter((statusUri) => statusUri != uri);
+        }
+
+        // sets the vscode context variable associated with the
+        // actual plan statuses; this is used in the package.json to
+        // know when to change the enabling/disabling icon
+        void vscode.commands.executeCommand(
+            "setContext",
+            "mssql.executionPlan.urisWithActualPlanEnabled",
+            this.actualPlanStatuses,
+        );
     }
 
     // PRIVATE HELPERS /////////////////////////////////////////////////////

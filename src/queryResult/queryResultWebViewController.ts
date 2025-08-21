@@ -14,7 +14,6 @@ import { TelemetryActions, TelemetryViews } from "../sharedInterfaces/telemetry"
 import { randomUUID } from "crypto";
 import { ApiStatus } from "../sharedInterfaces/webview";
 import UntitledSqlDocumentService from "../controllers/untitledSqlDocumentService";
-import { ExecutionPlanService } from "../services/executionPlanService";
 import VscodeWrapper from "../controllers/vscodeWrapper";
 import { QueryResultWebviewPanelController } from "./queryResultWebviewPanelController";
 import {
@@ -24,6 +23,7 @@ import {
     registerCommonRequestHandlers,
 } from "./utils";
 import { QueryResult } from "../constants/locConstants";
+import { ExecutionPlanService } from "../services/executionPlanService";
 
 export class QueryResultWebviewController extends ReactWebviewViewController<
     qr.QueryResultWebviewState,
@@ -39,13 +39,12 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
     private _correlationId: string = randomUUID();
     private _selectionSummaryStatusBarItem: vscode.StatusBarItem =
         vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 2);
-    public actualPlanStatuses: string[] = [];
 
     constructor(
         context: vscode.ExtensionContext,
         vscodeWrapper: VscodeWrapper,
-        private executionPlanService: ExecutionPlanService,
         private untitledSqlDocumentService: UntitledSqlDocumentService,
+        public executionPlanService: ExecutionPlanService,
     ) {
         super(context, vscodeWrapper, "queryResult", "queryResult", {
             resultSetSummaries: {},
@@ -386,14 +385,6 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
 
     public getSqlOutputContentProvider(): SqlOutputContentProvider {
         return this._sqlOutputContentProvider;
-    }
-
-    public setExecutionPlanService(service: ExecutionPlanService): void {
-        this.executionPlanService = service;
-    }
-
-    public getExecutionPlanService(): ExecutionPlanService {
-        return this.executionPlanService;
     }
 
     public setUntitledDocumentService(service: UntitledSqlDocumentService): void {
