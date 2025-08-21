@@ -18,6 +18,7 @@ import VscodeWrapper from "../controllers/vscodeWrapper";
 import { QueryResultWebviewPanelController } from "./queryResultWebviewPanelController";
 import {
     getNewResultPaneViewColumn,
+    isOpenQueryResultsInTabByDefaultEnabled,
     messageToString,
     recordLength,
     registerCommonRequestHandlers,
@@ -144,12 +145,6 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         this.registerRpcHandlers();
     }
 
-    private get isOpenQueryResultsInTabByDefaultEnabled(): boolean {
-        return this.vscodeWrapper
-            .getConfiguration()
-            .get(Constants.configOpenQueryResultsInTabByDefault);
-    }
-
     private get isDefaultQueryResultToDocumentDoNotShowPromptEnabled(): boolean {
         return this.vscodeWrapper
             .getConfiguration()
@@ -158,7 +153,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
 
     private get shouldShowDefaultQueryResultToDocumentPrompt(): boolean {
         return (
-            !this.isOpenQueryResultsInTabByDefaultEnabled &&
+            !isOpenQueryResultsInTabByDefaultEnabled() &&
             !this.isDefaultQueryResultToDocumentDoNotShowPromptEnabled
         );
     }

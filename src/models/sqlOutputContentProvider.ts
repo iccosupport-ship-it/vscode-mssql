@@ -22,6 +22,7 @@ import * as qr from "../sharedInterfaces/queryResult";
 import UntitledSqlDocumentService from "../controllers/untitledSqlDocumentService";
 import { StateChangeNotification } from "../sharedInterfaces/webview";
 import { ExecutionPlanService } from "../services/executionPlanService";
+import { isOpenQueryResultsInTabByDefaultEnabled } from "../queryResult/utils";
 // tslint:disable-next-line:no-require-imports
 const pd = require("pretty-data").pd;
 
@@ -61,6 +62,11 @@ export class SqlOutputContentProvider {
             this._vscodeWrapper = new VscodeWrapper();
         }
 
+        /**
+         * TODO: aaskhan
+         * Remove query results management code from queryResultwebviewController so
+         * we don't have to initialize it when open in new tab is enabled.
+         */
         this._queryResultWebviewController = new QueryResultWebviewController(
             this._context,
             this._vscodeWrapper,
@@ -70,12 +76,14 @@ export class SqlOutputContentProvider {
 
         this._queryResultWebviewController.setSqlOutputContentProvider(this);
 
-        this._context.subscriptions.push(
-            vscode.window.registerWebviewViewProvider(
-                "queryResult",
-                this._queryResultWebviewController,
-            ),
-        );
+        if (isOpenQueryResultsInTabByDefaultEnabled()) {
+            this._context.subscriptions.push(
+                vscode.window.registerWebviewViewProvider(
+                    "queryResult",
+                    this._queryResultWebviewController,
+                ),
+            );
+        }
 
         // Query Results copy messages command
         this._context.subscriptions.push(
