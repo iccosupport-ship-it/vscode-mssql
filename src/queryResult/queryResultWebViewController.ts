@@ -81,6 +81,13 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
                             this.getInMemoryDataProcessingThresholdConfig(),
                     };
                 }
+
+                const switchResultTabWithActiveEditor = vscode.workspace
+                    .getConfiguration()
+                    .get(Constants.configQueryResultSwitchResultTabWithActiveEditor);
+                if (switchResultTabWithActiveEditor) {
+                    this.revealPanel(uri);
+                }
             }),
         );
 
@@ -331,10 +338,17 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         if (this._queryResultWebviewPanelControllerMap.has(uri)) {
             this._queryResultWebviewPanelControllerMap.delete(uri);
         }
+        this._sqlOutputContentProvider.removeRunner(uri);
     }
 
     public hasPanel(uri: string): boolean {
         return this._queryResultWebviewPanelControllerMap.has(uri);
+    }
+
+    public revealPanel(uri: string): void {
+        if (this.hasPanel(uri)) {
+            this._queryResultWebviewPanelControllerMap.get(uri).revealToForeground();
+        }
     }
 
     public getQueryResultState(uri: string): qr.QueryResultWebviewState {

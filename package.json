@@ -1570,7 +1570,7 @@
                     ],
                     "enumDescriptions": [
                         "UTF-8 (Unicode)",
-                        "UTF-16 Little Endian", 
+                        "UTF-16 Little Endian",
                         "UTF-16 Big Endian",
                         "ASCII",
                         "Latin-1 (ISO 8859-1)",
@@ -1940,6 +1940,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "%mssql.connectionManagement.rememberPasswordsUntilRestart%"
+                },
+                "mssql.queryResult.switchResultTabWithActiveEditor": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "%mssql.queryResult.switchResultTabWithActiveEditor%"
                 }
             }
         },
