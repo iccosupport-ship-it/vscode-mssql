@@ -21,6 +21,7 @@ import { HybridDataProvider } from "./table/hybridDataProvider";
 import { hyperLinkFormatter, textFormatter, DBCellValue, escape } from "./table/formatters";
 import {
     DbCellValue,
+    QueryResultContextMenuActions,
     QueryResultReducers,
     QueryResultWebviewState,
     ResultSetSummary,
@@ -296,7 +297,7 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         setIsContextMenuOpen(true);
     };
 
-    const handleMenuItemClick = async (action: string) => {
+    const handleMenuItemClick = async (action: QueryResultContextMenuActions) => {
         setIsContextMenuOpen(false); // Close menu first
         if (tableRef.current) {
             await tableRef.current.executeContextMenuAction(action);
@@ -339,7 +340,18 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
 
     const handleHeaderFilterClear = async () => {
         if (headerFilterActions && headerFilterPosition) {
+            // Apply the clear action first
             await headerFilterActions.onClear(headerFilterPosition.column);
+
+            // Refresh the filter data to get the full dataset
+            if (headerFilterActions.refreshFilterData) {
+                const refreshedData = await headerFilterActions.refreshFilterData();
+                setFilteredData(refreshedData);
+            }
+
+            // Reset search term and clear selections
+            setSearchTerm("");
+            setSelectedFilters(new Set());
         }
         handleHeaderFilterClose();
     };
@@ -587,28 +599,34 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
                             <MenuItem
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    void handleMenuItemClick("select-all");
+                                    void handleMenuItemClick(
+                                        QueryResultContextMenuActions.SelectAll,
+                                    );
                                 }}>
                                 {locConstants.queryResult.selectAll}
                             </MenuItem>
                             <MenuItem
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    void handleMenuItemClick("copy");
+                                    void handleMenuItemClick(QueryResultContextMenuActions.Copy);
                                 }}>
                                 {locConstants.queryResult.copy}
                             </MenuItem>
                             <MenuItem
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    void handleMenuItemClick("copy-with-headers");
+                                    void handleMenuItemClick(
+                                        QueryResultContextMenuActions.CopyWithHeader,
+                                    );
                                 }}>
                                 {locConstants.queryResult.copyWithHeaders}
                             </MenuItem>
                             <MenuItem
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    void handleMenuItemClick("copy-headers");
+                                    void handleMenuItemClick(
+                                        QueryResultContextMenuActions.CopyHeaders,
+                                    );
                                 }}>
                                 {locConstants.queryResult.copyHeaders}
                             </MenuItem>
@@ -621,14 +639,18 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
                                         <MenuItem
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                void handleMenuItemClick("copy-as-csv");
+                                                void handleMenuItemClick(
+                                                    QueryResultContextMenuActions.CopyAsCsv,
+                                                );
                                             }}>
                                             CSV
                                         </MenuItem>
                                         <MenuItem
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                void handleMenuItemClick("copy-as-json");
+                                                void handleMenuItemClick(
+                                                    QueryResultContextMenuActions.CopyAsJson,
+                                                );
                                             }}>
                                             JSON
                                         </MenuItem>

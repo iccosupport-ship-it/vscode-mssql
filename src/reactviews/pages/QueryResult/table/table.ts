@@ -23,6 +23,7 @@ import {
 } from "./plugins/headerFilter.plugin";
 import {
     ColumnFilterState,
+    QueryResultContextMenuActions,
     GetColumnWidthsRequest,
     GetFiltersRequest,
     GetGridScrollPositionRequest,
@@ -709,8 +710,8 @@ export class Table<T extends Slick.SlickData> implements IThemable {
         return this._tableContainer;
     }
 
-    public async executeContextMenuAction(action: string): Promise<void> {
-        await this.contextMenu.executeMenuAction(action);
+    public async executeContextMenuAction(action: QueryResultContextMenuActions): Promise<void> {
+        await this.contextMenu.handleMenuAction(action);
     }
 }
 

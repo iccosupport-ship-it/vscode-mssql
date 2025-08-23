@@ -431,3 +431,12 @@ export namespace GetGridPaneScrollPositionRequest {
         void
     >("getGridPaneScrollPosition");
 }
+
+export enum QueryResultContextMenuActions {
+    SelectAll = "SelectAll",
+    Copy = "Copy",
+    CopyWithHeader = "CopyWithHeader",
+    CopyHeaders = "CopyHeaders",
+    CopyAsCsv = "CopyAsCsv",
+    CopyAsJson = "CopyAsJson",
+}

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+    QueryResultContextMenuActions,
     CopyAsCsvRequest,
     CopyAsJsonRequest,
     CopyHeadersRequest,
@@ -58,10 +59,6 @@ export class ContextMenu<T extends Slick.SlickData> {
 
     public destroy() {
         this.handler.unsubscribeAll();
-    }
-
-    public async executeMenuAction(action: string): Promise<void> {
-        await this.handleMenuAction(action);
     }
 
     private headerClickHandler(e: Event): void {
@@ -125,7 +122,7 @@ export class ContextMenu<T extends Slick.SlickData> {
         });
     }
 
-    private async handleMenuAction(action: string): Promise<void> {
+    public async handleMenuAction(action: QueryResultContextMenuActions): Promise<void> {
         let selectedRanges = this.grid.getSelectionModel().getSelectedRanges();
         let selection = tryCombineSelectionsForResults(selectedRanges);
 
@@ -135,7 +132,7 @@ export class ContextMenu<T extends Slick.SlickData> {
         }
 
         switch (action) {
-            case "select-all":
+            case QueryResultContextMenuActions.SelectAll:
                 this.queryResultContext.log("Select All action triggered");
                 const data = this.grid.getData() as HybridDataProvider<T>;
                 let selectionModel = this.grid.getSelectionModel();
@@ -143,7 +140,7 @@ export class ContextMenu<T extends Slick.SlickData> {
                     new Slick.Range(0, 0, data.length - 1, this.grid.getColumns().length - 1),
                 ]);
                 break;
-            case "copy":
+            case QueryResultContextMenuActions.Copy:
                 this.queryResultContext.log("Copy action triggered");
                 if (this.dataProvider.isDataInMemory) {
                     this.queryResultContext.log(
@@ -180,7 +177,7 @@ export class ContextMenu<T extends Slick.SlickData> {
                 }
 
                 break;
-            case "copy-with-headers":
+            case QueryResultContextMenuActions.CopyWithHeader:
                 this.queryResultContext.log("Copy with headers action triggered");
 
                 if (this.dataProvider.isDataInMemory) {
@@ -219,7 +216,7 @@ export class ContextMenu<T extends Slick.SlickData> {
                 }
 
                 break;
-            case "copy-headers":
+            case QueryResultContextMenuActions.CopyHeaders:
                 this.queryResultContext.log("Copy Headers action triggered");
                 await this.webViewState.extensionRpc.sendRequest(CopyHeadersRequest.type, {
                     uri: this.uri,
@@ -228,7 +225,7 @@ export class ContextMenu<T extends Slick.SlickData> {
                     selection: selection,
                 });
                 break;
-            case "copy-as-csv":
+            case QueryResultContextMenuActions.CopyAsCsv:
                 this.queryResultContext.log("Copy as CSV action triggered");
                 await this.webViewState.extensionRpc.sendRequest(CopyAsCsvRequest.type, {
                     uri: this.uri,
@@ -238,7 +235,7 @@ export class ContextMenu<T extends Slick.SlickData> {
                     includeHeaders: true, // Default to including headers for CSV
                 });
                 break;
-            case "copy-as-json":
+            case QueryResultContextMenuActions.CopyAsJson:
                 this.queryResultContext.log("Copy as JSON action triggered");
                 await this.webViewState.extensionRpc.sendRequest(CopyAsJsonRequest.type, {
                     uri: this.uri,
