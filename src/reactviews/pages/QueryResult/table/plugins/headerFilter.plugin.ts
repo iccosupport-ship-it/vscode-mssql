@@ -39,6 +39,19 @@ export interface CommandEventArgs<T extends Slick.SlickData> {
 
 export const FilterButtonWidth = 34;
 
+export interface HeaderFilterPosition {
+    x: number;
+    y: number;
+    column: FilterableColumn<any>;
+    filterData: TableFilterListElement[];
+}
+
+export interface HeaderFilterActions {
+    onApply: (column: FilterableColumn<any>, selectedValues: string[]) => Promise<void>;
+    onClear: (column: FilterableColumn<any>) => Promise<void>;
+    onClose: () => void;
+}
+
 export class HeaderFilter<T extends Slick.SlickData> {
     public onFilterApplied = new Slick.Event<{
         grid: Slick.Grid<T>;
@@ -60,13 +73,23 @@ export class HeaderFilter<T extends Slick.SlickData> {
     private _eventManager = new EventManager();
     private currentSortColumn: string = "";
     private currentSortButton: JQuery<HTMLElement> | null = null;
+    private onHeaderFilterCallback?: (
+        position: HeaderFilterPosition,
+        actions: HeaderFilterActions,
+    ) => void;
 
     constructor(
         public theme: ColorThemeKind,
         private queryResultContext: QueryResultContextProps,
         private webviewState: VscodeWebviewContext<QueryResultWebviewState, QueryResultReducers>,
         private gridId: string,
-    ) {}
+        onHeaderFilterCallback?: (
+            position: HeaderFilterPosition,
+            actions: HeaderFilterActions,
+        ) => void,
+    ) {
+        this.onHeaderFilterCallback = onHeaderFilterCallback;
+    }
 
     public init(grid: Slick.Grid<T>): void {
         this.grid = grid;
@@ -256,6 +279,43 @@ export class HeaderFilter<T extends Slick.SlickData> {
             if (isSameButton) {
                 return; // Exit since we're just closing the popup for the same button
             }
+        }
+
+        // If React callback is provided, use it instead of jQuery popup
+        if (this.onHeaderFilterCallback) {
+            await this.createFilterList();
+            const offset = jQuery(filterButton).offset();
+            if (offset) {
+                const actions: HeaderFilterActions = {
+                    onApply: async (column: FilterableColumn<any>, selectedValues: string[]) => {
+                        // Update column filter values
+                        column.filterValues = selectedValues;
+                        this.setFilterButtonImage($menuButton!, selectedValues.length > 0);
+                        await this.handleApply(column);
+                    },
+                    onClear: async (column: FilterableColumn<any>) => {
+                        if (column.filterValues) {
+                            column.filterValues.length = 0;
+                        }
+                        this.setFilterButtonImage($menuButton!, false);
+                        await this.handleApply(column, true);
+                    },
+                    onClose: () => {
+                        // React component will handle closing
+                    },
+                };
+
+                this.onHeaderFilterCallback(
+                    {
+                        x: offset.left,
+                        y: offset.top + $menuButton?.outerHeight()!,
+                        column: this.columnDef,
+                        filterData: this._listData,
+                    },
+                    actions,
+                );
+            }
+            return;
         }
 
         // Proceed to open the new popup for the clicked column

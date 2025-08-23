@@ -15,8 +15,12 @@ import * as DOM from "./dom";
 import { IDisposableDataProvider } from "./dataProvider";
 import { CellSelectionModel } from "./plugins/cellSelectionModel.plugin";
 import { mixin } from "./objects";
-import { HeaderFilter } from "./plugins/headerFilter.plugin";
-import { ContextMenu } from "./plugins/contextMenu.plugin";
+import { ContextMenu, ContextMenuPosition } from "./plugins/contextMenu.plugin";
+import {
+    HeaderFilter,
+    HeaderFilterPosition,
+    HeaderFilterActions,
+} from "./plugins/headerFilter.plugin";
 import {
     ColumnFilterState,
     GetColumnWidthsRequest,
@@ -66,6 +70,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
     protected _tableContainer: HTMLElement;
     private selectionModel: CellSelectionModel<T>;
     public headerFilter: HeaderFilter<T>;
+    private contextMenu: ContextMenu<T>;
 
     constructor(
         parent: HTMLElement,
@@ -79,6 +84,11 @@ export class Table<T extends Slick.SlickData> implements IThemable {
         private configuration: ITableConfiguration<T>,
         options?: Slick.GridOptions<T>,
         gridParentRef?: React.RefObject<HTMLDivElement>,
+        onContextMenuCallback?: (position: ContextMenuPosition) => void,
+        onHeaderFilterCallback?: (
+            position: HeaderFilterPosition,
+            actions: HeaderFilterActions,
+        ) => void,
     ) {
         this.queryResultContext = context!;
         this.linkHandler = linkHandler;
@@ -147,17 +157,18 @@ export class Table<T extends Slick.SlickData> implements IThemable {
             this.queryResultContext,
             this.webViewState,
             gridId,
+            onHeaderFilterCallback,
         );
         this.registerPlugin(this.headerFilter);
-        this.registerPlugin(
-            new ContextMenu(
-                this.uri,
-                this.resultSetSummary,
-                this.queryResultContext,
-                this.webViewState,
-                this.configuration.dataProvider as IDisposableDataProvider<T>,
-            ),
+        this.contextMenu = new ContextMenu(
+            this.uri,
+            this.resultSetSummary,
+            this.queryResultContext,
+            this.webViewState,
+            this.configuration.dataProvider as IDisposableDataProvider<T>,
+            onContextMenuCallback,
         );
+        this.registerPlugin(this.contextMenu);
         this.registerPlugin(
             new CopyKeybind(
                 this.uri,
@@ -696,6 +707,10 @@ export class Table<T extends Slick.SlickData> implements IThemable {
 
     public get container(): HTMLElement {
         return this._tableContainer;
+    }
+
+    public async executeContextMenuAction(action: string): Promise<void> {
+        await this.contextMenu.executeMenuAction(action);
     }
 }
 

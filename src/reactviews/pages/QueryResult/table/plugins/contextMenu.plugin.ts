@@ -23,10 +23,18 @@ import { HybridDataProvider } from "../hybridDataProvider";
 import { selectEntireGrid, selectionToRange, tryCombineSelectionsForResults } from "../utils";
 import "./contextMenu.css";
 
+export interface ContextMenuPosition {
+    x: number;
+    y: number;
+    row: number;
+    cell: number;
+}
+
 export class ContextMenu<T extends Slick.SlickData> {
     private grid!: Slick.Grid<T>;
     private handler = new Slick.EventHandler();
     private activeContextMenu: JQuery<HTMLElement> | null = null;
+    private onContextMenuCallback?: (position: ContextMenuPosition) => void;
 
     constructor(
         private uri: string,
@@ -34,10 +42,12 @@ export class ContextMenu<T extends Slick.SlickData> {
         private queryResultContext: QueryResultContextProps,
         private webViewState: VscodeWebviewContext<QueryResultWebviewState, QueryResultReducers>,
         private dataProvider: IDisposableDataProvider<T>,
+        onContextMenuCallback?: (position: ContextMenuPosition) => void,
     ) {
         this.uri = uri;
         this.resultSetSummary = resultSetSummary;
         this.webViewState = webViewState;
+        this.onContextMenuCallback = onContextMenuCallback;
     }
 
     public init(grid: Slick.Grid<T>): void {
@@ -48,6 +58,10 @@ export class ContextMenu<T extends Slick.SlickData> {
 
     public destroy() {
         this.handler.unsubscribeAll();
+    }
+
+    public async executeMenuAction(action: string): Promise<void> {
+        await this.handleMenuAction(action);
     }
 
     private headerClickHandler(e: Event): void {
@@ -61,6 +75,20 @@ export class ContextMenu<T extends Slick.SlickData> {
     private handleContextMenu(e: Event): void {
         e.preventDefault();
         let mouseEvent = e as MouseEvent;
+        let cell = this.grid.getCellFromEvent(e);
+
+        // If React callback is provided, use it instead of jQuery menu
+        if (this.onContextMenuCallback) {
+            this.onContextMenuCallback({
+                x: mouseEvent.clientX,
+                y: mouseEvent.clientY,
+                row: cell.row,
+                cell: cell.cell,
+            });
+            return;
+        }
+
+        // Fallback to old jQuery implementation if no React callback
         const $contextMenu = jQuery(
             `<ul id="contextMenu">` +
                 `<li data-action="select-all" class="contextMenu">${locConstants.queryResult.selectAll}</li>` +
@@ -77,7 +105,6 @@ export class ContextMenu<T extends Slick.SlickData> {
         // Append the menu to the body and set its position
         jQuery("body").append($contextMenu);
 
-        let cell = this.grid.getCellFromEvent(e);
         $contextMenu
             .data("row", cell.row)
             .css("top", mouseEvent.pageY)
