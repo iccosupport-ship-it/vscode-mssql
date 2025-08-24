@@ -50,6 +50,7 @@ export interface HeaderFilterActions {
     onApply: (column: FilterableColumn<any>, selectedValues: string[]) => Promise<void>;
     onClear: (column: FilterableColumn<any>) => Promise<void>;
     onClose: () => void;
+    refreshFilterData?: () => Promise<TableFilterListElement[]>;
 }
 
 export class HeaderFilter<T extends Slick.SlickData> {
@@ -299,6 +300,12 @@ export class HeaderFilter<T extends Slick.SlickData> {
                         }
                         this.setFilterButtonImage($menuButton!, false);
                         await this.handleApply(column, true);
+                        // Regenerate filter list with full dataset after clearing
+                        await this.createFilterList();
+                    },
+                    refreshFilterData: async (): Promise<TableFilterListElement[]> => {
+                        await this.createUnfilteredFilterList();
+                        return this._listData;
                     },
                     onClose: () => {
                         // React component will handle closing
@@ -791,6 +798,38 @@ export class HeaderFilter<T extends Slick.SlickData> {
                     this.columnDef,
                 );
             }
+        }
+        // Sort the list to make it easier to find a string
+        filterItems.sort();
+        // Promote undefined (NULL) to be always at the top of the list
+        const nullValueIndex = filterItems.indexOf("");
+        if (nullValueIndex !== -1) {
+            filterItems.splice(nullValueIndex, 1);
+            filterItems.unshift("");
+        }
+        this._listData = [];
+        this.compileFilters(workingFilters, filterItems);
+    }
+
+    private async createUnfilteredFilterList(): Promise<void> {
+        this.columnDef.filterValues = this.columnDef.filterValues || [];
+        // WorkingFilters is a copy of the filters to enable apply/cancel behaviour
+        const workingFilters = this.columnDef.filterValues.slice(0);
+        let filterItems: Array<string>;
+        const dataView = this.grid.getData() as IDisposableDataProvider<T>;
+        if (instanceOfIDisposableDataProvider(dataView)) {
+            // Use unfiltered column values if available, otherwise fallback to regular method
+            if (dataView.getUnfilteredColumnValues) {
+                filterItems = await dataView.getUnfilteredColumnValues(this.columnDef);
+            } else {
+                filterItems = await dataView.getColumnValues(this.columnDef);
+            }
+        } else {
+            // For non-IDisposableDataProvider, always get all available values
+            filterItems = this.getFilterValues(
+                this.grid.getData() as Slick.DataProvider<T>,
+                this.columnDef,
+            );
         }
         // Sort the list to make it easier to find a string
         filterItems.sort();

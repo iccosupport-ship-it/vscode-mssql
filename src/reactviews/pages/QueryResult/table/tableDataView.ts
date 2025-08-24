@@ -147,6 +147,19 @@ export class TableDataView<T extends Slick.SlickData> implements IDisposableData
         return Array.from(distinctValues);
     }
 
+    public async getUnfilteredColumnValues(column: Slick.Column<T>): Promise<string[]> {
+        const distinctValues: Set<string> = new Set();
+        // Use _allData if filtering is enabled, otherwise use _data (which is the unfiltered data)
+        const dataToUse = this._filterEnabled ? this._allData : this._data;
+        dataToUse.forEach((items) => {
+            const value = items[column.field!];
+            const valueArr = value instanceof Array ? value : [value];
+            valueArr.forEach((v) => distinctValues.add(this._cellValueGetter(v)));
+        });
+
+        return Array.from(distinctValues);
+    }
+
     public get filterEnabled(): boolean {
         return this._filterEnabled;
     }

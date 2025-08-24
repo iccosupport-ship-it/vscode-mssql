@@ -56,6 +56,7 @@ import {
     List,
     ListItem,
 } from "@fluentui/react-components";
+import { FixedSizeList } from "react-window";
 
 window.jQuery = $ as any;
 require("slickgrid/lib/jquery.event.drag-2.3.0.js");
@@ -119,73 +120,76 @@ const renderFilterList = (
         data: { selectedItems: (string | number)[] },
     ) => void,
 ) => {
-    if (items.length <= 100) {
-        // For smaller lists, use native List with selection
-        return (
+    const FilterItemList = React.forwardRef<HTMLUListElement>(
+        (props: React.ComponentProps<typeof List>, ref) => (
             <List
                 selectionMode="multiselect"
+                navigationMode="items"
+                onSelectionChange={(_event, data) => {
+                    const newSelected = data.selectedItems;
+                    onSelectionChange({} as Event, { selectedItems: newSelected });
+                }}
                 selectedItems={selectedItems}
-                onSelectionChange={onSelectionChange}
-                aria-label="Filter values"
-                style={{ height: "200px", overflowY: "auto" }}>
-                {items.map((item) => (
+                aria-label="Filter items"
+                {...props}
+                ref={ref}
+            />
+        ),
+    );
+
+    return (
+        <FixedSizeList
+            height={200}
+            itemCount={items.length}
+            itemSize={20}
+            width="100%"
+            itemData={items}
+            outerElementType={FilterItemList}>
+            {({ data, index, style }) => {
+                const item = data[index];
+                return (
                     <ListItem
                         key={item.value}
                         value={item.value}
-                        checkmark={{ "aria-label": item.displayText }}
-                        style={{
-                            minHeight: "24px",
-                            padding: "1px 4px",
-                        }}>
-                        <Text
-                            style={{
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                            }}>
-                            {item.displayText}
-                        </Text>
+                        style={style}
+                        aria-setsize={items.length}
+                        aria-posinset={index + 1}
+                        checkmark={{ "aria-label": item.displayText }}>
+                        <Text>{item.displayText}</Text>
                     </ListItem>
-                ))}
-            </List>
-        );
-    } else {
-        // For larger lists, fall back to virtualized with manual checkboxes
-        return (
-            <div style={{ height: "200px", overflowY: "auto" }}>
-                {items.map((item) => (
-                    <div
-                        key={item.value}
-                        style={{
-                            padding: "1px 4px",
-                            minHeight: "24px",
-                            display: "flex",
-                            alignItems: "center",
-                        }}>
-                        <Checkbox
-                            checked={selectedItems.includes(item.value)}
-                            onChange={(_e, checkboxData) => {
-                                const newSelected = checkboxData.checked
-                                    ? [...selectedItems, item.value]
-                                    : selectedItems.filter((v) => v !== item.value);
-                                onSelectionChange({} as Event, { selectedItems: newSelected });
-                            }}
-                            label={
-                                <Text
-                                    style={{
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                    }}>
-                                    {item.displayText}
-                                </Text>
-                            }
-                        />
-                    </div>
-                ))}
-            </div>
-        );
-    }
+                );
+            }}
+        </FixedSizeList>
+    );
+
+    // return (
+    //     <List
+    //         selectionMode="multiselect"
+    //         selectedItems={selectedItems}
+    //         onSelectionChange={onSelectionChange}
+    //         aria-label="Filter values"
+    //         style={{ height: "200px", overflowY: "auto" }}>
+    //         {items.map((item) => (
+    //             <ListItem
+    //                 key={item.value}
+    //                 value={item.value}
+    //                 checkmark={{ "aria-label": item.displayText }}
+    //                 style={{
+    //                     minHeight: "24px",
+    //                     padding: "1px 4px",
+    //                 }}>
+    //                 <Text
+    //                     style={{
+    //                         overflow: "hidden",
+    //                         textOverflow: "ellipsis",
+    //                         whiteSpace: "nowrap",
+    //                     }}>
+    //                     {item.displayText}
+    //                 </Text>
+    //             </ListItem>
+    //         ))}
+    //     </List>
+    // );
 };
 
 export interface ResultGridProps {
@@ -723,9 +727,9 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
                             <div className={styles.filterButtons}>
                                 <Button
                                     size="small"
-                                    appearance="secondary"
-                                    onClick={handleHeaderFilterClear}>
-                                    {locConstants.queryResult.clear}
+                                    appearance="primary"
+                                    onClick={handleHeaderFilterApply}>
+                                    {locConstants.queryResult.apply}
                                 </Button>
                                 <Button
                                     size="small"
@@ -735,9 +739,9 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
                                 </Button>
                                 <Button
                                     size="small"
-                                    appearance="primary"
-                                    onClick={handleHeaderFilterApply}>
-                                    {locConstants.queryResult.apply}
+                                    appearance="secondary"
+                                    onClick={handleHeaderFilterClear}>
+                                    {locConstants.queryResult.clear}
                                 </Button>
                             </div>
                         </div>
