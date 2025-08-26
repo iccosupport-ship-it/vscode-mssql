@@ -16,8 +16,6 @@ import {
     QueryExecuteStatementRequest,
     QueryExecuteCompleteNotificationResult,
     QueryExecuteSubsetResult,
-    QueryExecuteResultSetAvailableNotificationParams,
-    QueryExecuteResultSetUpdatedNotificationParams,
     QueryExecuteResultSetCompleteNotificationParams,
     QueryExecuteSubsetParams,
     QueryExecuteSubsetRequest,
@@ -30,6 +28,8 @@ import {
     ExecutionPlanOptions,
     QueryConnectionUriChangeRequest,
     QueryConnectionUriChangeParams,
+    QueryExecuteResultSetAvailableNotificationParams,
+    QueryExecuteResultSetUpdatedNotificationParams,
 } from "../models/contracts/queryExecute";
 import { QueryDisposeParams, QueryDisposeRequest } from "../models/contracts/queryDispose";
 import {
