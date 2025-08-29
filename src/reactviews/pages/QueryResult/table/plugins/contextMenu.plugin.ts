@@ -18,12 +18,16 @@ import { QueryResultReactProvider } from "../../queryResultStateProvider";
 import { IDisposableDataProvider } from "../dataProvider";
 import { HybridDataProvider } from "../hybridDataProvider";
 import { selectEntireGrid, selectionToRange, tryCombineSelectionsForResults } from "../utils";
-import "./contextMenu.css";
+import {
+    showContextMenuOverlay,
+    hideContextMenuOverlay,
+    ContextMenuItem,
+} from "../../../../common/contextMenuBus";
 
 export class ContextMenu<T extends Slick.SlickData> {
     private grid!: Slick.Grid<T>;
     private handler = new Slick.EventHandler();
-    private activeContextMenu: JQuery<HTMLElement> | null = null;
+    // No separate root; we trigger overlay within parent React tree via bus
 
     constructor(
         private uri: string,
@@ -45,51 +49,37 @@ export class ContextMenu<T extends Slick.SlickData> {
         this.handler.unsubscribeAll();
     }
 
-    private headerClickHandler(e: Event): void {
-        if (!(jQuery(e.target!) as any).closest("#contextMenu").length) {
-            if (this.activeContextMenu) {
-                this.activeContextMenu.hide();
-            }
-        }
+    private headerClickHandler(_e: Event): void {
+        hideContextMenuOverlay();
     }
 
     private handleContextMenu(e: Event): void {
         e.preventDefault();
-        let mouseEvent = e as MouseEvent;
-        const $contextMenu = jQuery(
-            `<ul id="contextMenu">` +
-                `<li data-action="select-all" class="contextMenu">${locConstants.queryResult.selectAll}</li>` +
-                `<li data-action="copy" class="contextMenu">${locConstants.queryResult.copy}</li>` +
-                `<li data-action="copy-with-headers" class="contextMenu">${locConstants.queryResult.copyWithHeaders}</li>` +
-                `<li data-action="copy-headers" class="contextMenu">${locConstants.queryResult.copyHeaders}</li>` +
-                `<li data-action="copy-as-csv" class="contextMenu">Copy as CSV</li>` +
-                `<li data-action="copy-as-json" class="contextMenu">Copy as JSON</li>` +
-                `</ul>`,
-        );
-        // Remove any existing context menus to avoid duplication
-        jQuery("#contextMenu").remove();
+        const mouseEvent = e as MouseEvent;
 
-        // Append the menu to the body and set its position
-        jQuery("body").append($contextMenu);
+        // Build menu items
+        const items: ContextMenuItem[] = [
+            { id: "select-all", label: locConstants.queryResult.selectAll },
+            { id: "copy", label: locConstants.queryResult.copy },
+            { id: "copy-with-headers", label: locConstants.queryResult.copyWithHeaders },
+            { id: "copy-headers", label: locConstants.queryResult.copyHeaders },
+            { id: "divider-1", label: "", kind: "divider" },
+            { id: "copy-as-csv", label: "Copy as CSV" },
+            { id: "copy-as-json", label: "Copy as JSON" },
+        ];
 
-        let cell = this.grid.getCellFromEvent(e);
-        $contextMenu
-            .data("row", cell.row)
-            .css("top", mouseEvent.pageY)
-            .css("left", mouseEvent.pageX)
-            .show();
+        // Ensure we compute cell to keep parity (selection may depend on current cell later)
+        this.grid.getCellFromEvent(e);
 
-        this.activeContextMenu = $contextMenu;
-        jQuery("body").one("click", () => {
-            $contextMenu.hide();
-            this.activeContextMenu = null;
-        });
-
-        $contextMenu.on("click", "li", async (event) => {
-            const action = jQuery(event.target).data("action");
-            await this.handleMenuAction(action);
-            $contextMenu.hide(); // Hide the menu after an action is clicked
-            this.activeContextMenu = null;
+        // Show Fluent context menu anchored at mouse coordinates (viewport-relative),
+        // integrated into the parent React app via overlay provider
+        showContextMenuOverlay({
+            x: mouseEvent.clientX,
+            y: mouseEvent.clientY,
+            items,
+            onAction: async (actionId: string) => {
+                await this.handleMenuAction(actionId);
+            },
         });
     }
 

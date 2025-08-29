@@ -7,12 +7,15 @@ import ReactDOM from "react-dom/client";
 import "../../index.css";
 import { QueryResultStateProvider } from "./queryResultStateProvider";
 import { QueryResult } from "./queryResultPage";
+import { ContextMenuProvider } from "./contextMenu/ContextMenuProvider";
 import { VscodeWebviewProvider2 } from "../../common/vscodeWebviewProvider2";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <VscodeWebviewProvider2>
         <QueryResultStateProvider>
-            <QueryResult />
+            <ContextMenuProvider>
+                <QueryResult />
+            </ContextMenuProvider>
         </QueryResultStateProvider>
     </VscodeWebviewProvider2>,
 );
