@@ -22,6 +22,7 @@ class DataWindow<T> {
     private _data: T[] | undefined;
     private _length: number = 0;
     private _offsetFromDataSource: number = -1;
+    private _requestSeq: number = 0;
 
     // private cancellationToken = new CancellationTokenSource();
 
@@ -68,15 +69,27 @@ class DataWindow<T> {
             return;
         }
 
-        this.loadFunction(offset, length).then((data) => {
-            // if (!currentCancellation.token.isCancellationRequested) {
-            this._data = data;
-            this.loadCompleteCallback(
-                this._offsetFromDataSource,
-                this._offsetFromDataSource + this._length,
-            );
-            // }
-        });
+        const requestId = ++this._requestSeq;
+        const expectedOffset = offset;
+        const expectedLength = length;
+
+        this.loadFunction(offset, length).then(
+            (data) => {
+                // Ignore if a newer request has been issued or window moved
+                if (
+                    requestId !== this._requestSeq ||
+                    this._offsetFromDataSource !== expectedOffset ||
+                    this._length !== expectedLength
+                ) {
+                    return;
+                }
+                this._data = data;
+                this.loadCompleteCallback(expectedOffset, expectedOffset + expectedLength);
+            },
+            (_e: unknown) => {
+                // Swallow errors from data loading to avoid breaking rendering; keep placeholders
+            },
+        );
     }
 }
 

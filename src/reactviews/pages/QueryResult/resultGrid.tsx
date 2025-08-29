@@ -219,9 +219,28 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         });
         columns.unshift(rowNumberColumn.getColumnDefinition());
 
+        const parentHeight = props.gridParentRef?.current?.clientHeight ?? 600;
+        const visibleRows = Math.max(1, Math.floor(parentHeight / ROW_HEIGHT));
+        // Prefetch ~3x viewport, with a sensible floor to reduce churn
+        const windowSize = Math.max(visibleRows * 3, 150);
+
+        const columnCount = props.resultSetSummary?.columnInfo?.length ?? 0;
+        const placeholderRow = () => {
+            const row: { [key: string]: any } = {};
+            for (let i = 0; i < columnCount; i++) {
+                row[i.toString()] = {
+                    displayValue: "",
+                    ariaLabel: "",
+                    isNull: false,
+                    invariantCultureDisplayValue: "",
+                };
+            }
+            return row;
+        };
+
         let collection = new VirtualizedCollection<any>(
-            50,
-            (_index) => {},
+            windowSize,
+            (_index) => placeholderRow(),
             props.resultSetSummary?.rowCount ?? 0,
             props.loadFunc,
         );
