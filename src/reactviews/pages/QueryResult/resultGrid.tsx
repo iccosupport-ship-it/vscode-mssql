@@ -318,7 +318,12 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         createTableIfNeeded();
     }, [props.resultSetSummary?.rowCount]);
 
-    return <div id="gridContainter" ref={gridContainerRef}></div>;
+    return (
+        <div
+            data-vscode-context='{"preventDefaultContextMenuItems": true}'
+            id="gridContainter"
+            ref={gridContainerRef}></div>
+    );
 });
 
 function isJsonCell(value: DbCellValue): boolean {

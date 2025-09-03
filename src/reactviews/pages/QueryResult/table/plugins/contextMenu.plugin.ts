@@ -57,7 +57,7 @@ export class ContextMenu<T extends Slick.SlickData> {
         e.preventDefault();
         let mouseEvent = e as MouseEvent;
         const $contextMenu = jQuery(
-            `<ul id="contextMenu">` +
+            `<ul id="contextMenu" data-vscode-context='{"preventDefaultContextMenuItems": true}'>` +
                 `<li data-action="select-all" class="contextMenu">${locConstants.queryResult.selectAll}</li>` +
                 `<li data-action="copy" class="contextMenu">${locConstants.queryResult.copy}</li>` +
                 `<li data-action="copy-with-headers" class="contextMenu">${locConstants.queryResult.copyWithHeaders}</li>` +
@@ -68,6 +68,10 @@ export class ContextMenu<T extends Slick.SlickData> {
         );
         // Remove any existing context menus to avoid duplication
         jQuery("#contextMenu").remove();
+        jQuery("#contextMenu").attr(
+            "data-vscode-context",
+            '{"preventDefaultContextMenuItems": true}',
+        );
 
         // Append the menu to the body and set its position
         jQuery("body").append($contextMenu);

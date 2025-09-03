@@ -6,7 +6,7 @@
 import { useContext, useEffect, useRef, forwardRef } from "react";
 import { DiffEditor } from "@monaco-editor/react";
 import { schemaCompareContext } from "../SchemaCompareStateProvider";
-import { resolveVscodeThemeType } from "../../../common/utils";
+import { applyVSCodeThemeToMonaco } from "../../../common/monacoTheme";
 import { Divider, makeStyles, tokens } from "@fluentui/react-components";
 import { locConstants as loc } from "../../../common/locConstants";
 import * as mssql from "vscode-mssql";
@@ -72,14 +72,57 @@ const CompareDiffEditor = forwardRef<HTMLDivElement, Props>(
         const compareResult = context.state.schemaCompareResult;
         const diff = compareResult?.differences[selectedDiffId];
         const editorRef = useRef<any>(null);
+        const monacoRef = useRef<any>(null);
+        const containerElRef = useRef<HTMLElement | null>(null);
 
         const original = diff?.sourceScript ? getAggregatedScript(diff, true) : "";
         const modified = diff?.targetScript ? getAggregatedScript(diff, false) : "";
 
         // Handle editor mount to store the reference
-        const handleEditorDidMount = (editor: any) => {
+        const handleEditorDidMount = (editor: any, monaco?: any) => {
             editorRef.current = editor;
+            try {
+                if (monaco) {
+                    monacoRef.current = monaco;
+                    containerElRef.current = editor?.getContainerDomNode?.() ?? null;
+                    applyVSCodeThemeToMonaco(
+                        monaco,
+                        context.themeKind,
+                        "mssql-vscode-theme",
+                        containerElRef.current,
+                    );
+                    requestAnimationFrame(() =>
+                        applyVSCodeThemeToMonaco(
+                            monacoRef.current,
+                            context.themeKind,
+                            "mssql-vscode-theme",
+                            containerElRef.current,
+                        ),
+                    );
+                }
+            } catch {
+                // no-op if monaco not provided by wrapper
+            }
         };
+
+        useEffect(() => {
+            if (monacoRef.current) {
+                applyVSCodeThemeToMonaco(
+                    monacoRef.current,
+                    context.themeKind,
+                    "mssql-vscode-theme",
+                    containerElRef.current,
+                );
+                requestAnimationFrame(() =>
+                    applyVSCodeThemeToMonaco(
+                        monacoRef.current,
+                        context.themeKind,
+                        "mssql-vscode-theme",
+                        containerElRef.current,
+                    ),
+                );
+            }
+        }, [context.themeKind]);
 
         // Update the editor layout when the container size changes
         useEffect(() => {
@@ -109,7 +152,7 @@ const CompareDiffEditor = forwardRef<HTMLDivElement, Props>(
                     language="sql"
                     original={modified}
                     modified={original}
-                    theme={resolveVscodeThemeType(context.themeKind)}
+                    theme={"mssql-vscode-theme"}
                     options={{
                         renderSideBySide: renderSideBySide ?? true,
                         renderOverviewRuler: true,
