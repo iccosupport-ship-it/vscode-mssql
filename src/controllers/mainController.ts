@@ -104,10 +104,10 @@ export default class MainController implements vscode.Disposable {
     private _prompter: IPrompter;
     private _vscodeWrapper: VscodeWrapper;
     private _initialized: boolean = false;
-    private _lastSavedUri: string | undefined;
-    private _lastSavedTimer: Utils.Timer | undefined;
-    private _lastOpenedUri: string | undefined;
-    private _lastOpenedTimer: Utils.Timer | undefined;
+    // Tracks the source untitled document URI during a Save As flow
+    private _pendingUntitledSaveSourceUri: string | undefined;
+    // URIs for which onDidCloseTextDocument should not cascade to connection/output providers
+    private _urisToIgnoreClose: Set<string> = new Set();
     private _untitledSqlDocumentService: UntitledSqlDocumentService;
     private _objectExplorerProvider: ObjectExplorerProvider;
     private _queryHistoryProvider: QueryHistoryProvider;
@@ -563,6 +563,32 @@ export default class MainController implements vscode.Disposable {
 
             this._vscodeWrapper.onDidSaveTextDocument((params) =>
                 this.onDidSaveTextDocument(params),
+            );
+
+            // Use deterministic VS Code file events instead of timers
+            this._context.subscriptions.push(
+                vscode.workspace.onDidRenameFiles(async (e) => {
+                    await this.onDidRenameFiles(e);
+                }),
+            );
+            this._context.subscriptions.push(
+                vscode.workspace.onWillCreateFiles(async (e) => {
+                    // If the active editor is an untitled SQL doc, remember its URI as the source
+                    const activeDoc = vscode.window.activeTextEditor?.document;
+                    if (activeDoc?.isUntitled && activeDoc?.languageId === Constants.languageId) {
+                        const src = activeDoc.uri.toString(true);
+                        this._pendingUntitledSaveSourceUri = src;
+                        // Prevent close cascades for untitled → saved flow
+                        this._urisToIgnoreClose.add(src);
+                    } else {
+                        this._pendingUntitledSaveSourceUri = undefined;
+                    }
+                }),
+            );
+            this._context.subscriptions.push(
+                vscode.workspace.onDidCreateFiles(async (e) => {
+                    await this.onDidCreateFiles(e);
+                }),
             );
             this._vscodeWrapper.onDidChangeConfiguration((params) =>
                 this.onDidChangeConfiguration(params),
@@ -2640,8 +2666,7 @@ export default class MainController implements vscode.Disposable {
 
     /**
      * Called by VS Code when a text document closes. This will dispatch calls to other
-     * controllers as needed. Determines if this was a normal closed file, a untitled closed file,
-     * or a renamed file
+     * controllers as needed.
      * @param doc The document that was closed
      */
     public async onDidCloseTextDocument(doc: vscode.TextDocument): Promise<void> {
@@ -2649,50 +2674,20 @@ export default class MainController implements vscode.Disposable {
             // Avoid processing events before initialization is complete
             return;
         }
-        let closedDocumentUri: string = doc.uri.toString(true);
-        let closedDocumentUriScheme: string = doc.uri.scheme;
+        const closedDocumentUri: string = doc.uri.toString(true);
 
-        // Stop timers if they have been started
-        if (this._lastSavedTimer) {
-            this._lastSavedTimer.end();
+        // If this close is due to a rename or Save As flow, skip cascading close handling
+        if (this._urisToIgnoreClose.has(closedDocumentUri)) {
+            this._urisToIgnoreClose.delete(closedDocumentUri);
+            return;
         }
 
-        if (this._lastOpenedTimer) {
-            this._lastOpenedTimer.end();
-        }
-
-        // Determine which event caused this close event
-
-        // If there was a saveTextDoc event just before this closeTextDoc event and it
-        // was untitled then we know it was an untitled save
-        if (
-            this._lastSavedUri &&
-            closedDocumentUriScheme === LocalizedConstants.untitledScheme &&
-            this._lastSavedTimer?.getDuration() < Constants.untitledSaveTimeThreshold
-        ) {
-            // Untitled file was saved and connection will be transfered
-            await this.updateUri(closedDocumentUri, this._lastSavedUri);
-
-            // If there was an openTextDoc event just before this closeTextDoc event then we know it was a rename
-        } else if (
-            this._lastOpenedUri &&
-            this._lastSavedTimer?.getDuration() < Constants.untitledSaveTimeThreshold
-        ) {
-            await this.updateUri(closedDocumentUri, this._lastOpenedUri);
-        } else {
-            // Pass along the close event to the other handlers for a normal closed file
-            await this._connectionMgr.onDidCloseTextDocument(doc);
-            this._outputContentProvider.onDidCloseTextDocument(doc);
-        }
-
-        // Reset special case timers and events
-        this._lastSavedUri = undefined;
-        this._lastSavedTimer = undefined;
-        this._lastOpenedTimer = undefined;
-        this._lastOpenedUri = undefined;
+        // Pass along the close event to the other handlers for a normal closed file
+        await this._connectionMgr.onDidCloseTextDocument(doc);
+        this._outputContentProvider.onDidCloseTextDocument(doc);
 
         // Remove diagnostics for the related file
-        let diagnostics = SqlToolsServerClient.instance.diagnosticCollection;
+        const diagnostics = SqlToolsServerClient.instance.diagnosticCollection;
         if (diagnostics.has(doc.uri)) {
             diagnostics.delete(doc.uri);
         }
@@ -2706,11 +2701,26 @@ export default class MainController implements vscode.Disposable {
         await this._connectionMgr.copyConnectionToFile(oldUri, newUri);
 
         // Call STS  & Query Runner to update URI
-        await this._outputContentProvider.updateQueryRunnerUri(oldUri, newUri);
+        if (this._suppressDocStateUpdates) {
+            return;
+        }
+        try {
+            await this._outputContentProvider.updateQueryRunnerUri(oldUri, newUri);
+        } catch (err) {
+            // Best-effort: skip if no query result state exists
+            Utils.logDebug(`updateQueryRunnerUri skipped: ${getErrorMessage(err)}`);
+        }
 
         // Update the URI in the output content provider query result map
-        this._outputContentProvider.onUntitledFileSaved(oldUri, newUri);
+        try {
+            this._outputContentProvider.onUntitledFileSaved(oldUri, newUri);
+        } catch (err) {
+            Utils.logDebug(`onUntitledFileSaved skipped: ${getErrorMessage(err)}`);
+        }
     }
+
+    // Testing aid: when true, skips updating the output content provider state
+    private _suppressDocStateUpdates: boolean = false;
 
     /**
      * Called by VS Code when a text document is opened. Checks if a SQL file was opened
@@ -2748,14 +2758,8 @@ export default class MainController implements vscode.Disposable {
             );
         }
 
-        // Setup properties incase of rename
-        this._lastOpenedTimer = new Utils.Timer();
-        this._lastOpenedTimer.start();
-
+        // pre-opened tabs won't trigger onDidChangeActiveTextEditor, so set _previousActiveEditor here
         if (doc && doc.uri) {
-            this._lastOpenedUri = doc.uri.toString(true);
-
-            // pre-opened tabs won't trigger onDidChangeActiveTextEditor, so set _previousActiveEditor here
             this._previousActiveDocument =
                 doc.languageId === Constants.languageId ? doc : undefined;
         }
@@ -2775,23 +2779,54 @@ export default class MainController implements vscode.Disposable {
     }
 
     /**
-     * Called by VS Code when a text document is saved. Will trigger a timer to
-     * help determine if the file was a file saved from an untitled file.
-     * @param doc The document that was saved
+     * Called by VS Code when a text document is saved. No heuristic behavior required.
      */
     public onDidSaveTextDocument(doc: vscode.TextDocument): void {
         if (this._connectionMgr === undefined) {
             // Avoid processing events before initialization is complete
             return;
         }
+        // no-op: Save handling for untitled Save As now occurs via onWillCreateFiles/onDidCreateFiles
+    }
 
-        // Set encoding to false by giving true as argument
-        let savedDocumentUri: string = doc.uri.toString(true);
+    /**
+     * Handle file rename events deterministically (transfer connection and query state).
+     */
+    public async onDidRenameFiles(e: vscode.FileRenameEvent): Promise<void> {
+        if (!this._connectionMgr) {
+            return;
+        }
+        for (const f of e.files) {
+            const oldUri = f.oldUri.toString(true);
+            const newUri = f.newUri.toString(true);
+            // Mark the old URI so its subsequent close doesn't disconnect/cleanup
+            this._urisToIgnoreClose.add(oldUri);
+            await this.updateUri(oldUri, newUri);
+        }
+    }
 
-        // Keep track of which file was last saved and when for detecting the case when we save an untitled document to disk
-        this._lastSavedTimer = new Utils.Timer();
-        this._lastSavedTimer.start();
-        this._lastSavedUri = savedDocumentUri;
+    /**
+     * Handle file create events used for untitled Save As flows.
+     */
+    public async onDidCreateFiles(e: vscode.FileCreateEvent): Promise<void> {
+        if (!this._connectionMgr) {
+            return;
+        }
+        // Only handle if we recorded an untitled source
+        const source = this._pendingUntitledSaveSourceUri;
+        if (!source) {
+            return;
+        }
+        try {
+            // Transfer connection for the first created file (Save As typically creates a single file)
+            const target = e.files?.[0]?.toString(true);
+            if (target) {
+                await this.updateUri(source, target);
+            }
+        } finally {
+            // Always clear pending state
+            this._pendingUntitledSaveSourceUri = undefined;
+        }
     }
 
     private onChangeQueryHistoryConfig(): void {
