@@ -41,6 +41,7 @@ import StatusView from "../views/statusView";
 import { IConnectionGroup, IConnectionProfile, ISelectionData } from "./../models/interfaces";
 import ConnectionManager from "./connectionManager";
 import SqlDocumentService from "./sqlDocumentService";
+import { serviceContainer } from "../di";
 import VscodeWrapper from "./vscodeWrapper";
 import { sendActionEvent, startActivity } from "../telemetry/telemetry";
 import { ActivityStatus, TelemetryActions, TelemetryViews } from "../sharedInterfaces/telemetry";
@@ -491,10 +492,7 @@ export default class MainController implements vscode.Disposable {
 
             this.initializeQueryHistory();
 
-            this.sqlTasksService = new SqlTasksService(
-                SqlToolsServerClient.instance,
-                this._sqlDocumentService,
-            );
+            this.sqlTasksService = new SqlTasksService(SqlToolsServerClient.instance);
             this.dacFxService = new DacFxService(SqlToolsServerClient.instance);
             this.sqlProjectsService = new SqlProjectsService(SqlToolsServerClient.instance);
             this.schemaCompareService = new SchemaCompareService(SqlToolsServerClient.instance);
@@ -525,7 +523,6 @@ export default class MainController implements vscode.Disposable {
                 this._context,
                 this._vscodeWrapper,
                 this.executionPlanService,
-                this._sqlDocumentService,
             );
             vscode.window.registerCustomEditorProvider("mssql.executionPlanView", providerInstance);
 
@@ -864,17 +861,20 @@ export default class MainController implements vscode.Disposable {
             this.useLegacyConnectionExperience,
         );
 
-        this._sqlDocumentService = new SqlDocumentService(this);
+        // Bind services to DI container
+        serviceContainer
+            .bind(SqlDocumentService)
+            .toDynamicValue(() => new SqlDocumentService(this))
+            .inSingletonScope();
 
-        this._outputContentProvider.queryResultWebviewController.sqlDocumentService =
-            this._sqlDocumentService;
+        this._sqlDocumentService = serviceContainer.get(SqlDocumentService);
 
         void this.showOnLaunchPrompts();
 
         // Handle case where SQL file is the 1st opened document
         const activeTextEditor = this._vscodeWrapper.activeTextEditor;
         if (activeTextEditor && this._vscodeWrapper.isEditingSqlFile) {
-            await this.sqlDocumentService.onDidOpenTextDocument(activeTextEditor.document);
+            await this._sqlDocumentService.onDidOpenTextDocument(activeTextEditor.document);
         }
         await this.sanitizeConnectionProfiles();
         await this.loadTokenCache();
@@ -1570,7 +1570,6 @@ export default class MainController implements vscode.Disposable {
                             this._vscodeWrapper,
                             this.tableDesignerService,
                             this._connectionMgr,
-                            this._sqlDocumentService,
                             node,
                             this._objectExplorerProvider,
                             this.objectExplorerTree,
@@ -1589,7 +1588,6 @@ export default class MainController implements vscode.Disposable {
                             this._vscodeWrapper,
                             this.tableDesignerService,
                             this._connectionMgr,
-                            this._sqlDocumentService,
                             node,
                             this._objectExplorerProvider,
                             this.objectExplorerTree,
@@ -1868,7 +1866,6 @@ export default class MainController implements vscode.Disposable {
                 this._connectionMgr,
                 this._outputContentProvider,
                 this._vscodeWrapper,
-                this._sqlDocumentService,
                 this._statusview,
                 this._prompter,
             );
@@ -2328,14 +2325,6 @@ export default class MainController implements vscode.Disposable {
 
     public get statusview(): StatusView {
         return this._statusview;
-    }
-
-    public get sqlDocumentService(): SqlDocumentService {
-        return this._sqlDocumentService;
-    }
-
-    public set sqlDocumentService(sqlDocumentService: SqlDocumentService) {
-        this._sqlDocumentService = sqlDocumentService;
     }
 
     /**
@@ -2917,11 +2906,9 @@ export default class MainController implements vscode.Disposable {
             public context: vscode.ExtensionContext,
             public vscodeWrapper: VscodeWrapper,
             public executionPlanService: ExecutionPlanService,
-            public sqlDocumentService: SqlDocumentService,
         ) {
             this.context = context;
             this.executionPlanService = executionPlanService;
-            this.sqlDocumentService = sqlDocumentService;
         }
 
         public async resolveCustomTextEditor(document: vscode.TextDocument): Promise<void> {
@@ -2939,7 +2926,6 @@ export default class MainController implements vscode.Disposable {
                 this.context,
                 this.vscodeWrapper,
                 this.executionPlanService,
-                this.sqlDocumentService,
                 planContents,
                 docName,
             );

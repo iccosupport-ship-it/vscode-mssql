@@ -325,11 +325,7 @@ export function registerCommonRequestHandlers(
         return (await showPlanXml(state, payload)) as qr.QueryResultWebviewState;
     });
     webviewController.registerReducer("showQuery", async (state, payload) => {
-        return (await showQuery(
-            state,
-            payload,
-            webviewViewController.sqlDocumentService,
-        )) as qr.QueryResultWebviewState;
+        return (await showQuery(state, payload)) as qr.QueryResultWebviewState;
     });
     webviewController.registerReducer("updateTotalCost", async (state, payload) => {
         return (await updateTotalCost(state, payload)) as qr.QueryResultWebviewState;

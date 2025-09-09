@@ -14,6 +14,7 @@ import * as td from "../../src/sharedInterfaces/tableDesigner";
 import { TreeNodeInfo } from "../../src/objectExplorer/nodes/treeNodeInfo";
 import { TableDesignerService } from "../../src/services/tableDesignerService";
 import SqlDocumentService from "../../src/controllers/sqlDocumentService";
+import { bindConstant, unbindIfBound } from "../testUtils/di";
 import ConnectionManager from "../../src/controllers/connectionManager";
 
 suite("TableDesignerWebviewController tests", () => {
@@ -41,6 +42,8 @@ suite("TableDesignerWebviewController tests", () => {
         mockVscodeWrapper = TypeMoq.Mock.ofType<VscodeWrapper>();
         mockTableDesignerService = sandbox.createStubInstance(TableDesignerService);
         mockSqlDocumentService = sandbox.createStubInstance(SqlDocumentService);
+        // Bind mocked SqlDocumentService to DI container for tests
+        bindConstant(SqlDocumentService, mockSqlDocumentService as unknown as SqlDocumentService);
         mockConnectionManager = TypeMoq.Mock.ofType<ConnectionManager>();
 
         const mockConnectionDetails = {
@@ -130,7 +133,6 @@ suite("TableDesignerWebviewController tests", () => {
             mockVscodeWrapper.object,
             mockTableDesignerService,
             mockConnectionManager.object,
-            mockSqlDocumentService,
             treeNode.object,
         );
         controller.revealToForeground();
@@ -146,6 +148,7 @@ suite("TableDesignerWebviewController tests", () => {
 
     teardown(() => {
         sandbox.restore();
+        unbindIfBound(SqlDocumentService);
     });
 
     test("should initialize correctly for table edit", async () => {

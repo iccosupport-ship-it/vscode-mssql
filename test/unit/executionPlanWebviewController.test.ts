@@ -17,6 +17,7 @@ import * as TypeMoq from "typemoq";
 import SqlToolsServiceClient from "../../src/languageservice/serviceclient";
 import { GetExecutionPlanRequest } from "../../src/models/contracts/executionPlan";
 import VscodeWrapper from "../../src/controllers/vscodeWrapper";
+import { bindConstant, unbindIfBound } from "../testUtils/di";
 
 suite("ExecutionPlanWebviewController", () => {
     let sandbox: sinon.SinonSandbox;
@@ -63,7 +64,6 @@ suite("ExecutionPlanWebviewController", () => {
             mockContext,
             vscodeWrapper.object,
             mockExecutionPlanService,
-            mockSqlDocumentService,
             executionPlanContents,
             xmlPlanFileName,
         );
@@ -186,7 +186,7 @@ suite("ExecutionPlanWebviewController", () => {
 
         assert.deepStrictEqual(
             showQueryStub.firstCall.args,
-            [mockInitialState, mockPayload, controller.sqlDocumentService],
+            [mockInitialState, mockPayload],
             "showQuery should be called with correct arguments",
         );
 
@@ -262,10 +262,13 @@ suite("Execution Plan Utilities", () => {
 
         mockExecutionPlanService = new ExecutionPlanService(client.object);
         mockSqlDocumentService = sandbox.createStubInstance(SqlDocumentService);
+        // Bind mocked SqlDocumentService so epUtils.showQuery can resolve it from DI
+        bindConstant(SqlDocumentService, mockSqlDocumentService as unknown as SqlDocumentService);
     });
 
     teardown(() => {
         sandbox.restore();
+        unbindIfBound(SqlDocumentService);
     });
 
     test("saveExecutionPlan: should call saveExecutionPlan and return the state", async () => {
@@ -309,11 +312,7 @@ suite("Execution Plan Utilities", () => {
 
         const mockPayload = { query: "SELECT * FROM TestTable" };
 
-        const result = await epUtils.showQuery(
-            mockInitialState,
-            mockPayload,
-            mockSqlDocumentService,
-        );
+        const result = await epUtils.showQuery(mockInitialState, mockPayload);
 
         assert.strictEqual(result, mockInitialState, "The state should be returned unchanged.");
         sinon.assert.calledOnceWithExactly(

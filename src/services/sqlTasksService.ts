@@ -8,8 +8,9 @@ import SqlToolsServiceClient from "../languageservice/serviceclient";
 import { NotificationType, RequestType } from "vscode-languageclient";
 import { Deferred } from "../protocol";
 import * as localizedConstants from "../constants/locConstants";
-import SqlDocumentService from "../controllers/sqlDocumentService";
 import { TaskExecutionMode } from "../sharedInterfaces/schemaCompare";
+import { serviceContainer } from "../di";
+import SqlDocumentService from "../controllers/sqlDocumentService";
 
 export enum TaskStatus {
     NotStarted = 0,
@@ -71,17 +72,16 @@ type ProgressCallback = (value: { message?: string; increment?: number }) => voi
  */
 export class SqlTasksService {
     private _activeTasks = new Map<string, ActiveTaskInfo>();
+    private _sqlDocumentService: SqlDocumentService;
 
-    constructor(
-        private _client: SqlToolsServiceClient,
-        private _sqlDocumentService: SqlDocumentService,
-    ) {
+    constructor(private _client: SqlToolsServiceClient) {
         this._client.onNotification(TaskCreatedNotification.type, (taskInfo) =>
             this.handleTaskCreatedNotification(taskInfo),
         );
         this._client.onNotification(TaskStatusChangedNotification.type, (taskProgressInfo) =>
             this.handleTaskChangedNotification(taskProgressInfo),
         );
+        this._sqlDocumentService = serviceContainer.get<SqlDocumentService>(SqlDocumentService);
     }
 
     private cancelTask(taskId: string): Thenable<boolean> {

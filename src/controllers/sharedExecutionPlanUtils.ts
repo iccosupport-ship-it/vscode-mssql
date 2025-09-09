@@ -19,6 +19,7 @@ import { TelemetryActions, TelemetryViews } from "../sharedInterfaces/telemetry"
 import { sendActionEvent, sendErrorEvent } from "../telemetry/telemetry";
 import { sqlPlanLanguageId } from "../constants/constants";
 import { executionPlanFileFilter } from "../constants/locConstants";
+import { serviceContainer } from "../di";
 
 export async function saveExecutionPlan(
     state: QueryResultWebviewState | ExecutionPlanWebviewState,
@@ -63,10 +64,9 @@ export async function showPlanXml(
 export async function showQuery(
     state: QueryResultWebviewState | ExecutionPlanWebviewState,
     payload: ExecutionPlanReducers["showQuery"],
-    sqlDocumentService: SqlDocumentService,
 ) {
+    const sqlDocumentService = serviceContainer.get(SqlDocumentService);
     void sqlDocumentService.newQuery(payload.query);
-
     return state;
 }
 

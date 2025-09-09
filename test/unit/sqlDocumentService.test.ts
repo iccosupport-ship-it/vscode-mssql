@@ -58,7 +58,6 @@ suite("SqlDocumentService Tests", () => {
         mainController.connectionManager = connectionManager;
 
         sqlDocumentService = new SqlDocumentService(mainController);
-        mainController.sqlDocumentService = sqlDocumentService;
 
         // Initialize internal state properly
         sqlDocumentService["_previousActiveDocument"] = undefined;

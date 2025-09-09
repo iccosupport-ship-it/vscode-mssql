@@ -5,6 +5,7 @@
 
 import * as vscode from "vscode";
 import * as vscodeMssql from "vscode-mssql";
+import "reflect-metadata";
 import MainController from "./controllers/mainController";
 import VscodeWrapper from "./controllers/vscodeWrapper";
 import { ConnectionDetails, IConnectionInfo, IExtension } from "vscode-mssql";
@@ -20,6 +21,8 @@ import { sendActionEvent } from "./telemetry/telemetry";
 import { TelemetryActions, TelemetryViews } from "./sharedInterfaces/telemetry";
 import { ChatResultFeedbackKind } from "vscode";
 import { IconUtils } from "./utils/iconUtils";
+import { serviceContainer } from "./di";
+import SqlDocumentService from "./controllers/sqlDocumentService";
 
 /** exported for testing purposes only */
 export let controller: MainController = undefined;

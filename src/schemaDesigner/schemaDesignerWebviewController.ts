@@ -10,6 +10,8 @@ import VscodeWrapper from "../controllers/vscodeWrapper";
 import * as LocConstants from "../constants/locConstants";
 import { TreeNodeInfo } from "../objectExplorer/nodes/treeNodeInfo";
 import MainController from "../controllers/mainController";
+import SqlDocumentService from "../controllers/sqlDocumentService";
+import { serviceContainer } from "../di";
 import { homedir } from "os";
 import { getErrorMessage, getUniqueFilePath } from "../utils/utils";
 import { sendActionEvent, startActivity } from "../telemetry/telemetry";
@@ -26,6 +28,7 @@ export class SchemaDesignerWebviewController extends ReactWebviewPanelController
     SchemaDesigner.SchemaDesignerWebviewState,
     SchemaDesigner.SchemaDesignerReducers
 > {
+    private _sqlDocumentService: SqlDocumentService;
     private _sessionId: string = "";
     private _key: string = "";
     public schemaDesignerDetails: SchemaDesigner.CreateSessionResponse | undefined = undefined;
@@ -70,6 +73,7 @@ export class SchemaDesignerWebviewController extends ReactWebviewPanelController
         );
 
         this._key = `${this.connectionString}-${this.databaseName}`;
+        this._sqlDocumentService = serviceContainer.get(SqlDocumentService);
 
         this.setupRequestHandlers();
         this.setupConfigurationListener();
@@ -255,7 +259,7 @@ export class SchemaDesignerWebviewController extends ReactWebviewPanelController
                 updatedSchema: this.schemaDesignerDetails!.schema,
                 sessionId: this._sessionId,
             });
-            await this.mainController.sqlDocumentService.newQuery(
+            await this._sqlDocumentService.newQuery(
                 definition.script,
                 true /* should copy last active connection */,
             );
@@ -289,9 +293,7 @@ export class SchemaDesignerWebviewController extends ReactWebviewPanelController
                         if (this.treeNode) {
                             void this.mainController.onNewQuery(this.treeNode, result?.script);
                         } else if (this.connectionUri) {
-                            const editor = await this.mainController.sqlDocumentService.newQuery(
-                                result?.script,
-                            );
+                            const editor = await this._sqlDocumentService.newQuery(result?.script);
                             await this.mainController.connectionManager.connect(
                                 editor.document.uri.toString(true),
                                 this.mainController.connectionManager.getConnectionInfo(

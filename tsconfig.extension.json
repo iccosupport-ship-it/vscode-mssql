@@ -16,7 +16,7 @@
         "jsx": "react-jsx",
         "rootDir": ".",
         "noUnusedLocals": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
     },
     "include": [
         "src",

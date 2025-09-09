@@ -8,7 +8,6 @@ import ConnectionManager from "../controllers/connectionManager";
 import { randomUUID } from "crypto";
 import { ReactWebviewPanelController } from "../controllers/reactWebviewPanelController";
 import * as designer from "../sharedInterfaces/tableDesigner";
-import SqlDocumentService from "../controllers/sqlDocumentService";
 import { getDesignerView } from "./tableDesignerTabDefinition";
 import { TreeNodeInfo } from "../objectExplorer/nodes/treeNodeInfo";
 import { sendActionEvent, sendErrorEvent, startActivity } from "../telemetry/telemetry";
@@ -18,6 +17,8 @@ import { UserSurvey } from "../nps/userSurvey";
 import { ObjectExplorerProvider } from "../objectExplorer/objectExplorerProvider";
 import { getErrorMessage } from "../utils/utils";
 import VscodeWrapper from "../controllers/vscodeWrapper";
+import SqlDocumentService from "../controllers/sqlDocumentService";
+import { serviceContainer } from "../di";
 
 export class TableDesignerWebviewController extends ReactWebviewPanelController<
     designer.TableDesignerWebviewState,
@@ -25,13 +26,13 @@ export class TableDesignerWebviewController extends ReactWebviewPanelController<
 > {
     private _isEdit: boolean = false;
     private _correlationId: string = randomUUID();
+    private _sqlDocumentService: SqlDocumentService;
 
     constructor(
         context: vscode.ExtensionContext,
         vscodeWrapper: VscodeWrapper,
         private _tableDesignerService: designer.ITableDesignerService,
         private _connectionManager: ConnectionManager,
-        private _sqlDocumentService: SqlDocumentService,
         private _targetNode?: TreeNodeInfo,
         private _objectExplorerProvider?: ObjectExplorerProvider,
         private _objectExplorerTree?: vscode.TreeView<TreeNodeInfo>,
@@ -68,6 +69,7 @@ export class TableDesignerWebviewController extends ReactWebviewPanelController<
                 showRestorePromptAfterClose: false,
             },
         );
+        this._sqlDocumentService = serviceContainer.get<SqlDocumentService>(SqlDocumentService);
         void this.initialize();
     }
 

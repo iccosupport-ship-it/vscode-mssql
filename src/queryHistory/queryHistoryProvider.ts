@@ -12,12 +12,13 @@ import { SqlOutputContentProvider } from "../models/sqlOutputContentProvider";
 import { QueryHistoryNode, EmptyHistoryNode } from "./queryHistoryNode";
 import VscodeWrapper from "../controllers/vscodeWrapper";
 import * as Constants from "../constants/constants";
-import SqlDocumentService from "../controllers/sqlDocumentService";
 import { Deferred } from "../protocol";
 import StatusView from "../views/statusView";
 import { IConnectionProfile } from "../models/interfaces";
 import { IPrompter } from "../prompts/question";
 import { QueryHistoryUI, QueryHistoryAction } from "../views/queryHistoryUI";
+import SqlDocumentService from "../controllers/sqlDocumentService";
+import { serviceContainer } from "../di";
 
 export class QueryHistoryProvider implements vscode.TreeDataProvider<any> {
     private _onDidChangeTreeData: vscode.EventEmitter<any | undefined> = new vscode.EventEmitter<
@@ -28,18 +29,19 @@ export class QueryHistoryProvider implements vscode.TreeDataProvider<any> {
     private _queryHistoryNodes: vscode.TreeItem[] = [new EmptyHistoryNode()];
     private _queryHistoryLimit: number;
     private _queryHistoryUI: QueryHistoryUI;
+    private _sqlDocumentService: SqlDocumentService;
 
     constructor(
         private _connectionManager: ConnectionManager,
         private _outputContentProvider: SqlOutputContentProvider,
         private _vscodeWrapper: VscodeWrapper,
-        private _sqlDocumentService: SqlDocumentService,
         private _statusView: StatusView,
         private _prompter: IPrompter,
     ) {
         const config = this._vscodeWrapper.getConfiguration(Constants.extensionConfigSectionName);
         this._queryHistoryLimit = config.get(Constants.configQueryHistoryLimit);
         this._queryHistoryUI = new QueryHistoryUI(this._prompter);
+        this._sqlDocumentService = serviceContainer.get<SqlDocumentService>(SqlDocumentService);
     }
 
     clearAll(): void {

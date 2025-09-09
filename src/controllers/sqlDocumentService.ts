@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from "vscode";
+import { injectable } from "inversify";
 import ConnectionManager from "./connectionManager";
 import { SqlOutputContentProvider } from "../models/sqlOutputContentProvider";
 import StatusView from "../views/statusView";
@@ -18,6 +19,7 @@ import MainController from "./mainController";
 /**
  * Service for creating untitled documents for SQL query
  */
+@injectable()
 export default class SqlDocumentService implements vscode.Disposable {
     private _disposables: vscode.Disposable[] = [];
 

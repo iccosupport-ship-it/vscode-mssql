@@ -45,7 +45,7 @@ suite("MainController Tests", function () {
             mockVscodeWrapper.object,
             mainController,
         );
-        mainController.sqlDocumentService = mockSqlDocumentService.object;
+        mainController["_sqlDocumentService"] = mockSqlDocumentService.object;
     });
 
     test("validateTextDocumentHasFocus returns false if there is no active text document", () => {
