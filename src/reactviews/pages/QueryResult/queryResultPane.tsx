@@ -27,6 +27,7 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { DatabaseSearch24Regular, OpenRegular } from "@fluentui/react-icons";
 import * as qr from "../../../sharedInterfaces/queryResult";
 import ResultGrid, { ResultGridHandle } from "./resultGrid";
+import BetaResultGrid from "./betaResultGrid";
 import CommandBar from "./commandBar";
 import { TextView } from "./textView";
 import { locConstants } from "../../common/locConstants";
@@ -159,6 +160,7 @@ export const QueryResultPane = () => {
     const messages = useQueryResultSelector<qr.IMessage[]>((s) => s.messages);
     const uri = useQueryResultSelector<string | undefined>((s) => s.uri);
     const fontSettings = useQueryResultSelector<qr.FontSettings>((s) => s.fontSettings);
+    const useBetaGrid = useQueryResultSelector<boolean | undefined>((s) => s.useBetaGrid);
     const tabStates = useQueryResultSelector<qr.QueryResultTabStates | undefined>(
         (s) => s.tabStates,
     );
@@ -174,6 +176,7 @@ export const QueryResultPane = () => {
     const gridParentRef = useRef<HTMLDivElement>(null);
     const scrollablePanelRef = useRef<HTMLDivElement>(null);
     const [messageGridHeight, setMessageGridHeight] = useState(0);
+    const [betaMaxKey, setBetaMaxKey] = useState<string | undefined>(undefined);
 
     const getGridCount = () => {
         let count = 0;
@@ -718,6 +721,73 @@ export const QueryResultPane = () => {
                 }}>
                 {tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Results &&
                     Object.keys(resultSetSummaries).length > 0 &&
+                    useBetaGrid && (
+                        <div
+                            id={"betaResultsTab"}
+                            className={classes.queryResultContainer}
+                            style={{ width: "100%", flexDirection: "column" }}>
+                            {Object.keys(resultSetSummaries).map((batchKey) => {
+                                const batchId = parseInt(batchKey, 10);
+                                const resultIds = Object.keys(
+                                    resultSetSummaries[batchId] || {},
+                                ).map((k) => parseInt(k, 10));
+                                const totalGridCount = resultIds.length;
+                                return resultIds.map((resultId) => {
+                                    const summary = resultSetSummaries[batchId][resultId];
+                                    if (!summary) return null;
+                                    const divId = `beta-grid-parent-${batchId}-${resultId}`;
+                                    const isMax = betaMaxKey === divId;
+                                    const availableHeight =
+                                        resultPaneParentRef.current && ribbonRef.current
+                                            ? getAvailableHeight(
+                                                  resultPaneParentRef.current!,
+                                                  ribbonRef.current!,
+                                              )
+                                            : 0;
+                                    const height =
+                                        resultPaneParentRef.current && ribbonRef.current
+                                            ? `${isMax ? availableHeight - TABLE_ALIGN_PX : calculateGridHeight(totalGridCount, availableHeight)}px`
+                                            : undefined;
+                                    return (
+                                        <div
+                                            key={divId}
+                                            id={divId}
+                                            className={classes.queryResultContainer}
+                                            style={{
+                                                display: betaMaxKey && !isMax ? "none" : undefined,
+                                                height,
+                                                fontFamily: fontSettings.fontFamily
+                                                    ? fontSettings.fontFamily
+                                                    : "var(--vscode-editor-font-family)",
+                                                fontSize: `${fontSettings.fontSize ?? 12}px`,
+                                            }}>
+                                            <div
+                                                style={{
+                                                    flex: 1,
+                                                    width: `calc(100% - ${ACTIONBAR_WIDTH_PX}px)`,
+                                                    height: "100%",
+                                                }}>
+                                                <BetaResultGrid
+                                                    uri={uri!}
+                                                    resultSetSummary={summary}
+                                                />
+                                            </div>
+                                            <CommandBar
+                                                uri={uri}
+                                                resultSetSummary={summary}
+                                                viewMode={qr.QueryResultViewMode.Grid}
+                                                maximizeResults={() => setBetaMaxKey(divId)}
+                                                restoreResults={() => setBetaMaxKey(undefined)}
+                                            />
+                                        </div>
+                                    );
+                                });
+                            })}
+                        </div>
+                    )}
+                {tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Results &&
+                    Object.keys(resultSetSummaries).length > 0 &&
+                    !useBetaGrid &&
                     renderResultPanel()}
                 {tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Messages && (
                     <div

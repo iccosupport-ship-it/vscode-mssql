@@ -30,6 +30,7 @@ export enum QueryResultSaveAsTrigger {
 
 export enum QueryResultPaneTabs {
     Results = "results",
+    ResultsBeta = "resultsBeta",
     Messages = "messages",
     ExecutionPlan = "executionPlan",
 }
@@ -66,6 +67,7 @@ export interface QueryResultWebviewState extends ExecutionPlanWebviewState {
     fontSettings: FontSettings;
     autoSizeColumns?: boolean;
     inMemoryDataProcessingThreshold?: number;
+    useBetaGrid?: boolean;
 }
 
 export interface QueryResultReducers extends Omit<ExecutionPlanReducers, "getExecutionPlan"> {

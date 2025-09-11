@@ -119,6 +119,12 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
                         this._queryResultStateMap.set(uri, state);
                     }
                 }
+                if (e.affectsConfiguration("mssql.resultsGrid.enableBeta")) {
+                    for (const [uri, state] of this._queryResultStateMap) {
+                        state.useBetaGrid = this.getUseBetaResultsGridConfig();
+                        this._queryResultStateMap.set(uri, state);
+                    }
+                }
             }),
         );
     }
@@ -215,6 +221,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
             },
             autoSizeColumns: this.getAutoSizeColumnsConfig(),
             inMemoryDataProcessingThreshold: this.getInMemoryDataProcessingThresholdConfig(),
+            useBetaGrid: this.getUseBetaResultsGridConfig(),
         };
     }
 
@@ -270,6 +277,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
             },
             autoSizeColumns: this.getAutoSizeColumnsConfig(),
             inMemoryDataProcessingThreshold: this.getInMemoryDataProcessingThresholdConfig(),
+            useBetaGrid: this.getUseBetaResultsGridConfig(),
         };
         this._queryResultStateMap.set(uri, currentState);
     }
@@ -284,6 +292,14 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         return this.vscodeWrapper
             .getConfiguration(Constants.extensionName)
             .get(Constants.configInMemoryDataProcessingThreshold);
+    }
+
+    public getUseBetaResultsGridConfig(): boolean {
+        return (
+            this.vscodeWrapper
+                .getConfiguration(Constants.extensionName)
+                .get(Constants.configEnableBetaResultsGrid) ?? false
+        );
     }
 
     public getFontSizeConfig(): number {

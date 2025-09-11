@@ -430,6 +430,7 @@ export class LocConstants {
                     args: [count],
                     comment: ["{0} is the number of results"],
                 }),
+            resultsBeta: l10n.t("Result (beta)"),
             messages: l10n.t("Messages"),
             timestamp: l10n.t("Timestamp"),
             message: l10n.t("Message"),
