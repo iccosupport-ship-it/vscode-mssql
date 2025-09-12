@@ -302,11 +302,11 @@ export const BetaResultGrid: React.FC<BetaResultGridProps> = ({ uri, resultSetSu
             // Add small padding and clamp
             const finalDataCols = widths.map((w) => Math.min(MAX_W, Math.max(MIN_W, w + 20)));
             if (disposed) return;
-            // Apply to columns (account for rownum column at index 0)
+            // Apply to columns (data columns only; row marker is separate)
             setCols((prev) => {
                 const next = prev.map((col) => ({ ...col }));
                 for (let i = 0; i < finalDataCols.length; i++) {
-                    const targetIndex = i + 1; // shift by row number column
+                    const targetIndex = i;
                     if (next[targetIndex]) next[targetIndex].width = finalDataCols[i];
                 }
                 return next;
@@ -363,7 +363,7 @@ export const BetaResultGrid: React.FC<BetaResultGridProps> = ({ uri, resultSetSu
             }
             const startRow = current.y;
             const endRow = current.y + current.height - 1;
-            const startCol = Math.max(1, current.x); // skip rownum
+            const startCol = current.x;
             const endCol = current.x + current.width - 1;
             const visibleRows = viewRows.length > 0 ? viewRows : undefined;
 
@@ -387,7 +387,7 @@ export const BetaResultGrid: React.FC<BetaResultGridProps> = ({ uri, resultSetSu
                 const row = rowCacheRef.current.get(source);
                 if (!row) continue;
                 for (let c = startCol; c <= endCol; c++) {
-                    const val = row[c - 1];
+                    const val = row[c];
                     totalCells++;
                     if (val === undefined || val === null || String(val).toUpperCase() === "NULL") {
                         continue;
@@ -855,7 +855,7 @@ export const BetaResultGrid: React.FC<BetaResultGridProps> = ({ uri, resultSetSu
                     const drawHeader = (args: any, drawContent: () => void) => {
                         const { ctx, theme, spriteManager, menuBounds, columnIndex } = args;
                         drawContent();
-                        if (columnIndex <= 0) return false;
+                        if (columnIndex < 0) return false;
                         let sprite = "sortBoth";
                         if (sortState.col === columnIndex - 1) {
                             sprite =

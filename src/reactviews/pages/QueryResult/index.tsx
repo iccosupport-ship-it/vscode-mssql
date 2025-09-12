@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import "../../common/wdyr"; // <--- first import
 import ReactDOM from "react-dom/client";
 import "../../index.css";
 import { QueryResultStateProvider } from "./queryResultStateProvider";

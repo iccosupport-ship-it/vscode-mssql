@@ -27,7 +27,7 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { DatabaseSearch24Regular, OpenRegular } from "@fluentui/react-icons";
 import * as qr from "../../../sharedInterfaces/queryResult";
 import ResultGrid, { ResultGridHandle } from "./resultGrid";
-import BetaResultGrid from "./betaResultGrid";
+import { BetaResultGrid } from "./betaResultGrid";
 import CommandBar from "./commandBar";
 import { TextView } from "./textView";
 import { locConstants } from "../../common/locConstants";
@@ -814,3 +814,4 @@ export const QueryResultPane = () => {
         </div>
     );
 };
+QueryResultPane.whyDidYouRender = true;
