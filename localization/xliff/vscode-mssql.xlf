@@ -2439,11 +2439,11 @@
     <trans-unit id="++CODE++f225a9c1cec3aeb23174520a7be45fd29e7f9de8fecba6757bb7cd215235979e">
       <source xml:lang="en">Restore panel size</source>
     </trans-unit>
-    <trans-unit id="++CODE++af3cc1c5f1f940b6e97b868d00fdc8d61aa8067fe9b68d34d53e3f8b372c5f9f">
-      <source xml:lang="en">Result (beta)</source>
-    </trans-unit>
     <trans-unit id="++CODE++26b4293018ea72418733109f2e245387d9dfcfe7d4083c0c1f29eb1155c98365">
       <source xml:lang="en">Restore properties pane</source>
+    </trans-unit>
+    <trans-unit id="++CODE++af3cc1c5f1f940b6e97b868d00fdc8d61aa8067fe9b68d34d53e3f8b372c5f9f">
+      <source xml:lang="en">Result (beta)</source>
     </trans-unit>
     <trans-unit id="++CODE++5d7e64a2598658aaaf1674a1b6222a0f6ab5bb588831a51d0936879cbf88670c">
       <source xml:lang="en">Result Set {0}</source>
