@@ -1079,83 +1079,79 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
             },
             result.credentials,
         );
-        switch (errorType) {
-            case SqlConnectionErrorType.TrustServerCertificateNotEnabled:
-                this.state.connectionStatus = ApiStatus.Error;
-                this.state.dialog = {
-                    type: "trustServerCert",
-                    message: result.errorMessage,
-                } as TrustServerCertDialogProps;
 
-                // connection failing because the user didn't trust the server cert is not an error worth logging;
-                // just prompt the user to trust the cert
+        if (errorType === SqlConnectionErrorType.TrustServerCertificateNotEnabled) {
+            this.state.connectionStatus = ApiStatus.Error;
+            this.state.dialog = {
+                type: "trustServerCert",
+                message: result.errorMessage,
+            } as TrustServerCertDialogProps;
 
-                return state;
-            case SqlConnectionErrorType.FirewallRuleError:
-                this.state.connectionStatus = ApiStatus.Error;
+            // connection failing because the user didn't trust the server cert is not an error worth logging;
+            // just prompt the user to trust the cert
 
-                const handleFirewallErrorResult =
-                    await this._mainController.connectionManager.firewallService.handleFirewallRule(
-                        result.errorNumber,
-                        result.errorMessage,
-                    );
+            return state;
+        } else if (errorType === SqlConnectionErrorType.FirewallRuleError) {
+            this.state.connectionStatus = ApiStatus.Error;
 
-                if (!handleFirewallErrorResult.result) {
-                    sendErrorEvent(
-                        TelemetryViews.ConnectionDialog,
-                        TelemetryActions.AddFirewallRule,
-                        new Error(result.errorMessage),
-                        true, // includeErrorMessage; parse failed because it couldn't detect an IP address, so that'd be the only PII
-                        undefined, // errorCode
-                        "parseIP", // errorType
-                    );
-
-                    // Proceed with 0.0.0.0 as the client IP, and let user fill it out manually.
-                    handleFirewallErrorResult.ipAddress = "0.0.0.0";
-                }
-
-                const addFirewallDialogState: AddFirewallRuleState = {
-                    message: result.errorMessage,
-                    clientIp: handleFirewallErrorResult.ipAddress,
-                    accounts: [],
-                    tenants: {},
-                    isSignedIn: true,
-                    serverName: this.state.connectionProfile.server,
-                    addFirewallRuleStatus: ApiStatus.NotStarted,
-                };
-
-                if (addFirewallDialogState.isSignedIn) {
-                    await populateAzureAccountInfo(
-                        addFirewallDialogState,
-                        false /* forceSignInPrompt */,
-                    );
-                }
-
-                addFirewallDialogState.isSignedIn = await VsCodeAzureHelper.isSignedIn();
-
-                this.state.dialog = {
-                    type: "addFirewallRule",
-                    props: addFirewallDialogState,
-                } as AddFirewallRuleDialogProps;
-
-                return state;
-            default:
-                this.state.formError = result.errorMessage;
-                this.state.connectionStatus = ApiStatus.Error;
-
-                sendActionEvent(
-                    TelemetryViews.ConnectionDialog,
-                    TelemetryActions.CreateConnection,
-                    {
-                        result: "connectionError",
-                        errorNumber: String(result.errorNumber),
-                        newOrEditedConnection: this._connectionBeingEdited ? "edited" : "new",
-                        connectionInputType: this.state.selectedInputMode,
-                        authMode: this.state.connectionProfile.authenticationType,
-                    },
+            const handleFirewallErrorResult =
+                await this._mainController.connectionManager.firewallService.handleFirewallRule(
+                    result.errorNumber,
+                    result.errorMessage,
                 );
 
-                return state;
+            if (!handleFirewallErrorResult.result) {
+                sendErrorEvent(
+                    TelemetryViews.ConnectionDialog,
+                    TelemetryActions.AddFirewallRule,
+                    new Error(result.errorMessage),
+                    true, // includeErrorMessage; parse failed because it couldn't detect an IP address, so that'd be the only PII
+                    undefined, // errorCode
+                    "parseIP", // errorType
+                );
+
+                // Proceed with 0.0.0.0 as the client IP, and let user fill it out manually.
+                handleFirewallErrorResult.ipAddress = "0.0.0.0";
+            }
+
+            const addFirewallDialogState: AddFirewallRuleState = {
+                message: result.errorMessage,
+                clientIp: handleFirewallErrorResult.ipAddress,
+                accounts: [],
+                tenants: {},
+                isSignedIn: true,
+                serverName: this.state.connectionProfile.server,
+                addFirewallRuleStatus: ApiStatus.NotStarted,
+            };
+
+            if (addFirewallDialogState.isSignedIn) {
+                await populateAzureAccountInfo(
+                    addFirewallDialogState,
+                    false /* forceSignInPrompt */,
+                );
+            }
+
+            addFirewallDialogState.isSignedIn = await VsCodeAzureHelper.isSignedIn();
+
+            this.state.dialog = {
+                type: "addFirewallRule",
+                props: addFirewallDialogState,
+            } as AddFirewallRuleDialogProps;
+
+            return state;
+        } else {
+            this.state.formError = result.errorMessage;
+            this.state.connectionStatus = ApiStatus.Error;
+
+            sendActionEvent(TelemetryViews.ConnectionDialog, TelemetryActions.CreateConnection, {
+                result: "connectionError",
+                errorNumber: String(result.errorNumber),
+                newOrEditedConnection: this._connectionBeingEdited ? "edited" : "new",
+                connectionInputType: this.state.selectedInputMode,
+                authMode: this.state.connectionProfile.authenticationType,
+            });
+
+            return state;
         }
     }
 

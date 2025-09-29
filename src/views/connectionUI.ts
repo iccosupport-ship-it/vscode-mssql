@@ -536,7 +536,7 @@ export class ConnectionUI {
             // Success! save it
             return await this.saveProfile(profile);
         } else {
-            // Normal connection error! Let the user try again, prefilling values that they already entered
+            // Connection failed - prompt to retry creating the profile
             return await this.promptToRetryAndSaveProfile(profile);
         }
     }
