@@ -29,8 +29,11 @@ export class PasswordChangeService {
 
         await webview.whenWebviewReady();
 
+        webview.revealToForeground();
+
         try {
             const result = await webview.dialogResult.promise;
+            console.log(`Password change result: ${result}`);
             return true;
         } catch (e) {
             return false;

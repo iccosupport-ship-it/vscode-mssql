@@ -46,6 +46,7 @@ import { getErrorMessage } from "../utils/utils";
 import { Logger } from "../models/logger";
 import { getServerTypes } from "../models/connectionInfo";
 import * as AzureConstants from "../azure/constants";
+import { PasswordChangeService } from "../services/passwordChangeService";
 
 /**
  * Information for a document's connection. Exported for testing purposes.
@@ -116,6 +117,7 @@ export default class ConnectionManager {
     private _keyVaultTokenCache: Map<string, IToken> = new Map<string, IToken>();
     private _accountService: AccountService;
     private _firewallService: FirewallService;
+    private _passwordChangeService: PasswordChangeService;
     public azureController: AzureController;
 
     private _onConnectionsChangedEmitter: vscode.EventEmitter<void> =
@@ -203,6 +205,11 @@ export default class ConnectionManager {
             this.azureController,
         );
         this._firewallService = new FirewallService(this._accountService);
+        this._passwordChangeService = new PasswordChangeService(
+            this.client,
+            this.context,
+            this.vscodeWrapper,
+        );
 
         if (this.client !== undefined) {
             this.client.onNotification(
@@ -1419,6 +1426,7 @@ export default class ConnectionManager {
         const { errorNumber, errorMessage, message } = error;
 
         if (errorType === SqlConnectionErrorType.PasswordExpired) {
+            await this._passwordChangeService.showPasswordChangeDialog(credentials);
             // TODO: we should allow the user to change their password here once corefx supports SqlConnection.ChangePassword()
             Utils.showErrorMsg(
                 LocalizedConstants.msgConnectionErrorPasswordExpired(errorNumber, errorMessage),

@@ -6,6 +6,7 @@
 import { makeStyles } from "@fluentui/react-components";
 import { useContext } from "react";
 import { PasswordChangeContext } from "./passwordChangeStateProvider";
+import { PasswordChangeDialog } from "./passwordChangeDialog";
 
 // Define styles for the component
 const useStyles = makeStyles({
@@ -30,12 +31,7 @@ export const PasswordChangePage = () => {
 
     return (
         <div className={classes.root}>
-            <PasswordChangePageDialog
-                state={context.state}
-                changePassword={context.changePassword}
-                closeDialog={context.closeDialog}
-                signIntoAzure={context.signIntoAzure}
-            />
+            <PasswordChangeDialog />
         </div>
     );
 };
