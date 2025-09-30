@@ -20,6 +20,6 @@ export interface PasswordChangeResult {
 
 export namespace PasswordChangeRequest {
     export const type = new RequestType<PasswordChangeParams, PasswordChangeResult, void, void>(
-        "connection/passwordChange",
+        "connection/changepassword",
     );
 }

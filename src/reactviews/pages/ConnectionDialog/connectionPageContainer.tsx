@@ -13,6 +13,7 @@ import {
     ConnectionInputMode,
     ConnectionStringDialogProps,
     IConnectionDialogProfile,
+    PasswordChangeDialogProps,
     TrustServerCertDialogProps,
 } from "../../../sharedInterfaces/connectionDialog";
 import {
@@ -48,6 +49,8 @@ import { ColorThemeKind } from "../../../sharedInterfaces/webview";
 import { ConnectionGroupDialog } from "../ConnectionGroup/connectionGroup.component";
 import { SearchableDropdownOptions } from "../../common/searchableDropdown.component";
 import { FabricBrowsePage } from "./fabricBrowsePage";
+import { PasswordChangeDialog } from "../PasswordChange/passwordChangeDialog";
+import { PasswordChangeWebviewState } from "../../../sharedInterfaces/passwordChange";
 
 function renderContent(connectionDialogContext: ConnectionDialogContextProps): ReactNode {
     switch (connectionDialogContext?.state.selectedInputMode) {
@@ -129,6 +132,19 @@ export const ConnectionInfoFormContainer = () => {
                         addFirewallRule={context.addFirewallRule}
                         closeDialog={context.closeDialog}
                         signIntoAzure={context.signIntoAzureForFirewallRule}
+                    />
+                )}
+                {context.state.dialog?.type === "passwordChange" && (
+                    <PasswordChangeDialog
+                        serverName={
+                            (context.state.dialog as PasswordChangeDialogProps).props
+                                .serverDisplayName
+                        }
+                        errorMessage={
+                            (context.state.dialog as PasswordChangeDialogProps).props.errorMessage
+                        }
+                        onSubmit={context.changePassword}
+                        onClose={context.closeDialog}
                     />
                 )}
                 {context.state.dialog?.type === "loadFromConnectionString" && (

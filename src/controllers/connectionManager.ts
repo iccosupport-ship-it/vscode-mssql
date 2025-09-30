@@ -339,6 +339,10 @@ export default class ConnectionManager {
         return this._firewallService;
     }
 
+    public get passwordChangeService(): PasswordChangeService {
+        return this._passwordChangeService;
+    }
+
     public isActiveConnection(credential: IConnectionInfo): boolean {
         const connectedCredentials = Object.keys(this._connections).map(
             (uri) => this._connections[uri].credentials,
@@ -1426,16 +1430,28 @@ export default class ConnectionManager {
         const { errorNumber, errorMessage, message } = error;
 
         if (errorType === SqlConnectionErrorType.PasswordExpired) {
-            await this._passwordChangeService.showPasswordChangeDialog(credentials);
-            // TODO: we should allow the user to change their password here once corefx supports SqlConnection.ChangePassword()
-            Utils.showErrorMsg(
-                LocalizedConstants.msgConnectionErrorPasswordExpired(errorNumber, errorMessage),
+            const result = await this._passwordChangeService.showPasswordChangeDialog(
+                credentials,
+                error,
             );
-            return {
-                isHandled: false,
-                updatedCredentials: credentials,
-                errorHandled: SqlConnectionErrorType.PasswordExpired,
-            };
+            if (result) {
+                credentials.password = result;
+                //save password to credential store if needed
+                await this.connectionStore.saveProfilePasswordIfNeeded(
+                    credentials as IConnectionProfile,
+                );
+                return {
+                    isHandled: true,
+                    updatedCredentials: credentials,
+                    errorHandled: SqlConnectionErrorType.PasswordExpired,
+                };
+            } else {
+                return {
+                    isHandled: false,
+                    updatedCredentials: credentials,
+                    errorHandled: SqlConnectionErrorType.PasswordExpired,
+                };
+            }
         } else if (errorType === SqlConnectionErrorType.TrustServerCertificateNotEnabled) {
             const updatedConnection = await this.handleSSLError(credentials as IConnectionProfile);
             if (updatedConnection) {

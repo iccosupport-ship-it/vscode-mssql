@@ -14,76 +14,171 @@ import {
     Field,
     Input,
     makeStyles,
+    MessageBar,
+    MessageBarBody,
+    MessageBarTitle,
 } from "@fluentui/react-components";
-import { useContext } from "react";
-import { PasswordChangeContext } from "./passwordChangeStateProvider";
+import { useState } from "react";
 import { usePasswordChangeSelector } from "./passwordChangeSelector";
+import { EyeOffRegular, EyeRegular } from "@fluentui/react-icons";
+import { PasswordChangeResult } from "../../../models/contracts/passwordChange";
 
 const useStyles = makeStyles({
     dialog: {
         minWidth: "480px",
     },
+    content: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "20px",
+    },
+    errorMessage: {
+        marginBottom: "4px",
+    },
     serverInfo: {
-        marginBottom: "16px",
-        padding: "12px",
-        backgroundColor: "#f3f2f1",
-        borderRadius: "4px",
+        fontSize: "14px",
+        color: "var(--colorNeutralForeground2)",
     },
     passwordField: {
-        marginBottom: "16px",
-    },
-    validationMessage: {
-        fontSize: "12px",
-        marginTop: "4px",
-    },
-    loadingContainer: {
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
+        marginBottom: "0",
     },
 });
 
-export const PasswordChangeDialog = () => {
+export const PasswordChangeDialog = ({
+    onClose,
+    onSubmit,
+    errorMessage,
+    serverName,
+}: {
+    onClose?: () => void;
+    onSubmit?: (password: string) => Promise<PasswordChangeResult | undefined>;
+    errorMessage?: string;
+    serverName?: string;
+}) => {
     const styles = useStyles();
-    const context = useContext(PasswordChangeContext);
-    const serverName = usePasswordChangeSelector((state) => state.serverDisplayName);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [resultApiError, setResultApiError] = useState<string | undefined>(undefined);
 
-    const handleNewPasswordChange = (value: string) => {
-        // Handle new password input change
-    };
-
-    const handleConfirmPasswordChange = (value: string) => {
-        // Handle confirm password input change
-    };
+    const passwordsMatch = password === confirmPassword;
+    const isPasswordEmpty = password.trim() === "";
+    const isConfirmPasswordEmpty = confirmPassword.trim() === "";
+    const showPasswordMismatchError = !isConfirmPasswordEmpty && !passwordsMatch;
+    const isSubmitDisabled = isPasswordEmpty || isConfirmPasswordEmpty || !passwordsMatch;
 
     return (
         <Dialog open={true} modalType="modal">
             <DialogSurface className={styles.dialog}>
                 <DialogBody>
-                    <DialogTitle>{"Change password for " + serverName}</DialogTitle>
+                    <DialogTitle>Change password</DialogTitle>
                     <DialogContent>
-                        <Field className={styles.passwordField} label={"New Password"}>
-                            <Input
-                                type="password"
-                                value={""}
-                                onChange={(_, data) => handleNewPasswordChange(data.value)}
-                                placeholder={"Enter new password"}
-                            />
-                        </Field>
-                        <Field className={styles.passwordField} label={"Confirm Password"}>
-                            <Input
-                                type="password"
-                                value={""}
-                                onChange={(_, data) => handleConfirmPasswordChange(data.value)}
-                                placeholder={"Confirm new password"}
-                            />
-                        </Field>
+                        <div className={styles.content}>
+                            {resultApiError && (
+                                <MessageBar
+                                    key={resultApiError}
+                                    intent={"error"}
+                                    className={styles.errorMessage}>
+                                    <MessageBarBody>
+                                        <MessageBarTitle>Error</MessageBarTitle>
+                                        {resultApiError}
+                                    </MessageBarBody>
+                                </MessageBar>
+                            )}
+                            {serverName && <div className={styles.serverInfo}>{serverName}</div>}
+                            {errorMessage && (
+                                <div className={styles.serverInfo}>{errorMessage}</div>
+                            )}
+                            <Field
+                                size="small"
+                                className={styles.passwordField}
+                                label={"New Password"}
+                                required
+                                validationMessage={
+                                    isPasswordEmpty && password !== ""
+                                        ? "Password is required"
+                                        : undefined
+                                }
+                                validationState={
+                                    isPasswordEmpty && password !== "" ? "error" : "none"
+                                }>
+                                <Input
+                                    size="small"
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder={"Enter new password"}
+                                    required
+                                    value={password}
+                                    onChange={(_, data) => setPassword(data.value)}
+                                    contentAfter={
+                                        <Button
+                                            size="small"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            appearance="transparent"
+                                            icon={
+                                                showPassword ? <EyeRegular /> : <EyeOffRegular />
+                                            }></Button>
+                                    }
+                                />
+                            </Field>
+                            <Field
+                                size="small"
+                                className={styles.passwordField}
+                                label={"Confirm Password"}
+                                required
+                                validationMessage={
+                                    showPasswordMismatchError ? "Passwords do not match" : undefined
+                                }
+                                validationState={showPasswordMismatchError ? "error" : "none"}>
+                                <Input
+                                    size="small"
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    placeholder={"Confirm new password"}
+                                    required
+                                    value={confirmPassword}
+                                    onChange={(_, data) => setConfirmPassword(data.value)}
+                                    contentAfter={
+                                        <Button
+                                            size="small"
+                                            onClick={() =>
+                                                setShowConfirmPassword(!showConfirmPassword)
+                                            }
+                                            appearance="transparent"
+                                            icon={
+                                                showConfirmPassword ? (
+                                                    <EyeRegular />
+                                                ) : (
+                                                    <EyeOffRegular />
+                                                )
+                                            }></Button>
+                                    }
+                                />
+                            </Field>
+                        </div>
                     </DialogContent>
                     <DialogActions>
-                        <Button appearance="primary" onClick={() => {}}>
+                        <Button
+                            size="small"
+                            appearance="primary"
+                            disabled={isSubmitDisabled}
+                            onClick={async () => {
+                                if (onSubmit) {
+                                    const result = await onSubmit(password);
+                                    if (result?.errorMessage) {
+                                        setResultApiError(result.errorMessage);
+                                    }
+                                }
+                            }}>
                             Change Password
                         </Button>
-                        <Button appearance="secondary">Cancel</Button>
+                        <Button
+                            size="small"
+                            appearance="secondary"
+                            onClick={async () => {
+                                void onClose?.();
+                            }}>
+                            Cancel
+                        </Button>
                     </DialogActions>
                 </DialogBody>
             </DialogSurface>

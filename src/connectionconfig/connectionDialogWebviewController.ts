@@ -27,6 +27,7 @@ import {
     GetConnectionDisplayNameRequest,
     IAzureAccount,
     GetSqlAnalyticsEndpointUriFromFabricRequest,
+    PasswordChangeDialogProps,
 } from "../sharedInterfaces/connectionDialog";
 import { FormItemActionButton, FormItemOptions } from "../sharedInterfaces/form";
 import {
@@ -82,6 +83,10 @@ import {
     getSqlConnectionErrorType,
     SqlConnectionErrorType,
 } from "../controllers/connectionManager";
+import {
+    ChangePasswordRequestType,
+    PasswordChangeWebviewState,
+} from "../sharedInterfaces/passwordChange";
 
 const FABRIC_WORKSPACE_AUTOLOAD_LIMIT = 10;
 
@@ -753,6 +758,23 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
                 return undefined;
             }
         });
+
+        this.onRequest(ChangePasswordRequestType, async (newPassword: string) => {
+            const result =
+                await this._mainController.connectionManager.passwordChangeService.setNewPassword(
+                    this.state.connectionProfile,
+                    newPassword,
+                );
+            if (result.result) {
+                this.state.dialog = undefined;
+                this.state.connectionProfile.password = newPassword;
+                this.updateState();
+                const state = await this.connectHelper(this.state);
+                this.updateState(state);
+            } else {
+                return result;
+            }
+        });
     }
 
     //#region Helpers
@@ -1138,6 +1160,19 @@ export class ConnectionDialogWebviewController extends FormWebviewController<
                 props: addFirewallDialogState,
             } as AddFirewallRuleDialogProps;
 
+            return state;
+        } else if (errorType === SqlConnectionErrorType.PasswordExpired) {
+            this.state.connectionStatus = ApiStatus.Error;
+            this.state.formError = `${result.errorNumber}: ${result.errorMessage}`;
+            this.state.dialog = {
+                type: "passwordChange",
+                props: {
+                    serverDisplayName: getConnectionDisplayName(result.credentials),
+                    errorMessage: result.errorMessage,
+                    errorNumber: result.errorNumber,
+                    error: result.errorNumber,
+                } as PasswordChangeWebviewState,
+            } as PasswordChangeDialogProps;
             return state;
         } else {
             this.state.formError = result.errorMessage;

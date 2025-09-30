@@ -10,7 +10,7 @@ import { PasswordChangeWebviewController } from "../controllers/passwordChangeWe
 import VscodeWrapper from "../controllers/vscodeWrapper";
 import { ConnectionCredentials } from "../models/connectionCredentials";
 import { PasswordChangeRequest, PasswordChangeResult } from "../models/contracts/passwordChange";
-import { generateGuid } from "../models/utils";
+import { SqlConnectionError } from "../controllers/connectionManager";
 
 export class PasswordChangeService {
     constructor(
@@ -19,12 +19,16 @@ export class PasswordChangeService {
         private _vscodeWrapper?: VscodeWrapper,
     ) {}
 
-    public async showPasswordChangeDialog(credentials: IConnectionInfo): Promise<boolean> {
+    public async showPasswordChangeDialog(
+        credentials: IConnectionInfo,
+        error: SqlConnectionError,
+    ): Promise<string | undefined> {
         const webview = new PasswordChangeWebviewController(
             this._context,
             this._vscodeWrapper,
             credentials,
             this,
+            error,
         );
 
         await webview.whenWebviewReady();
@@ -34,9 +38,9 @@ export class PasswordChangeService {
         try {
             const result = await webview.dialogResult.promise;
             console.log(`Password change result: ${result}`);
-            return true;
+            return result;
         } catch (e) {
-            return false;
+            return undefined;
         }
     }
 
@@ -45,10 +49,14 @@ export class PasswordChangeService {
         newPassword: string,
     ): Promise<PasswordChangeResult> {
         const connectionDetails = ConnectionCredentials.createConnectionDetails(credentials);
-        return await this._client.sendRequest(PasswordChangeRequest.type, {
-            ownerUri: `passwordChange_${generateGuid()}`,
-            connection: connectionDetails,
-            newPassword: newPassword,
-        });
+        try {
+            return await this._client.sendRequest(PasswordChangeRequest.type, {
+                ownerUri: `password-change-lol`,
+                connection: connectionDetails,
+                newPassword: newPassword,
+            });
+        } catch (error) {
+            return { result: false, errorMessage: error.message as string };
+        }
     }
 }

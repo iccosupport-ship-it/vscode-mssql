@@ -18,6 +18,8 @@ import { useVscodeWebview } from "../../common/vscodeWebviewProvider";
 import { getCoreRPCs } from "../../common/utils";
 import { ConnectionGroupSpec } from "../../../sharedInterfaces/connectionGroup";
 import { FabricSqlDbInfo } from "../../../sharedInterfaces/fabric";
+import { PasswordChangeResult } from "../../../models/contracts/passwordChange";
+import { ChangePasswordRequestType } from "../../../sharedInterfaces/passwordChange";
 
 const ConnectionDialogContext = createContext<ConnectionDialogContextProps | undefined>(undefined);
 
@@ -144,6 +146,14 @@ const ConnectionDialogStateProvider: React.FC<ConnectionDialogProviderProps> = (
                     return await webviewContext.extensionRpc.sendRequest(
                         GetSqlAnalyticsEndpointUriFromFabricRequest.type,
                         sqlDb,
+                    );
+                },
+                changePassword: async function (
+                    newPassword: string,
+                ): Promise<PasswordChangeResult> {
+                    return await webviewContext.extensionRpc.sendRequest(
+                        ChangePasswordRequestType,
+                        newPassword,
                     );
                 },
             }}>

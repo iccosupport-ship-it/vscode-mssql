@@ -4,9 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { makeStyles } from "@fluentui/react-components";
+import { PasswordChangeDialog } from "./passwordChangeDialog";
 import { useContext } from "react";
 import { PasswordChangeContext } from "./passwordChangeStateProvider";
-import { PasswordChangeDialog } from "./passwordChangeDialog";
+import {
+    CancelPasswordChangeNotificationParams,
+    ChangePasswordRequestType,
+} from "../../../sharedInterfaces/passwordChange";
+import { usePasswordChangeSelector } from "./passwordChangeSelector";
 
 // Define styles for the component
 const useStyles = makeStyles({
@@ -28,10 +33,25 @@ const useStyles = makeStyles({
 export const PasswordChangePage = () => {
     const classes = useStyles();
     const context = useContext(PasswordChangeContext);
+    const error = usePasswordChangeSelector((state) => state.errorMessage);
 
     return (
         <div className={classes.root}>
-            <PasswordChangeDialog />
+            <PasswordChangeDialog
+                errorMessage={error}
+                onSubmit={async (newPassword) => {
+                    const result = await context?.extensionRpc?.sendRequest(
+                        ChangePasswordRequestType,
+                        newPassword,
+                    );
+                    return result;
+                }}
+                onClose={async () => {
+                    await context?.extensionRpc?.sendNotification(
+                        CancelPasswordChangeNotificationParams,
+                    );
+                }}
+            />
         </div>
     );
 };
