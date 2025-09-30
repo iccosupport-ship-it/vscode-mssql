@@ -400,6 +400,9 @@
     <trans-unit id="++CODE++6bd09f9171ad9aa3824a8e54ea5edf59d28c768124be9dc7f9d2c5c7eee6780b">
       <source xml:lang="en">Change Database</source>
     </trans-unit>
+    <trans-unit id="++CODE++a949f46230748d3f7496809b82cec6daa6ec8a671d17ac1ca03a17173cbcb2d6">
+      <source xml:lang="en">Change Password</source>
+    </trans-unit>
     <trans-unit id="++CODE++00aecebb859a5ba020dd5aa5ffb71e7f9a4279e35f9c94e6d34ebf7c889a3f7e">
       <source xml:lang="en">Change database to &apos;{1}&apos; for connection &apos;{0}&apos;?</source>
       <note>{0} is the connection ID

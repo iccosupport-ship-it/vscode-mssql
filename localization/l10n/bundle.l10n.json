@@ -1738,6 +1738,7 @@
   "Sign in to a new account": "Sign in to a new account",
   "Select Azure account with Key Vault access for column decryption": "Select Azure account with Key Vault access for column decryption",
   "No tenant selected": "No tenant selected",
+  "Change Password": "Change Password",
   "No model found.": "No model found.",
   "No tools to process.": "No tools to process.",
   "You are not connected to any database.": "You are not connected to any database.",
