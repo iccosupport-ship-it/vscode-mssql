@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+        "electron-playwright": {
+            "command": "node",
+            "args": [
+                "/Users/aasim/src/electron-playwright-mcp/dist/index.js",
+                "/Users/aasim/src/vscode-mssql-claude/.vscode-test/vscode-darwin-arm64-insiders/Visual Studio Code - Insiders.app/Contents/MacOS/Electron",
+                "/Users/aasim/src/vscode-mssql-claude"
+            ]
+        }
+    }
+}
