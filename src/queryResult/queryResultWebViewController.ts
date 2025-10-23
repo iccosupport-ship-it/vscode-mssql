@@ -133,6 +133,12 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
                         this._queryResultStateMap.set(uri, state);
                     }
                 }
+                if (e.affectsConfiguration(Constants.configKeybindings)) {
+                    for (const [uri, state] of this._queryResultStateMap) {
+                        state.keyBindings = this.readKeyBindingsConfig();
+                        this._queryResultStateMap.set(uri, state);
+                    }
+                }
             }),
         );
 
@@ -275,7 +281,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         isExecutionPlan?: boolean,
         actualPlanEnabled?: boolean,
     ): void {
-        let currentState = {
+        let currentState: qr.QueryResultWebviewState = {
             resultSetSummaries: {},
             messages: [],
             tabStates: {
@@ -285,7 +291,6 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
             uri: uri,
             title: title,
             isExecutionPlan: isExecutionPlan,
-            actualPlanEnabled: actualPlanEnabled,
             ...(isExecutionPlan && {
                 executionPlanState: {
                     loadState: ApiStatus.Loading,
@@ -300,6 +305,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
             },
             autoSizeColumns: this.getAutoSizeColumnsConfig(),
             inMemoryDataProcessingThreshold: getInMemoryGridDataProcessingThreshold(),
+            keyBindings: this.readKeyBindingsConfig(),
         };
         this._queryResultStateMap.set(uri, currentState);
     }
@@ -462,5 +468,11 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         } else {
             this._selectionSummaryStatusBarItem.hide();
         }
+    }
+
+    public readKeyBindingsConfig(): Record<string, string> {
+        return vscode.workspace
+            .getConfiguration()
+            .get<Record<string, string>>(Constants.configKeybindings);
     }
 }

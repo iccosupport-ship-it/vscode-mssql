@@ -192,10 +192,10 @@ The following Visual Studio Code settings are available for the mssql extension.
 // Shortcuts
 {
   "mssql.shortcuts": {
-    "event.toggleResultPane": "ctrl+alt+r",
-    "event.toggleMessagePane": "ctrl+alt+y",
-    "event.prevGrid": "ctrl+up",
-    "event.nextGrid": "ctrl+down",
+    "event.resultGrid.switchToResultsTab": "ctrl+alt+r",
+    "event.resultGrid.switchToMessagesTab": "ctrl+alt+y",
+    "event.resultGrid.prevGrid": "ctrl+up",
+    "event.resultGrid.nextGrid": "ctrl+down",
     "event.copySelection": "ctrl+c",
     "event.maximizeGrid": "",
     "event.selectAll": "",

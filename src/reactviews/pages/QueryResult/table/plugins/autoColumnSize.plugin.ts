@@ -65,6 +65,29 @@ export class AutoColumnSize<T extends Slick.SlickData> implements Slick.Plugin<T
         this.onPostRender();
     }
 
+    public resizeColumnByIndex(columnIndex: number): void {
+        if (!this._grid) {
+            return;
+        }
+
+        const columns = this._grid.getColumns();
+        if (!columns || columnIndex < 0 || columnIndex >= columns.length) {
+            return;
+        }
+
+        const headerColumns = jQuery(this._grid.getContainerNode()).find(".slick-header-columns");
+        if (!headerColumns || headerColumns.length === 0) {
+            return;
+        }
+
+        const headerEl = headerColumns.children().eq(columnIndex);
+        if (!headerEl || headerEl.length === 0) {
+            return;
+        }
+
+        this.resizeColumn(headerEl as JQuery, columns[columnIndex]);
+    }
+
     /**
      * Calculate optimal column width based on header and content width.
      * Prioritizes content width but ensures headers are readable.

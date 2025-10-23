@@ -18,6 +18,7 @@ import {
     GetColumnWidthsRequest,
     GetFiltersRequest,
     GetGridScrollPositionRequest,
+    GridContextMenuAction,
     ResultSetSummary,
     SetColumnWidthsRequest,
     SetGridScrollPositionNotification,
@@ -59,6 +60,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
     private selectionModel: CellSelectionModel<T>;
     public headerFilter: HeaderMenu<T>;
     private _autoColumnSizePlugin: AutoColumnSize<T>;
+    private copyKeybindPlugin: CopyKeybind<T>;
     private _lastScrollAt: number = 0;
 
     constructor(
@@ -74,6 +76,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
         gridParentRef?: React.RefObject<HTMLDivElement>,
         autoSizeColumns: boolean = false,
         themeKind: ColorThemeKind = ColorThemeKind.Dark,
+        keyBindings?: Record<string, string>,
     ) {
         this.linkHandler = linkHandler;
         this.headerFilter = new HeaderMenu(this.uri, themeKind, this.context, gridId);
@@ -92,6 +95,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
             uri,
             resultSetSummary,
             this.headerFilter,
+            keyBindings,
         );
         if (
             !configuration ||
@@ -148,8 +152,18 @@ export class Table<T extends Slick.SlickData> implements IThemable {
         this.styleElement = DOM.createStyleSheet(this._container);
         this._grid = new Slick.Grid<T>(this._tableContainer, this._data, [], newOptions);
         this.registerPlugin(this.headerFilter);
-        this.registerPlugin(new ContextMenu(this.uri, this.resultSetSummary, this.context));
-        this.registerPlugin(new CopyKeybind(this.uri, this.resultSetSummary, this.context));
+        this.registerPlugin(
+            new ContextMenu(this.uri, this.resultSetSummary, this.context, () =>
+                this.getContextMenuShortcutDisplays(),
+            ),
+        );
+        this.copyKeybindPlugin = new CopyKeybind(
+            this.uri,
+            this.resultSetSummary,
+            this.context,
+            keyBindings,
+        );
+        this.registerPlugin(this.copyKeybindPlugin);
 
         this._autoColumnSizePlugin = new AutoColumnSize(
             {
@@ -506,11 +520,83 @@ export class Table<T extends Slick.SlickData> implements IThemable {
         this._grid.unregisterPlugin(plugin);
     }
 
+    updateShortcuts(keyBindings?: Record<string, string>): void {
+        this.selectionModel.updateShortcuts(keyBindings);
+        this.copyKeybindPlugin.updateShortcuts(keyBindings);
+    }
+
+    getContextMenuShortcutDisplays(): Partial<Record<GridContextMenuAction, string>> {
+        const copyDisplays = this.copyKeybindPlugin.getShortcutDisplays();
+        const selectionDisplays = this.selectionModel.getShortcutDisplays();
+        return {
+            [GridContextMenuAction.SelectAll]: selectionDisplays.selectAll,
+            [GridContextMenuAction.CopySelection]: copyDisplays.copySelection,
+            [GridContextMenuAction.CopyWithHeaders]: copyDisplays.copyWithHeaders,
+            [GridContextMenuAction.CopyHeaders]: copyDisplays.copyAllHeaders,
+            [GridContextMenuAction.CopyAsCsv]: copyDisplays.copyAsCsv,
+            [GridContextMenuAction.CopyAsJson]: copyDisplays.copyAsJson,
+            [GridContextMenuAction.CopyAsInsertInto]: copyDisplays.copyAsInsertInto,
+            [GridContextMenuAction.CopyAsInClause]: copyDisplays.copyAsInClause,
+        };
+    }
+
+    focusGrid(): void {
+        this.focus();
+        const defaultColumnIndex = this.getDefaultDataColumnIndex();
+        const rowCount = this._grid.getDataLength();
+        if (defaultColumnIndex === undefined || rowCount === 0) {
+            return;
+        }
+        const active = this._grid.getActiveCell();
+        const targetRow =
+            active && active.row !== undefined ? Math.min(active.row, rowCount - 1) : 0;
+        this.setActiveCell(targetRow, defaultColumnIndex);
+    }
+
+    autoSizeActiveColumn(): void {
+        if (!this._autoColumnSizePlugin) {
+            return;
+        }
+        let active = this._grid.getActiveCell();
+        const defaultColumnIndex = this.getDefaultDataColumnIndex();
+        if (!active) {
+            const rowCount = this._grid.getDataLength();
+            if (defaultColumnIndex === undefined || rowCount === 0) {
+                return;
+            }
+            this.setActiveCell(0, defaultColumnIndex);
+            active = this._grid.getActiveCell();
+        }
+        if (!active) {
+            return;
+        }
+
+        let columnIndex = active.cell ?? defaultColumnIndex ?? 0;
+        if (columnIndex === 0 && defaultColumnIndex !== undefined) {
+            const targetRow = active.row ?? 0;
+            this.setActiveCell(targetRow, defaultColumnIndex);
+            columnIndex = defaultColumnIndex;
+        }
+
+        this._autoColumnSizePlugin.resizeColumnByIndex(columnIndex);
+    }
+
     /**
      * This function needs to be called if the table is drawn off dom.
      */
     resizeCanvas() {
         this._grid.resizeCanvas();
+    }
+
+    private getDefaultDataColumnIndex(): number | undefined {
+        const columns = this._grid.getColumns();
+        if (!columns || columns.length === 0) {
+            return undefined;
+        }
+        if (columns.length === 1) {
+            return 0;
+        }
+        return 1;
     }
 
     layout(dimension: DOM.Dimension): void;

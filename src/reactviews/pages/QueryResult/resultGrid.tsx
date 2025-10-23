@@ -49,6 +49,8 @@ export interface ResultGridHandle {
     resizeGrid: (width: number, height: number) => void;
     hideGrid: () => void;
     showGrid: () => void;
+    focusGrid: () => void;
+    autoSizeActiveColumn: () => void;
 }
 
 const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultGridProps, ref) => {
@@ -64,6 +66,9 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
     );
     const fontSettings = useQueryResultSelector((state) => state.fontSettings);
     const autoSizeColumns = useQueryResultSelector((state) => state.autoSizeColumns);
+    const keyBindings = useQueryResultSelector<Record<string, string> | undefined>(
+        (state) => state.keyBindings,
+    );
     const { themeKind } = useVscodeWebview2();
 
     const gridContainerRef = useRef<HTMLDivElement>(null);
@@ -125,6 +130,20 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         if (gridParent) {
             gridParent.style.display = "";
         }
+    };
+
+    const focusGrid = () => {
+        if (!tableRef.current) {
+            return;
+        }
+        tableRef.current.focusGrid();
+    };
+
+    const autoSizeActiveColumn = () => {
+        if (!tableRef.current) {
+            return;
+        }
+        tableRef.current.autoSizeActiveColumn();
     };
 
     const updateRowCountOnly = () => {
@@ -285,6 +304,7 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
             props.gridParentRef,
             autoSizeColumns,
             themeKind,
+            keyBindings,
         );
         void setupState();
         collection.setCollectionChangedCallback((startIndex, count) => {
@@ -314,11 +334,19 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         resizeGrid,
         hideGrid,
         showGrid,
+        focusGrid,
+        autoSizeActiveColumn,
     }));
 
     useEffect(() => {
         createTableIfNeeded();
     }, [props.resultSetSummary?.rowCount]);
+
+    useEffect(() => {
+        if (tableRef.current) {
+            tableRef.current.updateShortcuts(keyBindings);
+        }
+    }, [keyBindings]);
 
     // Trigger auto-sizing when result data is available and auto-sizing is enabled
     useEffect(() => {

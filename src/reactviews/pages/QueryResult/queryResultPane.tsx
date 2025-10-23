@@ -24,7 +24,7 @@ import {
     DataGridCell,
     RowRenderer,
 } from "@fluentui-contrib/react-data-grid-react-window";
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { DatabaseSearch24Regular, ErrorCircle24Regular, OpenRegular } from "@fluentui/react-icons";
 import * as qr from "../../../sharedInterfaces/queryResult";
 import ResultGrid, { ResultGridHandle } from "./resultGrid";
@@ -40,6 +40,28 @@ import { useQueryResultSelector } from "./queryResultSelector";
 import { ExecuteCommandRequest } from "../../../sharedInterfaces/webview";
 import { ExecutionPlanGraph } from "../../../sharedInterfaces/executionPlan";
 import { SLICKGRID_ROW_ID_PROP } from "./table/utils";
+import {
+    kbChangeColumnWidth,
+    kbCopyAllHeaders,
+    kbCopyAsCsv,
+    kbCopyAsInClause,
+    kbCopyAsInsert,
+    kbCopyAsJson,
+    kbCopySelection,
+    kbCopyWithHeaders,
+    kbMaximizeGrid,
+    kbNextGrid,
+    kbPrevGrid,
+    kbSaveAsCsv,
+    kbSaveAsExcel,
+    kbSaveAsInsert,
+    kbSaveAsJson,
+    kbSelectAll,
+    kbSwitchToMessagesTab,
+    kbSwitchToResultsTab,
+    kbSwitchToTextView,
+} from "../../common/constants";
+import { eventMatchesShortcut, getShortcutInfo, ShortcutInfo } from "../../common/keyboardUtils";
 
 const useStyles = makeStyles({
     root: {
@@ -182,6 +204,9 @@ export const QueryResultPane = () => {
     const executionPlanGraphs = useQueryResultSelector<ExecutionPlanGraph[] | undefined>(
         (s) => s.executionPlanState?.executionPlanGraphs,
     );
+    const keyBindings = useQueryResultSelector<Record<string, string> | undefined>(
+        (s) => s.keyBindings,
+    );
     const isProgrammaticScroll = useRef(true);
     isProgrammaticScroll.current = true;
 
@@ -190,8 +215,122 @@ export const QueryResultPane = () => {
     const gridParentRef = useRef<HTMLDivElement>(null);
     const scrollablePanelRef = useRef<HTMLDivElement>(null);
     const [messageGridHeight, setMessageGridHeight] = useState(0);
+    const gridRefs = useRef<Array<ResultGridHandle | undefined>>([]);
+    const [maximizedGridIndex, setMaximizedGridIndex] = useState<number | undefined>(undefined);
+    const gridIndexByElementIdRef = useRef<Record<string, number>>({});
+    const gridElementIdsRef = useRef<string[]>([]);
 
-    const getGridCount = () => {
+    const defaultShortcutMap = useMemo(
+        () => ({
+            maximize: "ctrlcmd+alt+m",
+            switchToResultsTab: "ctrlcmd+alt+r",
+            switchToMessagesTab: "ctrlcmd+alt+y",
+            switchToTextView: "ctrlcmd+alt+t",
+            prevGrid: "ctrlcmd+up",
+            nextGrid: "ctrlcmd+down",
+            changeColumnWidth: "ctrlcmd+alt+s",
+            selectAll: "ctrlcmd+a",
+            copySelection: "ctrlcmd+c",
+            copyWithHeaders: "ctrlcmd+shift+c",
+            copyAllHeaders: "ctrlcmd+alt+shift+c",
+            copyAsCsv: "ctrlcmd+shift+1",
+            copyAsJson: "ctrlcmd+shift+2",
+            copyAsInsert: "ctrlcmd+shift+3",
+            copyAsInClause: "ctrlcmd+shift+4",
+            saveAsJson: "ctrlcmd+alt+j",
+            saveAsCsv: "ctrlcmd+alt+shift+s",
+            saveAsExcel: "ctrlcmd+alt+shift+e",
+            saveAsInsert: "ctrlcmd+alt+shift+i",
+        }),
+        [],
+    );
+
+    const shortcutInfos = useMemo(
+        () => ({
+            maximize: getShortcutInfo(keyBindings?.[kbMaximizeGrid], defaultShortcutMap.maximize),
+            switchToResultsTab: getShortcutInfo(
+                keyBindings?.[kbSwitchToResultsTab],
+                defaultShortcutMap.switchToResultsTab,
+            ),
+            switchToMessagesTab: getShortcutInfo(
+                keyBindings?.[kbSwitchToMessagesTab],
+                defaultShortcutMap.switchToMessagesTab,
+            ),
+            switchToTextView: getShortcutInfo(
+                keyBindings?.[kbSwitchToTextView],
+                defaultShortcutMap.switchToTextView,
+            ),
+            prevGrid: getShortcutInfo(keyBindings?.[kbPrevGrid], defaultShortcutMap.prevGrid),
+            nextGrid: getShortcutInfo(keyBindings?.[kbNextGrid], defaultShortcutMap.nextGrid),
+            changeColumnWidth: getShortcutInfo(
+                keyBindings?.[kbChangeColumnWidth],
+                defaultShortcutMap.changeColumnWidth,
+            ),
+            selectAll: getShortcutInfo(keyBindings?.[kbSelectAll], defaultShortcutMap.selectAll),
+            copySelection: getShortcutInfo(
+                keyBindings?.[kbCopySelection],
+                defaultShortcutMap.copySelection,
+            ),
+            copyWithHeaders: getShortcutInfo(
+                keyBindings?.[kbCopyWithHeaders],
+                defaultShortcutMap.copyWithHeaders,
+            ),
+            copyAllHeaders: getShortcutInfo(
+                keyBindings?.[kbCopyAllHeaders],
+                defaultShortcutMap.copyAllHeaders,
+            ),
+            copyAsCsv: getShortcutInfo(keyBindings?.[kbCopyAsCsv], defaultShortcutMap.copyAsCsv),
+            copyAsJson: getShortcutInfo(keyBindings?.[kbCopyAsJson], defaultShortcutMap.copyAsJson),
+            copyAsInsert: getShortcutInfo(
+                keyBindings?.[kbCopyAsInsert],
+                defaultShortcutMap.copyAsInsert,
+            ),
+            copyAsInClause: getShortcutInfo(
+                keyBindings?.[kbCopyAsInClause],
+                defaultShortcutMap.copyAsInClause,
+            ),
+            saveAsJson: getShortcutInfo(keyBindings?.[kbSaveAsJson], defaultShortcutMap.saveAsJson),
+            saveAsCsv: getShortcutInfo(keyBindings?.[kbSaveAsCsv], defaultShortcutMap.saveAsCsv),
+            saveAsExcel: getShortcutInfo(
+                keyBindings?.[kbSaveAsExcel],
+                defaultShortcutMap.saveAsExcel,
+            ),
+            saveAsInsert: getShortcutInfo(
+                keyBindings?.[kbSaveAsInsert],
+                defaultShortcutMap.saveAsInsert,
+            ),
+        }),
+        [keyBindings, defaultShortcutMap],
+    );
+
+    const paneShortcuts = useMemo(
+        () => ({
+            maximize: shortcutInfos.maximize,
+            switchToResultsTab: shortcutInfos.switchToResultsTab,
+            switchToMessagesTab: shortcutInfos.switchToMessagesTab,
+            switchToTextView: shortcutInfos.switchToTextView,
+            prevGrid: shortcutInfos.prevGrid,
+            nextGrid: shortcutInfos.nextGrid,
+            changeColumnWidth: shortcutInfos.changeColumnWidth,
+        }),
+        [shortcutInfos],
+    );
+
+    const commandShortcutDisplays = useMemo(
+        () => ({
+            toggleView: shortcutInfos.switchToTextView.display,
+            saveCsv: shortcutInfos.saveAsCsv.display,
+            saveJson: shortcutInfos.saveAsJson.display,
+            saveExcel: shortcutInfos.saveAsExcel.display,
+            saveInsert: shortcutInfos.saveAsInsert.display,
+        }),
+        [shortcutInfos],
+    );
+
+    const hasShortcut = (shortcut: ShortcutInfo) =>
+        shortcut && Object.keys(shortcut.matcher).length > 0;
+
+    const getGridCount = useCallback(() => {
         let count = 0;
         const batchIds = Object.keys(resultSetSummaries ?? {});
         for (const batchId of batchIds) {
@@ -201,14 +340,11 @@ export const QueryResultPane = () => {
             }
         }
         return count;
-    };
+    }, [resultSetSummaries]);
 
     // Resize grid when parent element resizes
     useEffect(() => {
-        let gridCount = 0;
-        Object.values(resultSetSummaries ?? []).forEach((v) => {
-            gridCount += Object.keys(v).length;
-        });
+        const gridCount = getGridCount();
         if (gridCount === 0 && messages?.length === 0) {
             return; // Exit if there are no results/messages grids to render
         }
@@ -244,7 +380,7 @@ export const QueryResultPane = () => {
         return () => {
             observer.disconnect();
         };
-    }, [resultSetSummaries, resultPaneParentRef.current]);
+    }, [getGridCount, messages, tabStates?.resultPaneTab]);
 
     const calculateGridHeight = (gridCount: number, availableHeight: number) => {
         if (gridCount > 1) {
@@ -280,11 +416,312 @@ export const QueryResultPane = () => {
     };
 
     //#region Result Display (Grid or Text)
-    const gridRefs = useRef<ResultGridHandle[]>([]);
-
-    const getCurrentViewMode = (): qr.QueryResultViewMode => {
+    const getCurrentViewMode = useCallback((): qr.QueryResultViewMode => {
         return tabStates?.resultViewMode ?? qr.QueryResultViewMode.Grid;
-    };
+    }, [tabStates?.resultViewMode]);
+
+    const hideOtherGrids = useCallback((gridIndexToKeep: number) => {
+        gridRefs.current.forEach((grid, index) => {
+            if (!grid || index === gridIndexToKeep) {
+                return;
+            }
+            grid.hideGrid();
+        });
+    }, []);
+
+    const showOtherGrids = useCallback((gridIndexToKeep: number) => {
+        gridRefs.current.forEach((grid, index) => {
+            if (!grid || index === gridIndexToKeep) {
+                return;
+            }
+            grid.showGrid();
+        });
+    }, []);
+
+    const maximizeResults = useCallback((gridRef: ResultGridHandle) => {
+        if (!resultPaneParentRef.current || !ribbonRef.current) {
+            return;
+        }
+
+        const height =
+            getAvailableHeight(resultPaneParentRef.current, ribbonRef.current) - TABLE_ALIGN_PX;
+        const width = resultPaneParentRef.current.clientWidth - ACTIONBAR_WIDTH_PX;
+
+        gridRef.resizeGrid(width, height);
+    }, []);
+
+    const restoreResults = useCallback(
+        (scrollToGridIndex?: number) => {
+            if (!resultPaneParentRef.current || !ribbonRef.current) {
+                return;
+            }
+
+            const availableHeight = getAvailableHeight(
+                resultPaneParentRef.current,
+                ribbonRef.current,
+            );
+            const definedGridRefs = gridRefs.current.filter(
+                (grid): grid is ResultGridHandle => !!grid,
+            );
+
+            if (definedGridRefs.length === 0) {
+                return;
+            }
+
+            const height = calculateGridHeight(definedGridRefs.length, availableHeight);
+            const width = calculateGridWidth(
+                resultPaneParentRef.current,
+                definedGridRefs.length,
+                availableHeight,
+            );
+
+            definedGridRefs.forEach((gridRef) => {
+                gridRef.resizeGrid(width, height);
+            });
+
+            if (scrollToGridIndex !== undefined && resultSetSummaries) {
+                setTimeout(() => {
+                    let currentIndex = 0;
+                    for (const batchIdStr in resultSetSummaries) {
+                        const batchId = parseInt(batchIdStr);
+                        for (const resultIdStr in resultSetSummaries[batchId]) {
+                            const resultId = parseInt(resultIdStr);
+                            if (currentIndex === scrollToGridIndex) {
+                                const gridElement = document.getElementById(
+                                    `grid-parent-${batchId}-${resultId}`,
+                                );
+                                if (gridElement) {
+                                    gridElement.scrollIntoView({
+                                        behavior: "instant",
+                                        block: "start",
+                                    });
+                                }
+                                return;
+                            }
+                            currentIndex++;
+                        }
+                    }
+                }, 100);
+            }
+        },
+        [resultSetSummaries],
+    );
+
+    const toggleGridMaximize = useCallback(
+        (gridIndex: number) => {
+            if (getGridCount() <= 1) {
+                return;
+            }
+
+            const targetGrid = gridRefs.current[gridIndex];
+            if (!targetGrid) {
+                return;
+            }
+
+            if (maximizedGridIndex === gridIndex) {
+                showOtherGrids(gridIndex);
+                restoreResults(gridIndex);
+                setMaximizedGridIndex(undefined);
+                return;
+            }
+
+            if (maximizedGridIndex !== undefined && gridRefs.current[maximizedGridIndex]) {
+                showOtherGrids(maximizedGridIndex);
+                restoreResults(maximizedGridIndex);
+            } else {
+                restoreResults();
+            }
+
+            maximizeResults(targetGrid);
+            hideOtherGrids(gridIndex);
+            setMaximizedGridIndex(gridIndex);
+        },
+        [
+            getGridCount,
+            hideOtherGrids,
+            maximizeResults,
+            restoreResults,
+            showOtherGrids,
+            maximizedGridIndex,
+        ],
+    );
+
+    const getGridIndexFromElement = useCallback((element: Element | null): number | undefined => {
+        let current: Element | null = element;
+        while (current) {
+            if (current instanceof HTMLElement) {
+                const mappedIndex = gridIndexByElementIdRef.current[current.id];
+                if (typeof mappedIndex === "number") {
+                    return mappedIndex;
+                }
+                current = current.parentElement;
+            } else {
+                break;
+            }
+        }
+        return undefined;
+    }, []);
+
+    const resolveGridIndexForShortcut = useCallback((): number | undefined => {
+        const activeIndex = getGridIndexFromElement(document.activeElement);
+        if (activeIndex !== undefined && gridRefs.current[activeIndex]) {
+            return activeIndex;
+        }
+
+        if (maximizedGridIndex !== undefined && gridRefs.current[maximizedGridIndex]) {
+            return maximizedGridIndex;
+        }
+
+        const firstAvailableIndex = gridRefs.current.findIndex((grid) => !!grid);
+        return firstAvailableIndex === -1 ? undefined : firstAvailableIndex;
+    }, [getGridIndexFromElement, maximizedGridIndex]);
+
+    const navigateGrid = useCallback(
+        (direction: 1 | -1) => {
+            const total = getGridCount();
+            if (total <= 1) {
+                return;
+            }
+
+            const currentIndex = resolveGridIndexForShortcut();
+            let targetIndex: number;
+            if (currentIndex === undefined) {
+                targetIndex = direction > 0 ? 0 : total - 1;
+            } else {
+                targetIndex = (currentIndex + direction + total) % total;
+            }
+
+            if (maximizedGridIndex !== undefined) {
+                showOtherGrids(maximizedGridIndex);
+                restoreResults(targetIndex);
+                setMaximizedGridIndex(undefined);
+            }
+
+            const targetId = gridElementIdsRef.current[targetIndex];
+            if (targetId) {
+                document.getElementById(targetId)?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                });
+            }
+
+            gridRefs.current[targetIndex]?.focusGrid?.();
+        },
+        [
+            getGridCount,
+            resolveGridIndexForShortcut,
+            maximizedGridIndex,
+            showOtherGrids,
+            restoreResults,
+            setMaximizedGridIndex,
+        ],
+    );
+
+    const matchesShortcut = (event: KeyboardEvent, shortcut: ShortcutInfo) =>
+        hasShortcut(shortcut) && eventMatchesShortcut(event, shortcut.matcher);
+
+    useEffect(() => {
+        const handler = (event: KeyboardEvent) => {
+            const isResultsTab = tabStates?.resultPaneTab === qr.QueryResultPaneTabs.Results;
+            const viewMode = getCurrentViewMode();
+            const gridCount = getGridCount();
+            let handled = false;
+
+            if (matchesShortcut(event, paneShortcuts.switchToResultsTab)) {
+                if (Object.keys(resultSetSummaries ?? {}).length > 0) {
+                    context.setResultTab(qr.QueryResultPaneTabs.Results);
+                    handled = true;
+                }
+            } else if (matchesShortcut(event, paneShortcuts.switchToMessagesTab)) {
+                context.setResultTab(qr.QueryResultPaneTabs.Messages);
+                handled = true;
+            } else if (matchesShortcut(event, paneShortcuts.switchToTextView)) {
+                if (isResultsTab) {
+                    const newMode =
+                        viewMode === qr.QueryResultViewMode.Grid
+                            ? qr.QueryResultViewMode.Text
+                            : qr.QueryResultViewMode.Grid;
+                    context.setResultViewMode(newMode);
+                    handled = true;
+                }
+            } else if (matchesShortcut(event, paneShortcuts.maximize)) {
+                if (isResultsTab && viewMode === qr.QueryResultViewMode.Grid && gridCount > 1) {
+                    const targetIndex = resolveGridIndexForShortcut();
+                    if (targetIndex !== undefined) {
+                        toggleGridMaximize(targetIndex);
+                        handled = true;
+                    }
+                }
+            } else if (matchesShortcut(event, paneShortcuts.prevGrid)) {
+                if (isResultsTab && viewMode === qr.QueryResultViewMode.Grid && gridCount > 0) {
+                    navigateGrid(-1);
+                    handled = true;
+                }
+            } else if (matchesShortcut(event, paneShortcuts.nextGrid)) {
+                if (isResultsTab && viewMode === qr.QueryResultViewMode.Grid && gridCount > 0) {
+                    navigateGrid(1);
+                    handled = true;
+                }
+            } else if (matchesShortcut(event, paneShortcuts.changeColumnWidth)) {
+                if (isResultsTab && viewMode === qr.QueryResultViewMode.Grid && gridCount > 0) {
+                    const targetIndex = resolveGridIndexForShortcut() ?? 0;
+                    const gridHandle = gridRefs.current[targetIndex];
+                    if (gridHandle) {
+                        gridHandle.focusGrid?.();
+                        gridHandle.autoSizeActiveColumn?.();
+                        handled = true;
+                    }
+                }
+            }
+
+            if (handled) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        };
+
+        document.addEventListener("keydown", handler, true);
+        return () => {
+            document.removeEventListener("keydown", handler, true);
+        };
+    }, [
+        paneShortcuts,
+        tabStates?.resultPaneTab,
+        getCurrentViewMode,
+        getGridCount,
+        resolveGridIndexForShortcut,
+        toggleGridMaximize,
+        navigateGrid,
+        context,
+        resultSetSummaries,
+    ]);
+
+    useEffect(() => {
+        if (maximizedGridIndex === undefined) {
+            return;
+        }
+
+        const shouldReset =
+            tabStates?.resultPaneTab !== qr.QueryResultPaneTabs.Results ||
+            getCurrentViewMode() !== qr.QueryResultViewMode.Grid ||
+            getGridCount() <= 1 ||
+            !gridRefs.current[maximizedGridIndex];
+
+        if (!shouldReset) {
+            return;
+        }
+
+        showOtherGrids(maximizedGridIndex);
+        restoreResults(maximizedGridIndex);
+        setMaximizedGridIndex(undefined);
+    }, [
+        getCurrentViewMode,
+        getGridCount,
+        maximizedGridIndex,
+        restoreResults,
+        showOtherGrids,
+        tabStates?.resultPaneTab,
+    ]);
 
     const renderResultSet = (
         batchId: number,
@@ -295,6 +732,9 @@ export const QueryResultPane = () => {
         const divId = `grid-parent-${batchId}-${resultId}`;
         const gridId = `resultGrid-${batchId}-${resultId}`;
         const viewMode = getCurrentViewMode();
+
+        gridIndexByElementIdRef.current[divId] = gridIndex;
+        gridElementIdsRef.current[gridIndex] = divId;
 
         return (
             <div
@@ -360,7 +800,9 @@ export const QueryResultPane = () => {
                                 return dataWithSchema;
                             });
                         }}
-                        ref={(gridRef) => (gridRefs.current[gridIndex] = gridRef!)}
+                        ref={(gridRef) => {
+                            gridRefs.current[gridIndex] = gridRef ?? undefined;
+                        }}
                         resultSetSummary={resultSetSummaries[batchId][resultId]}
                         gridParentRef={gridParentRef}
                         uri={uri}
@@ -374,23 +816,15 @@ export const QueryResultPane = () => {
                         uri={uri}
                         resultSetSummary={resultSetSummaries[batchId][resultId]}
                         viewMode={viewMode}
-                        maximizeResults={() => {
-                            if (
-                                viewMode === qr.QueryResultViewMode.Grid &&
-                                gridRefs.current[gridIndex]
-                            ) {
-                                maximizeResults(gridRefs.current[gridIndex]);
-                                hideOtherGrids(gridRefs, gridIndex);
-                            }
-                        }}
-                        restoreResults={() => {
-                            if (
-                                viewMode === qr.QueryResultViewMode.Grid &&
-                                gridRefs.current.length > 0
-                            ) {
-                                showOtherGrids(gridRefs, gridIndex);
-                                restoreResults(gridRefs.current, gridIndex);
-                            }
+                        onToggleMaximize={() => toggleGridMaximize(gridIndex)}
+                        isMaximized={maximizedGridIndex === gridIndex}
+                        maximizeShortcut={paneShortcuts.maximize.display}
+                        toggleViewShortcut={paneShortcuts.switchToTextView.display}
+                        saveShortcuts={{
+                            csv: commandShortcutDisplays.saveCsv,
+                            json: commandShortcutDisplays.saveJson,
+                            excel: commandShortcutDisplays.saveExcel,
+                            insert: commandShortcutDisplays.saveInsert,
                         }}
                     />
                 )}
@@ -398,80 +832,10 @@ export const QueryResultPane = () => {
         );
     };
 
-    const hideOtherGrids = (
-        gridRefs: React.MutableRefObject<ResultGridHandle[]>,
-        gridIndexToKeep: number,
-    ) => {
-        gridRefs.current.forEach((grid, index) => {
-            if (grid && index !== gridIndexToKeep) {
-                grid.hideGrid();
-            }
-        });
-    };
-
-    const showOtherGrids = (
-        gridRefs: React.MutableRefObject<ResultGridHandle[]>,
-        gridIndexToKeep: number,
-    ) => {
-        gridRefs.current.forEach((grid, index) => {
-            if (grid && index !== gridIndexToKeep) {
-                grid.showGrid();
-            }
-        });
-    };
-
-    const maximizeResults = (gridRef: ResultGridHandle) => {
-        const height =
-            getAvailableHeight(resultPaneParentRef.current!, ribbonRef.current!) - TABLE_ALIGN_PX;
-        const width = resultPaneParentRef.current?.clientWidth! - ACTIONBAR_WIDTH_PX;
-        gridRef.resizeGrid(width, height);
-    };
-
-    const restoreResults = (gridRefs: ResultGridHandle[], scrollToGridIndex?: number) => {
-        const availableHeight = getAvailableHeight(
-            resultPaneParentRef.current!,
-            ribbonRef.current!,
-        );
-        const height = calculateGridHeight(gridRefs.length, availableHeight);
-        const width = calculateGridWidth(
-            resultPaneParentRef.current!,
-            gridRefs.length,
-            availableHeight,
-        );
-
-        gridRefs.forEach((gridRef) => {
-            gridRef.resizeGrid(width, height);
-        });
-
-        // Scroll to the specified grid after restoration
-        if (scrollToGridIndex !== undefined && resultSetSummaries) {
-            setTimeout(() => {
-                let currentIndex = 0;
-                for (const batchIdStr in resultSetSummaries) {
-                    const batchId = parseInt(batchIdStr);
-                    for (const resultIdStr in resultSetSummaries[batchId]) {
-                        const resultId = parseInt(resultIdStr);
-                        if (currentIndex === scrollToGridIndex) {
-                            const gridElement = document.getElementById(
-                                `grid-parent-${batchId}-${resultId}`,
-                            );
-                            if (gridElement) {
-                                gridElement.scrollIntoView({
-                                    behavior: "instant",
-                                    block: "start",
-                                });
-                            }
-                            return;
-                        }
-                        currentIndex++;
-                    }
-                }
-            }, 100); // Small delay to ensure grids are restored first
-        }
-    };
-
     const renderResultPanel = () => {
         const viewMode = getCurrentViewMode();
+        gridIndexByElementIdRef.current = {};
+        gridElementIdsRef.current = [];
 
         // For text view, render a single TextView with all result sets and one CommandBar
         if (viewMode === qr.QueryResultViewMode.Text) {
@@ -489,7 +853,18 @@ export const QueryResultPane = () => {
                                 fontSettings={fontSettings}
                             />
                         </div>
-                        <CommandBar uri={uri} viewMode={viewMode} />
+                        <CommandBar
+                            uri={uri}
+                            viewMode={viewMode}
+                            maximizeShortcut={paneShortcuts.maximize.display}
+                            toggleViewShortcut={paneShortcuts.switchToTextView.display}
+                            saveShortcuts={{
+                                csv: commandShortcutDisplays.saveCsv,
+                                json: commandShortcutDisplays.saveJson,
+                                excel: commandShortcutDisplays.saveExcel,
+                                insert: commandShortcutDisplays.saveInsert,
+                            }}
+                        />
                     </div>
                 </div>
             );

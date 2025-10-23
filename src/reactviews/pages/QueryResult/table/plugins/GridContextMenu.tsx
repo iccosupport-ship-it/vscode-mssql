@@ -4,7 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import React, { useMemo, useRef } from "react";
-import { Menu, MenuList, MenuItem, MenuPopover, MenuTrigger } from "@fluentui/react-components";
+import {
+    Menu,
+    MenuList,
+    MenuItem,
+    MenuPopover,
+    MenuTrigger,
+    makeStyles,
+} from "@fluentui/react-components";
 import { locConstants } from "../../../../common/locConstants";
 import { GridContextMenuAction } from "../../../../../sharedInterfaces/queryResult";
 import { isMac } from "../../../../common/utils";
@@ -21,6 +28,7 @@ export interface GridContextMenuProps {
     open: boolean;
     onAction: (action: GridContextMenuAction) => void;
     onClose: () => void;
+    shortcuts?: Partial<Record<GridContextMenuAction, string>>;
 }
 
 // Virtual element used by Fluent UI positioning to anchor the popover at an arbitrary point
@@ -30,15 +38,77 @@ function createVirtualElement(x: number, y: number): { getBoundingClientRect: ()
     };
 }
 
+const useStyles = makeStyles({
+    popover: {
+        minWidth: "110px",
+        paddingBlock: "1px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.14)",
+        borderRadius: "4px",
+    },
+    menuList: {
+        paddingBlock: "1px",
+    },
+    menuItem: {
+        paddingBlock: "2px",
+        paddingInline: "6px",
+        minHeight: "22px",
+        fontSize: "10px",
+        lineHeight: "20px",
+        ".fui-MenuItem__secondaryContent": {
+            fontSize: "9px",
+            opacity: 0.7,
+        },
+        ".fui-MenuItem__content": {
+            display: "flex",
+            alignItems: "center",
+        },
+    },
+    submenuTrigger: {
+        paddingInlineEnd: "14px",
+    },
+    submenuPopover: {
+        minWidth: "110px",
+        paddingBlock: "1px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.14)",
+        borderRadius: "4px",
+    },
+    secondary: {
+        fontSize: "9px",
+        opacity: 0.7,
+    },
+});
+
 export const GridContextMenu: React.FC<GridContextMenuProps> = ({
     x,
     y,
     open,
     onAction,
     onClose,
+    shortcuts,
 }) => {
     const virtualTarget = useMemo(() => createVirtualElement(x, y), [x, y]);
     const popoverRef = useRef<HTMLDivElement | null>(null);
+    const classes = useStyles();
+
+    const shortcutFor = (action: GridContextMenuAction, fallback?: string) => {
+        const value = shortcuts?.[action];
+        return value && value.length > 0 ? value : fallback;
+    };
+
+    const selectAllShortcut = shortcutFor(
+        GridContextMenuAction.SelectAll,
+        isMac() ? cmdAKeyboardShortcut : ctrlAKeyboardShortcut,
+    );
+
+    const copySelectionShortcut = shortcutFor(
+        GridContextMenuAction.CopySelection,
+        isMac() ? cmdCKeyboardShortcut : ctrlCKeyboardShortcut,
+    );
+
+    const renderShortcut = (shortcut?: string) =>
+        shortcut && shortcut.length > 0 ? (
+            <span className={classes.secondary}>{shortcut}</span>
+        ) : undefined;
 
     return (
         <div
@@ -63,49 +133,78 @@ export const GridContextMenu: React.FC<GridContextMenuProps> = ({
                         onClose();
                     }
                 }}>
-                <MenuPopover onClick={(e) => e.stopPropagation()} ref={popoverRef}>
-                    <MenuList>
+                <MenuPopover
+                    onClick={(e) => e.stopPropagation()}
+                    ref={popoverRef}
+                    className={classes.popover}>
+                    <MenuList className={classes.menuList}>
                         <MenuItem
-                            secondaryContent={
-                                isMac() ? cmdAKeyboardShortcut : ctrlAKeyboardShortcut
-                            }
+                            className={classes.menuItem}
+                            secondaryContent={renderShortcut(selectAllShortcut)}
                             onClick={() => onAction(GridContextMenuAction.SelectAll)}>
                             {locConstants.queryResult.selectAll}
                         </MenuItem>
                         <MenuItem
-                            secondaryContent={
-                                isMac() ? cmdCKeyboardShortcut : ctrlCKeyboardShortcut
-                            }
+                            className={classes.menuItem}
+                            secondaryContent={renderShortcut(copySelectionShortcut)}
                             onClick={() => onAction(GridContextMenuAction.CopySelection)}>
                             {locConstants.queryResult.copy}
                         </MenuItem>
-                        <MenuItem onClick={() => onAction(GridContextMenuAction.CopyWithHeaders)}>
+                        <MenuItem
+                            className={classes.menuItem}
+                            secondaryContent={renderShortcut(
+                                shortcutFor(GridContextMenuAction.CopyWithHeaders),
+                            )}
+                            onClick={() => onAction(GridContextMenuAction.CopyWithHeaders)}>
                             {locConstants.queryResult.copyWithHeaders}
                         </MenuItem>
-                        <MenuItem onClick={() => onAction(GridContextMenuAction.CopyHeaders)}>
+                        <MenuItem
+                            className={classes.menuItem}
+                            secondaryContent={renderShortcut(
+                                shortcutFor(GridContextMenuAction.CopyHeaders),
+                            )}
+                            onClick={() => onAction(GridContextMenuAction.CopyHeaders)}>
                             {locConstants.queryResult.copyHeaders}
                         </MenuItem>
                         <Menu>
                             <MenuTrigger disableButtonEnhancement>
-                                <MenuItem>{locConstants.queryResult.copyAs}</MenuItem>
+                                <MenuItem className={classes.menuItem}>
+                                    {locConstants.queryResult.copyAs}
+                                </MenuItem>
                             </MenuTrigger>
-                            <MenuPopover>
-                                <MenuList>
+                            <MenuPopover className={classes.submenuPopover}>
+                                <MenuList className={classes.menuList}>
                                     <MenuItem
+                                        className={`${classes.menuItem} ${classes.submenuTrigger}`}
+                                        secondaryContent={renderShortcut(
+                                            shortcutFor(GridContextMenuAction.CopyAsCsv),
+                                        )}
                                         onClick={() => onAction(GridContextMenuAction.CopyAsCsv)}>
                                         {locConstants.queryResult.copyAsCsv}
                                     </MenuItem>
                                     <MenuItem
+                                        className={`${classes.menuItem} ${classes.submenuTrigger}`}
+                                        secondaryContent={renderShortcut(
+                                            shortcutFor(GridContextMenuAction.CopyAsJson),
+                                        )}
                                         onClick={() => onAction(GridContextMenuAction.CopyAsJson)}>
                                         {locConstants.queryResult.copyAsJson}
                                     </MenuItem>
                                     <MenuItem
+                                        className={`${classes.menuItem} ${classes.submenuTrigger}`}
+                                        secondaryContent={renderShortcut(
+                                            shortcutFor(GridContextMenuAction.CopyAsInsertInto),
+                                        )}
                                         onClick={() =>
                                             onAction(GridContextMenuAction.CopyAsInsertInto)
                                         }>
                                         {locConstants.queryResult.copyAsInsertInto}
                                     </MenuItem>
                                     <MenuItem
+                                        className={`${classes.menuItem} ${classes.submenuTrigger}`}
+                                        secondaryContent={renderShortcut(
+                                            shortcutFor(GridContextMenuAction.CopyAsInClause),
+                                        )}
                                         onClick={() =>
                                             onAction(GridContextMenuAction.CopyAsInClause)
                                         }>

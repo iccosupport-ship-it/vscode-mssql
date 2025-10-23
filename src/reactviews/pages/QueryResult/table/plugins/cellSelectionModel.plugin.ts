@@ -24,6 +24,24 @@ import {
     getPreviousFocusableElementOutside,
     isMetaKeyPressed,
 } from "../../../../common/utils";
+import {
+    kbExpandSelectionDown,
+    kbExpandSelectionLeft,
+    kbExpandSelectionRight,
+    kbExpandSelectionUp,
+    kbMoveToRowEnd,
+    kbMoveToRowStart,
+    kbOpenColumnMenu,
+    kbSelectAll,
+    kbSelectColumn,
+    kbSelectRow,
+    kbToggleSort,
+} from "../../../../common/constants";
+import {
+    eventMatchesShortcut,
+    getShortcutInfo,
+    ShortcutInfo,
+} from "../../../../common/keyboardUtils";
 
 export interface ICellSelectionModelOptions {
     cellRangeSelector?: any;
@@ -41,6 +59,20 @@ interface EventTargetWithClassName extends EventTarget {
     className: string | undefined;
 }
 
+interface SelectionShortcutMap {
+    expandSelectionLeft: ShortcutInfo;
+    expandSelectionRight: ShortcutInfo;
+    expandSelectionUp: ShortcutInfo;
+    expandSelectionDown: ShortcutInfo;
+    openColumnMenu: ShortcutInfo;
+    selectAll: ShortcutInfo;
+    moveToRowStart: ShortcutInfo;
+    moveToRowEnd: ShortcutInfo;
+    selectColumn: ShortcutInfo;
+    selectRow: ShortcutInfo;
+    toggleSort: ShortcutInfo;
+}
+
 export class CellSelectionModel<T extends Slick.SlickData>
     implements Slick.SelectionModel<T, Array<Slick.Range>>
 {
@@ -48,6 +80,7 @@ export class CellSelectionModel<T extends Slick.SlickData>
     private selector: ICellRangeSelector<T>;
     private ranges: Array<Slick.Range> = [];
     private _handler = new Slick.EventHandler();
+    private shortcuts!: SelectionShortcutMap;
 
     public onSelectedRangesChanged = new Slick.Event<Array<Slick.Range>>();
 
@@ -57,6 +90,7 @@ export class CellSelectionModel<T extends Slick.SlickData>
         private uri: string,
         private resultSetSummary: ResultSetSummary,
         private headerFilter?: HeaderMenu<T>,
+        keyBindings?: Record<string, string>,
     ) {
         this.options = mixin(this.options, defaults, false);
         if (this.options.cellRangeSelector) {
@@ -69,6 +103,8 @@ export class CellSelectionModel<T extends Slick.SlickData>
                 },
             });
         }
+
+        this.updateShortcuts(keyBindings);
     }
 
     public init(grid: Slick.Grid<T>) {
@@ -121,6 +157,33 @@ export class CellSelectionModel<T extends Slick.SlickData>
     public destroy() {
         this._handler.unsubscribeAll();
         this.grid.unregisterPlugin(this.selector);
+    }
+
+    public updateShortcuts(keyBindings?: Record<string, string>): void {
+        const getBinding = (key: string) => keyBindings?.[key];
+
+        this.shortcuts = {
+            expandSelectionLeft: getShortcutInfo(getBinding(kbExpandSelectionLeft), "shift+left"),
+            expandSelectionRight: getShortcutInfo(
+                getBinding(kbExpandSelectionRight),
+                "shift+right",
+            ),
+            expandSelectionUp: getShortcutInfo(getBinding(kbExpandSelectionUp), "shift+up"),
+            expandSelectionDown: getShortcutInfo(getBinding(kbExpandSelectionDown), "shift+down"),
+            openColumnMenu: getShortcutInfo(getBinding(kbOpenColumnMenu), "f3"),
+            selectAll: getShortcutInfo(getBinding(kbSelectAll), "ctrlcmd+a"),
+            moveToRowStart: getShortcutInfo(getBinding(kbMoveToRowStart), "ctrlcmd+left"),
+            moveToRowEnd: getShortcutInfo(getBinding(kbMoveToRowEnd), "ctrlcmd+right"),
+            selectColumn: getShortcutInfo(getBinding(kbSelectColumn), "ctrl+space"),
+            selectRow: getShortcutInfo(getBinding(kbSelectRow), "shift+space"),
+            toggleSort: getShortcutInfo(getBinding(kbToggleSort), "shift+alt+o"),
+        };
+    }
+
+    public getShortcutDisplays(): { selectAll: string } {
+        return {
+            selectAll: this.shortcuts?.selectAll?.display ?? "",
+        };
     }
 
     private removeInvalidRanges(ranges: Array<Slick.Range>): Array<Slick.Range> {
@@ -603,83 +666,80 @@ export class CellSelectionModel<T extends Slick.SlickData>
 
     private async handleKeyDown(e: KeyboardEvent): Promise<void> {
         const keyCode = e.code;
-        const metaOrCtrlPressed = await isMetaKeyPressed(e);
         let isHandled = false;
+        const shortcuts = this.shortcuts;
 
-        // Range selection via Shift + Arrow (no Alt, no Meta/Ctrl)
-        const isArrow =
-            keyCode === KeyCode.ArrowLeft ||
-            keyCode === KeyCode.ArrowRight ||
-            keyCode === KeyCode.ArrowUp ||
-            keyCode === KeyCode.ArrowDown;
-
-        if (isArrow && e.shiftKey && !e.altKey && !metaOrCtrlPressed) {
-            this.expandSelection(keyCode);
+        if (!isHandled && this.matches(e, shortcuts.expandSelectionLeft)) {
+            this.expandSelection(KeyCode.ArrowLeft);
             isHandled = true;
         }
 
-        // Open Header menu (F3)
-        if (keyCode === KeyCode.F3) {
+        if (!isHandled && this.matches(e, shortcuts.expandSelectionRight)) {
+            this.expandSelection(KeyCode.ArrowRight);
+            isHandled = true;
+        }
+
+        if (!isHandled && this.matches(e, shortcuts.expandSelectionUp)) {
+            this.expandSelection(KeyCode.ArrowUp);
+            isHandled = true;
+        }
+
+        if (!isHandled && this.matches(e, shortcuts.expandSelectionDown)) {
+            this.expandSelection(KeyCode.ArrowDown);
+            isHandled = true;
+        }
+
+        if (!isHandled && this.matches(e, shortcuts.openColumnMenu)) {
             await this.headerFilter?.openMenuForActiveColumn();
             isHandled = true;
         }
 
-        // Select All (Cmd/Ctrl + A)
-        if (metaOrCtrlPressed && keyCode === KeyCode.KeyA) {
+        if (!isHandled && this.matches(e, shortcuts.selectAll)) {
             await this.handleSelectAll();
             isHandled = true;
         }
 
-        // Move to first cell of row (Ctrl + left)
-        if (metaOrCtrlPressed && keyCode === KeyCode.ArrowLeft) {
+        if (!isHandled && this.matches(e, shortcuts.moveToRowStart)) {
             this.moveToFirstCellInRow();
             isHandled = true;
         }
 
-        // Move to last cell of row (Ctrl + right)
-        if (metaOrCtrlPressed && keyCode === KeyCode.ArrowRight) {
+        if (!isHandled && this.matches(e, shortcuts.moveToRowEnd)) {
             this.moveToLastCellInRow();
             isHandled = true;
         }
 
-        // Select current column (Ctrl + space)
-        if (e.ctrlKey && keyCode === KeyCode.Space) {
+        if (!isHandled && this.matches(e, shortcuts.selectColumn)) {
             this.selectActiveCellColumn();
             isHandled = true;
         }
 
-        // Open context menu (Shift + F10) or ContextMenu key
-        if ((e.shiftKey && keyCode === KeyCode.F10) || keyCode === KeyCode.ContextMenu) {
-            // Open context menu
-            // Already handled by onContextMenu event
-            return;
-        }
-
-        // Select current row (Shift + space)
-        if (e.shiftKey && keyCode === KeyCode.Space) {
+        if (!isHandled && this.matches(e, shortcuts.selectRow)) {
             this.selectActiveCellRow();
             isHandled = true;
         }
 
-        // Move focus to previous focusable element outside the grid (Shift + Tab)
-        if (e.shiftKey && keyCode === KeyCode.Tab) {
-            // Prevent SlickGrid's default Tab behavior and move focus to previous component
+        if (!isHandled && this.matches(e, shortcuts.toggleSort)) {
+            await this.toggleSortForActiveCell();
+            isHandled = true;
+        }
+
+        if (
+            !isHandled &&
+            ((e.shiftKey && keyCode === KeyCode.F10) || keyCode === KeyCode.ContextMenu)
+        ) {
+            return;
+        }
+
+        if (!isHandled && e.shiftKey && keyCode === KeyCode.Tab) {
             e.stopImmediatePropagation();
             await this.moveFocusToOutsideGrid(false);
             isHandled = true;
         }
 
-        // Move focus to next focusable element outside the grid (Tab)
-        if (!e.shiftKey && keyCode === KeyCode.Tab) {
-            // Prevent SlickGrid's default Tab behavior and move focus to next component
+        if (!isHandled && !e.shiftKey && keyCode === KeyCode.Tab) {
             e.stopImmediatePropagation();
             await this.moveFocusToOutsideGrid(true);
-            isHandled = true;
-        }
-
-        // Toggle sort (Shift+Alt+O)
-        if (e.shiftKey && e.altKey && keyCode === KeyCode.KeyO && !metaOrCtrlPressed) {
-            await this.toggleSortForActiveCell();
             isHandled = true;
         }
 
@@ -687,6 +747,12 @@ export class CellSelectionModel<T extends Slick.SlickData>
             e.preventDefault();
             e.stopPropagation();
         }
+    }
+
+    private matches(event: KeyboardEvent, shortcut: ShortcutInfo): boolean {
+        return shortcut && Object.keys(shortcut.matcher).length > 0
+            ? eventMatchesShortcut(event, shortcut.matcher)
+            : false;
     }
 
     private expandSelection(
