@@ -220,87 +220,29 @@ export const QueryResultPane = () => {
     const gridIndexByElementIdRef = useRef<Record<string, number>>({});
     const gridElementIdsRef = useRef<string[]>([]);
 
-    const defaultShortcutMap = useMemo(
-        () => ({
-            maximize: "ctrlcmd+alt+m",
-            switchToResultsTab: "ctrlcmd+alt+r",
-            switchToMessagesTab: "ctrlcmd+alt+y",
-            switchToTextView: "ctrlcmd+alt+t",
-            prevGrid: "ctrlcmd+up",
-            nextGrid: "ctrlcmd+down",
-            changeColumnWidth: "ctrlcmd+alt+s",
-            selectAll: "ctrlcmd+a",
-            copySelection: "ctrlcmd+c",
-            copyWithHeaders: "ctrlcmd+shift+c",
-            copyAllHeaders: "ctrlcmd+alt+shift+c",
-            copyAsCsv: "ctrlcmd+shift+1",
-            copyAsJson: "ctrlcmd+shift+2",
-            copyAsInsert: "ctrlcmd+shift+3",
-            copyAsInClause: "ctrlcmd+shift+4",
-            saveAsJson: "ctrlcmd+alt+j",
-            saveAsCsv: "ctrlcmd+alt+shift+s",
-            saveAsExcel: "ctrlcmd+alt+shift+e",
-            saveAsInsert: "ctrlcmd+alt+shift+i",
-        }),
-        [],
-    );
-
     const shortcutInfos = useMemo(
         () => ({
-            maximize: getShortcutInfo(keyBindings?.[kbMaximizeGrid], defaultShortcutMap.maximize),
-            switchToResultsTab: getShortcutInfo(
-                keyBindings?.[kbSwitchToResultsTab],
-                defaultShortcutMap.switchToResultsTab,
-            ),
-            switchToMessagesTab: getShortcutInfo(
-                keyBindings?.[kbSwitchToMessagesTab],
-                defaultShortcutMap.switchToMessagesTab,
-            ),
-            switchToTextView: getShortcutInfo(
-                keyBindings?.[kbSwitchToTextView],
-                defaultShortcutMap.switchToTextView,
-            ),
-            prevGrid: getShortcutInfo(keyBindings?.[kbPrevGrid], defaultShortcutMap.prevGrid),
-            nextGrid: getShortcutInfo(keyBindings?.[kbNextGrid], defaultShortcutMap.nextGrid),
-            changeColumnWidth: getShortcutInfo(
-                keyBindings?.[kbChangeColumnWidth],
-                defaultShortcutMap.changeColumnWidth,
-            ),
-            selectAll: getShortcutInfo(keyBindings?.[kbSelectAll], defaultShortcutMap.selectAll),
-            copySelection: getShortcutInfo(
-                keyBindings?.[kbCopySelection],
-                defaultShortcutMap.copySelection,
-            ),
-            copyWithHeaders: getShortcutInfo(
-                keyBindings?.[kbCopyWithHeaders],
-                defaultShortcutMap.copyWithHeaders,
-            ),
-            copyAllHeaders: getShortcutInfo(
-                keyBindings?.[kbCopyAllHeaders],
-                defaultShortcutMap.copyAllHeaders,
-            ),
-            copyAsCsv: getShortcutInfo(keyBindings?.[kbCopyAsCsv], defaultShortcutMap.copyAsCsv),
-            copyAsJson: getShortcutInfo(keyBindings?.[kbCopyAsJson], defaultShortcutMap.copyAsJson),
-            copyAsInsert: getShortcutInfo(
-                keyBindings?.[kbCopyAsInsert],
-                defaultShortcutMap.copyAsInsert,
-            ),
-            copyAsInClause: getShortcutInfo(
-                keyBindings?.[kbCopyAsInClause],
-                defaultShortcutMap.copyAsInClause,
-            ),
-            saveAsJson: getShortcutInfo(keyBindings?.[kbSaveAsJson], defaultShortcutMap.saveAsJson),
-            saveAsCsv: getShortcutInfo(keyBindings?.[kbSaveAsCsv], defaultShortcutMap.saveAsCsv),
-            saveAsExcel: getShortcutInfo(
-                keyBindings?.[kbSaveAsExcel],
-                defaultShortcutMap.saveAsExcel,
-            ),
-            saveAsInsert: getShortcutInfo(
-                keyBindings?.[kbSaveAsInsert],
-                defaultShortcutMap.saveAsInsert,
-            ),
+            maximize: getShortcutInfo(keyBindings?.[kbMaximizeGrid]),
+            switchToResultsTab: getShortcutInfo(keyBindings?.[kbSwitchToResultsTab]),
+            switchToMessagesTab: getShortcutInfo(keyBindings?.[kbSwitchToMessagesTab]),
+            switchToTextView: getShortcutInfo(keyBindings?.[kbSwitchToTextView]),
+            prevGrid: getShortcutInfo(keyBindings?.[kbPrevGrid]),
+            nextGrid: getShortcutInfo(keyBindings?.[kbNextGrid]),
+            changeColumnWidth: getShortcutInfo(keyBindings?.[kbChangeColumnWidth]),
+            selectAll: getShortcutInfo(keyBindings?.[kbSelectAll]),
+            copySelection: getShortcutInfo(keyBindings?.[kbCopySelection]),
+            copyWithHeaders: getShortcutInfo(keyBindings?.[kbCopyWithHeaders]),
+            copyAllHeaders: getShortcutInfo(keyBindings?.[kbCopyAllHeaders]),
+            copyAsCsv: getShortcutInfo(keyBindings?.[kbCopyAsCsv]),
+            copyAsJson: getShortcutInfo(keyBindings?.[kbCopyAsJson]),
+            copyAsInsert: getShortcutInfo(keyBindings?.[kbCopyAsInsert]),
+            copyAsInClause: getShortcutInfo(keyBindings?.[kbCopyAsInClause]),
+            saveAsJson: getShortcutInfo(keyBindings?.[kbSaveAsJson]),
+            saveAsCsv: getShortcutInfo(keyBindings?.[kbSaveAsCsv]),
+            saveAsExcel: getShortcutInfo(keyBindings?.[kbSaveAsExcel]),
+            saveAsInsert: getShortcutInfo(keyBindings?.[kbSaveAsInsert]),
         }),
-        [keyBindings, defaultShortcutMap],
+        [keyBindings],
     );
 
     const paneShortcuts = useMemo(

@@ -133,7 +133,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
                         this._queryResultStateMap.set(uri, state);
                     }
                 }
-                if (e.affectsConfiguration(Constants.configKeybindings)) {
+                if (e.affectsConfiguration(Constants.configShortcuts)) {
                     for (const [uri, state] of this._queryResultStateMap) {
                         state.keyBindings = this.readKeyBindingsConfig();
                         this._queryResultStateMap.set(uri, state);
@@ -473,6 +473,6 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
     public readKeyBindingsConfig(): Record<string, string> {
         return vscode.workspace
             .getConfiguration()
-            .get<Record<string, string>>(Constants.configKeybindings);
+            .get<Record<string, string>>(Constants.configShortcuts);
     }
 }

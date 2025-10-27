@@ -50,11 +50,11 @@ const modifierHandlers: Record<string, TokenHandler> = {
     },
     cmd: (matcher, displayTokens) => {
         matcher.metaKey = true;
-        displayTokens.push(isMac() ? "Cmd" : "Meta");
+        displayTokens.push(isMac() ? "⌘" : "Meta");
     },
     command: (matcher, displayTokens) => {
         matcher.metaKey = true;
-        displayTokens.push(isMac() ? "Cmd" : "Meta");
+        displayTokens.push(isMac() ? "⌘" : "Meta");
     },
     meta: (matcher, displayTokens) => {
         matcher.metaKey = true;
@@ -71,7 +71,7 @@ const modifierHandlers: Record<string, TokenHandler> = {
     ctrlcmd: (matcher, displayTokens) => {
         if (isMac()) {
             matcher.metaKey = true;
-            displayTokens.push("Cmd");
+            displayTokens.push("⌘");
         } else {
             matcher.ctrlKey = true;
             displayTokens.push("Ctrl");
@@ -199,17 +199,11 @@ function buildShortcut(tokens: string[]): ShortcutInfo | undefined {
     return { matcher, display: displayTokens.join("+") };
 }
 
-export function getShortcutInfo(raw: string | undefined, fallback: string): ShortcutInfo {
+export function getShortcutInfo(raw: string | undefined): ShortcutInfo {
     const primaryTokens = normalize(raw);
     const primary = buildShortcut(primaryTokens);
     if (primary) {
         return primary;
-    }
-
-    const fallbackTokens = normalize(fallback);
-    const resolvedFallback = buildShortcut(fallbackTokens);
-    if (resolvedFallback) {
-        return resolvedFallback;
     }
 
     return { matcher: {}, display: "" };

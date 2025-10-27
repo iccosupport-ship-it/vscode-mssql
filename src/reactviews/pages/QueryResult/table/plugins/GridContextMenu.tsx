@@ -51,14 +51,15 @@ const useStyles = makeStyles({
     menuItem: {
         paddingBlock: "2px",
         paddingInline: "6px",
-        minHeight: "22px",
+        minHeight: "20px",
         fontSize: "10px",
         lineHeight: "20px",
-        ".fui-MenuItem__secondaryContent": {
+        "& .fui-MenuItem__secondaryContent": {
             fontSize: "9px",
             opacity: 0.7,
+            lineHeight: "20px",
         },
-        ".fui-MenuItem__content": {
+        "& .fui-MenuItem__content": {
             display: "flex",
             alignItems: "center",
         },
@@ -91,8 +92,13 @@ export const GridContextMenu: React.FC<GridContextMenuProps> = ({
     const classes = useStyles();
 
     const shortcutFor = (action: GridContextMenuAction, fallback?: string) => {
-        const value = shortcuts?.[action];
-        return value && value.length > 0 ? value : fallback;
+        if (!shortcuts || !(action in shortcuts)) {
+            // If shortcuts config doesn't exist or this action isn't in it, use fallback
+            return fallback;
+        }
+        const value = shortcuts[action];
+        // If explicitly set (even to empty string), use that value; empty string means no shortcut
+        return value && value.length > 0 ? value : undefined;
     };
 
     const selectAllShortcut = shortcutFor(

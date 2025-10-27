@@ -90,17 +90,17 @@ export class CopyKeybind<T extends Slick.SlickData> implements Slick.Plugin<T> {
         const getBinding = (key: string) => keyBindings?.[key];
 
         this.shortcuts = {
-            copySelection: getShortcutInfo(getBinding(kbCopySelection), "ctrlcmd+c"),
-            copyWithHeaders: getShortcutInfo(getBinding(kbCopyWithHeaders), "ctrlcmd+shift+c"),
-            copyAllHeaders: getShortcutInfo(getBinding(kbCopyAllHeaders), "ctrlcmd+alt+shift+c"),
-            copyAsCsv: getShortcutInfo(getBinding(kbCopyAsCsv), "ctrlcmd+shift+1"),
-            copyAsJson: getShortcutInfo(getBinding(kbCopyAsJson), "ctrlcmd+shift+2"),
-            copyAsInsertInto: getShortcutInfo(getBinding(kbCopyAsInsert), "ctrlcmd+shift+3"),
-            copyAsInClause: getShortcutInfo(getBinding(kbCopyAsInClause), "ctrlcmd+shift+4"),
-            saveAsJson: getShortcutInfo(getBinding(kbSaveAsJson), "ctrlcmd+alt+j"),
-            saveAsCsv: getShortcutInfo(getBinding(kbSaveAsCsv), "ctrlcmd+alt+shift+s"),
-            saveAsExcel: getShortcutInfo(getBinding(kbSaveAsExcel), "ctrlcmd+alt+shift+e"),
-            saveAsInsert: getShortcutInfo(getBinding(kbSaveAsInsert), "ctrlcmd+alt+shift+i"),
+            copySelection: getShortcutInfo(getBinding(kbCopySelection)),
+            copyWithHeaders: getShortcutInfo(getBinding(kbCopyWithHeaders)),
+            copyAllHeaders: getShortcutInfo(getBinding(kbCopyAllHeaders)),
+            copyAsCsv: getShortcutInfo(getBinding(kbCopyAsCsv)),
+            copyAsJson: getShortcutInfo(getBinding(kbCopyAsJson)),
+            copyAsInsertInto: getShortcutInfo(getBinding(kbCopyAsInsert)),
+            copyAsInClause: getShortcutInfo(getBinding(kbCopyAsInClause)),
+            saveAsJson: getShortcutInfo(getBinding(kbSaveAsJson)),
+            saveAsCsv: getShortcutInfo(getBinding(kbSaveAsCsv)),
+            saveAsExcel: getShortcutInfo(getBinding(kbSaveAsExcel)),
+            saveAsInsert: getShortcutInfo(getBinding(kbSaveAsInsert)),
         };
     }
 

@@ -163,20 +163,17 @@ export class CellSelectionModel<T extends Slick.SlickData>
         const getBinding = (key: string) => keyBindings?.[key];
 
         this.shortcuts = {
-            expandSelectionLeft: getShortcutInfo(getBinding(kbExpandSelectionLeft), "shift+left"),
-            expandSelectionRight: getShortcutInfo(
-                getBinding(kbExpandSelectionRight),
-                "shift+right",
-            ),
-            expandSelectionUp: getShortcutInfo(getBinding(kbExpandSelectionUp), "shift+up"),
-            expandSelectionDown: getShortcutInfo(getBinding(kbExpandSelectionDown), "shift+down"),
-            openColumnMenu: getShortcutInfo(getBinding(kbOpenColumnMenu), "f3"),
-            selectAll: getShortcutInfo(getBinding(kbSelectAll), "ctrlcmd+a"),
-            moveToRowStart: getShortcutInfo(getBinding(kbMoveToRowStart), "ctrlcmd+left"),
-            moveToRowEnd: getShortcutInfo(getBinding(kbMoveToRowEnd), "ctrlcmd+right"),
-            selectColumn: getShortcutInfo(getBinding(kbSelectColumn), "ctrl+space"),
-            selectRow: getShortcutInfo(getBinding(kbSelectRow), "shift+space"),
-            toggleSort: getShortcutInfo(getBinding(kbToggleSort), "shift+alt+o"),
+            expandSelectionLeft: getShortcutInfo(getBinding(kbExpandSelectionLeft)),
+            expandSelectionRight: getShortcutInfo(getBinding(kbExpandSelectionRight)),
+            expandSelectionUp: getShortcutInfo(getBinding(kbExpandSelectionUp)),
+            expandSelectionDown: getShortcutInfo(getBinding(kbExpandSelectionDown)),
+            openColumnMenu: getShortcutInfo(getBinding(kbOpenColumnMenu)),
+            selectAll: getShortcutInfo(getBinding(kbSelectAll)),
+            moveToRowStart: getShortcutInfo(getBinding(kbMoveToRowStart)),
+            moveToRowEnd: getShortcutInfo(getBinding(kbMoveToRowEnd)),
+            selectColumn: getShortcutInfo(getBinding(kbSelectColumn)),
+            selectRow: getShortcutInfo(getBinding(kbSelectRow)),
+            toggleSort: getShortcutInfo(getBinding(kbToggleSort)),
         };
     }
 
