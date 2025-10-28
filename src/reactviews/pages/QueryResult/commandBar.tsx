@@ -57,10 +57,10 @@ const CommandBar = (props: CommandBarProps) => {
     const maximizeShortcut = keyboardShortcuts[WebviewAction.QueryResultMaximizeGrid];
     const restoreShortcut = keyboardShortcuts[WebviewAction.QueryResultMaximizeGrid];
     const toggleViewShortcut = keyboardShortcuts[WebviewAction.QueryResultSwitchToTextView];
-    const saveAsJsonShortcut = keyboardShortcuts[WebviewAction.SaveAsJson];
-    const saveAsCsvShortcut = keyboardShortcuts[WebviewAction.SaveAsCsv];
-    const saveAsExcelShortcut = keyboardShortcuts[WebviewAction.SaveAsExcel];
-    const saveAsInsertShortcut = keyboardShortcuts[WebviewAction.SaveAsInsert];
+    const saveAsJsonShortcut = keyboardShortcuts[WebviewAction.QueryResultSaveAsJson];
+    const saveAsCsvShortcut = keyboardShortcuts[WebviewAction.QueryResultSaveAsCsv];
+    const saveAsExcelShortcut = keyboardShortcuts[WebviewAction.QueryResultSaveAsExcel];
+    const saveAsInsertShortcut = keyboardShortcuts[WebviewAction.QueryResultSaveAsInsert];
 
     if (context === undefined) {
         return undefined;

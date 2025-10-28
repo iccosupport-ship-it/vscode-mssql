@@ -157,10 +157,10 @@ export class HeaderMenu<T extends Slick.SlickData> {
             `
             <button id="anchor-btn"
                     aria-label="${locConstants.queryResult.showMenu(
-                        this.shortcuts[WebviewAction.OpenColumnMenu]?.label,
+                        this.shortcuts[WebviewAction.ResultGridOpenColumnMenu]?.label,
                     )}"
                     title="${locConstants.queryResult.showMenu(
-                        this.shortcuts[WebviewAction.OpenColumnMenu]?.label,
+                        this.shortcuts[WebviewAction.ResultGridOpenColumnMenu]?.label,
                     )}" />
             `,
         )

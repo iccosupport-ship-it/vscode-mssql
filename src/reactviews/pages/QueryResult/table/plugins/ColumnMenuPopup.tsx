@@ -534,7 +534,7 @@ export const ColumnMenuPopup: React.FC<ColumnMenuPopupProps> = ({
             role="dialog"
             aria-modal="true"
             aria-label={locConstants.queryResult.showMenu(
-                keyboardShortcuts[WebviewAction.OpenColumnMenu]?.label,
+                keyboardShortcuts[WebviewAction.ResultGridOpenColumnMenu]?.label,
             )}
             onMouseDown={(e) => e.stopPropagation()}
             onKeyDown={handleRootKeyDown}>
@@ -547,7 +547,7 @@ export const ColumnMenuPopup: React.FC<ColumnMenuPopupProps> = ({
                             fontWeight: "100",
                             marginLeft: "6px",
                         }}>
-                        {keyboardShortcuts[WebviewAction.ToggleSort]?.label}
+                        {keyboardShortcuts[WebviewAction.ResultGridToggleSort]?.label}
                     </span>
                 </Text>
                 <Button
@@ -621,7 +621,7 @@ export const ColumnMenuPopup: React.FC<ColumnMenuPopupProps> = ({
                                 marginLeft: "auto",
                                 paddingLeft: "6px",
                             }}>
-                            {keyboardShortcuts[WebviewAction.ChangeColumnWidth]?.label}
+                            {keyboardShortcuts[WebviewAction.ResultGridChangeColumnWidth]?.label}
                         </span>
                     </Button>
                 </Toolbar>

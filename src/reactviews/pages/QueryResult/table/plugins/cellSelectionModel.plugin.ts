@@ -612,7 +612,10 @@ export class CellSelectionModel<T extends Slick.SlickData>
 
         if (
             !isHandled &&
-            eventMatchesShortcut(e, shortcuts[WebviewAction.ExpandSelectionLeft].keyCombination)
+            eventMatchesShortcut(
+                e,
+                shortcuts[WebviewAction.ResultGridExpandSelectionLeft].keyCombination,
+            )
         ) {
             this.expandSelection(KeyCode.ArrowLeft);
             isHandled = true;
@@ -620,7 +623,10 @@ export class CellSelectionModel<T extends Slick.SlickData>
 
         if (
             !isHandled &&
-            eventMatchesShortcut(e, shortcuts[WebviewAction.ExpandSelectionRight].keyCombination)
+            eventMatchesShortcut(
+                e,
+                shortcuts[WebviewAction.ResultGridExpandSelectionRight].keyCombination,
+            )
         ) {
             this.expandSelection(KeyCode.ArrowRight);
             isHandled = true;
@@ -628,7 +634,10 @@ export class CellSelectionModel<T extends Slick.SlickData>
 
         if (
             !isHandled &&
-            eventMatchesShortcut(e, shortcuts[WebviewAction.ExpandSelectionUp].keyCombination)
+            eventMatchesShortcut(
+                e,
+                shortcuts[WebviewAction.ResultGridExpandSelectionUp].keyCombination,
+            )
         ) {
             this.expandSelection(KeyCode.ArrowUp);
             isHandled = true;
@@ -636,7 +645,10 @@ export class CellSelectionModel<T extends Slick.SlickData>
 
         if (
             !isHandled &&
-            eventMatchesShortcut(e, shortcuts[WebviewAction.ExpandSelectionDown].keyCombination)
+            eventMatchesShortcut(
+                e,
+                shortcuts[WebviewAction.ResultGridExpandSelectionDown].keyCombination,
+            )
         ) {
             this.expandSelection(KeyCode.ArrowDown);
             isHandled = true;
@@ -644,7 +656,10 @@ export class CellSelectionModel<T extends Slick.SlickData>
 
         if (
             !isHandled &&
-            eventMatchesShortcut(e, shortcuts[WebviewAction.OpenColumnMenu].keyCombination)
+            eventMatchesShortcut(
+                e,
+                shortcuts[WebviewAction.ResultGridOpenColumnMenu].keyCombination,
+            )
         ) {
             await this.headerFilter?.openMenuForActiveColumn();
             isHandled = true;
@@ -652,7 +667,7 @@ export class CellSelectionModel<T extends Slick.SlickData>
 
         if (
             !isHandled &&
-            eventMatchesShortcut(e, shortcuts[WebviewAction.SelectAll].keyCombination)
+            eventMatchesShortcut(e, shortcuts[WebviewAction.ResultGridSelectAll].keyCombination)
         ) {
             await this.handleSelectAll();
             isHandled = true;
@@ -660,7 +675,10 @@ export class CellSelectionModel<T extends Slick.SlickData>
 
         if (
             !isHandled &&
-            eventMatchesShortcut(e, shortcuts[WebviewAction.MoveToRowStart].keyCombination)
+            eventMatchesShortcut(
+                e,
+                shortcuts[WebviewAction.ResultGridMoveToRowStart].keyCombination,
+            )
         ) {
             this.moveToFirstCellInRow();
             isHandled = true;
@@ -668,7 +686,7 @@ export class CellSelectionModel<T extends Slick.SlickData>
 
         if (
             !isHandled &&
-            eventMatchesShortcut(e, shortcuts[WebviewAction.MoveToRowEnd].keyCombination)
+            eventMatchesShortcut(e, shortcuts[WebviewAction.ResultGridMoveToRowEnd].keyCombination)
         ) {
             this.moveToLastCellInRow();
             isHandled = true;
@@ -676,7 +694,7 @@ export class CellSelectionModel<T extends Slick.SlickData>
 
         if (
             !isHandled &&
-            eventMatchesShortcut(e, shortcuts[WebviewAction.SelectColumn].keyCombination)
+            eventMatchesShortcut(e, shortcuts[WebviewAction.ResultGridSelectColumn].keyCombination)
         ) {
             this.selectActiveCellColumn();
             isHandled = true;
@@ -684,7 +702,7 @@ export class CellSelectionModel<T extends Slick.SlickData>
 
         if (
             !isHandled &&
-            eventMatchesShortcut(e, shortcuts[WebviewAction.SelectRow].keyCombination)
+            eventMatchesShortcut(e, shortcuts[WebviewAction.ResultGridSelectRow].keyCombination)
         ) {
             this.selectActiveCellRow();
             isHandled = true;
@@ -692,7 +710,7 @@ export class CellSelectionModel<T extends Slick.SlickData>
 
         if (
             !isHandled &&
-            eventMatchesShortcut(e, shortcuts[WebviewAction.ToggleSort].keyCombination)
+            eventMatchesShortcut(e, shortcuts[WebviewAction.ResultGridToggleSort].keyCombination)
         ) {
             await this.toggleSortForActiveCell();
             isHandled = true;
@@ -700,7 +718,10 @@ export class CellSelectionModel<T extends Slick.SlickData>
 
         if (
             !isHandled &&
-            eventMatchesShortcut(e, shortcuts[WebviewAction.ChangeColumnWidth].keyCombination)
+            eventMatchesShortcut(
+                e,
+                shortcuts[WebviewAction.ResultGridChangeColumnWidth].keyCombination,
+            )
         ) {
             await this.resizeColumnForActiveCell();
             isHandled = true;

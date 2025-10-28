@@ -115,20 +115,24 @@ export const GridContextMenu: React.FC<GridContextMenuProps> = ({
                     <MenuList className={classes.menuList}>
                         <MenuItem
                             className={classes.menuItem}
-                            secondaryContent={keyboardShortcuts[WebviewAction.SelectAll]?.label}
+                            secondaryContent={
+                                keyboardShortcuts[WebviewAction.ResultGridSelectAll]?.label
+                            }
                             onClick={() => onAction(GridContextMenuAction.SelectAll)}>
                             {locConstants.queryResult.selectAll}
                         </MenuItem>
                         <MenuItem
                             className={classes.menuItem}
-                            secondaryContent={keyboardShortcuts[WebviewAction.CopySelection]?.label}
+                            secondaryContent={
+                                keyboardShortcuts[WebviewAction.ResultGridCopySelection]?.label
+                            }
                             onClick={() => onAction(GridContextMenuAction.CopySelection)}>
                             {locConstants.queryResult.copy}
                         </MenuItem>
                         <MenuItem
                             className={classes.menuItem}
                             secondaryContent={
-                                keyboardShortcuts[WebviewAction.CopyWithHeaders]?.label
+                                keyboardShortcuts[WebviewAction.ResultGridCopyWithHeaders]?.label
                             }
                             onClick={() => onAction(GridContextMenuAction.CopyWithHeaders)}>
                             {locConstants.queryResult.copyWithHeaders}
@@ -136,7 +140,7 @@ export const GridContextMenu: React.FC<GridContextMenuProps> = ({
                         <MenuItem
                             className={classes.menuItem}
                             secondaryContent={
-                                keyboardShortcuts[WebviewAction.CopyAllHeaders]?.label
+                                keyboardShortcuts[WebviewAction.ResultGridCopyAllHeaders]?.label
                             }
                             onClick={() => onAction(GridContextMenuAction.CopyHeaders)}>
                             {locConstants.queryResult.copyHeaders}
@@ -152,7 +156,8 @@ export const GridContextMenu: React.FC<GridContextMenuProps> = ({
                                     <MenuItem
                                         className={`${classes.menuItem} ${classes.submenuTrigger}`}
                                         secondaryContent={
-                                            keyboardShortcuts[WebviewAction.CopyAsCsv]?.label
+                                            keyboardShortcuts[WebviewAction.ResultGridCopyAsCsv]
+                                                ?.label
                                         }
                                         onClick={() => onAction(GridContextMenuAction.CopyAsCsv)}>
                                         {locConstants.queryResult.copyAsCsv}
@@ -160,7 +165,8 @@ export const GridContextMenu: React.FC<GridContextMenuProps> = ({
                                     <MenuItem
                                         className={`${classes.menuItem} ${classes.submenuTrigger}`}
                                         secondaryContent={
-                                            keyboardShortcuts[WebviewAction.CopyAsJson]?.label
+                                            keyboardShortcuts[WebviewAction.ResultGridCopyAsJson]
+                                                ?.label
                                         }
                                         onClick={() => onAction(GridContextMenuAction.CopyAsJson)}>
                                         {locConstants.queryResult.copyAsJson}
@@ -168,7 +174,8 @@ export const GridContextMenu: React.FC<GridContextMenuProps> = ({
                                     <MenuItem
                                         className={`${classes.menuItem} ${classes.submenuTrigger}`}
                                         secondaryContent={
-                                            keyboardShortcuts[WebviewAction.CopyAsInsert]?.label
+                                            keyboardShortcuts[WebviewAction.ResultGridCopyAsInsert]
+                                                ?.label
                                         }
                                         onClick={() =>
                                             onAction(GridContextMenuAction.CopyAsInsertInto)
@@ -178,7 +185,9 @@ export const GridContextMenu: React.FC<GridContextMenuProps> = ({
                                     <MenuItem
                                         className={`${classes.menuItem} ${classes.submenuTrigger}`}
                                         secondaryContent={
-                                            keyboardShortcuts[WebviewAction.CopyAsInClause]?.label
+                                            keyboardShortcuts[
+                                                WebviewAction.ResultGridCopyAsInClause
+                                            ]?.label
                                         }
                                         onClick={() =>
                                             onAction(GridContextMenuAction.CopyAsInClause)

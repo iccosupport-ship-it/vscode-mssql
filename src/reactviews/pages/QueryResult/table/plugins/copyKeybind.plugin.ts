@@ -56,56 +56,91 @@ export class CopyKeybind<T extends Slick.SlickData> implements Slick.Plugin<T> {
 
     private async handleKeyDown(e: KeyboardEvent): Promise<void> {
         let handled = false;
-        if (eventMatchesShortcut(e, this.shortcuts[WebviewAction.CopySelection].keyCombination)) {
+        if (
+            eventMatchesShortcut(
+                e,
+                this.shortcuts[WebviewAction.ResultGridCopySelection].keyCombination,
+            )
+        ) {
             handled = true;
             await this.copySelection(false);
         } else if (
-            eventMatchesShortcut(e, this.shortcuts[WebviewAction.CopyWithHeaders].keyCombination)
+            eventMatchesShortcut(
+                e,
+                this.shortcuts[WebviewAction.ResultGridCopyWithHeaders].keyCombination,
+            )
         ) {
             handled = true;
             await this.copySelection(true);
         } else if (
-            eventMatchesShortcut(e, this.shortcuts[WebviewAction.CopyAllHeaders].keyCombination)
+            eventMatchesShortcut(
+                e,
+                this.shortcuts[WebviewAction.ResultGridCopyAllHeaders].keyCombination,
+            )
         ) {
             handled = true;
             await this.copyHeaders();
         } else if (
-            eventMatchesShortcut(e, this.shortcuts[WebviewAction.CopyAsCsv].keyCombination)
+            eventMatchesShortcut(
+                e,
+                this.shortcuts[WebviewAction.ResultGridCopyAsCsv].keyCombination,
+            )
         ) {
             handled = true;
             await this.copyAsCsv();
         } else if (
-            eventMatchesShortcut(e, this.shortcuts[WebviewAction.CopyAsJson].keyCombination)
+            eventMatchesShortcut(
+                e,
+                this.shortcuts[WebviewAction.ResultGridCopyAsJson].keyCombination,
+            )
         ) {
             handled = true;
             await this.copyAsJson();
         } else if (
-            eventMatchesShortcut(e, this.shortcuts[WebviewAction.CopyAsInsert].keyCombination)
+            eventMatchesShortcut(
+                e,
+                this.shortcuts[WebviewAction.ResultGridCopyAsInsert].keyCombination,
+            )
         ) {
             handled = true;
             await this.copyAsInsertInto();
         } else if (
-            eventMatchesShortcut(e, this.shortcuts[WebviewAction.CopyAsInClause].keyCombination)
+            eventMatchesShortcut(
+                e,
+                this.shortcuts[WebviewAction.ResultGridCopyAsInClause].keyCombination,
+            )
         ) {
             handled = true;
             await this.copyAsInClause();
         } else if (
-            eventMatchesShortcut(e, this.shortcuts[WebviewAction.SaveAsJson].keyCombination)
+            eventMatchesShortcut(
+                e,
+                this.shortcuts[WebviewAction.QueryResultSaveAsJson].keyCombination,
+            )
         ) {
             handled = true;
             await this.saveResults("json");
         } else if (
-            eventMatchesShortcut(e, this.shortcuts[WebviewAction.SaveAsCsv].keyCombination)
+            eventMatchesShortcut(
+                e,
+                this.shortcuts[WebviewAction.QueryResultSaveAsCsv].keyCombination,
+            )
         ) {
             handled = true;
             await this.saveResults("csv");
         } else if (
-            eventMatchesShortcut(e, this.shortcuts[WebviewAction.SaveAsExcel].keyCombination)
+            eventMatchesShortcut(
+                e,
+                this.shortcuts[WebviewAction.QueryResultSaveAsExcel].keyCombination,
+            )
         ) {
             handled = true;
             await this.saveResults("excel");
         } else if (
-            eventMatchesShortcut(e, this.shortcuts[WebviewAction.SaveAsInsert].keyCombination)
+            eventMatchesShortcut(
+                e,
+                this.shortcuts[WebviewAction.QueryResultSaveAsInsert].keyCombination,
+            )
         ) {
             handled = true;
             await this.saveResults("insert");
