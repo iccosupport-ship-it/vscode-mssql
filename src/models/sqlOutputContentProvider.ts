@@ -354,7 +354,6 @@ export class SqlOutputContentProvider {
             executionPlanOptions?.includeEstimatedExecutionPlanXml ||
                 this._actualPlanStatuses.includes(uri) ||
                 executionPlanOptions?.includeActualExecutionPlanXml,
-            this._actualPlanStatuses.includes(uri),
         );
         if (isOpenQueryResultsInTabByDefaultEnabled()) {
             await this._queryResultWebviewController.createPanelController(queryRunner.uri);

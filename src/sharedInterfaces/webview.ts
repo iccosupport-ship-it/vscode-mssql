@@ -143,6 +143,7 @@ export interface WebviewContextProps<TState> {
     log(message: string, level?: LoggerLevel): void;
     sendActionEvent(event: WebviewTelemetryActionEvent): void;
     sendErrorEvent(event: WebviewTelemetryErrorEvent): void;
+    keyBindings: Record<string, string>;
 }
 
 export enum MessageType {
@@ -165,6 +166,14 @@ export interface WebviewRpcMessage {
  */
 export namespace ColorThemeChangeNotification {
     export const type = new NotificationType<ColorThemeKind>("onDidChangeColorTheme");
+}
+
+/**
+ * Key bindings change event callback declaration.
+ * This is used to notify the webview of key binding changes.
+ */
+export namespace KeyBindingsChangeNotification {
+    export const type = new NotificationType<Record<string, string>>("onDidChangeKeyBindings");
 }
 
 /**

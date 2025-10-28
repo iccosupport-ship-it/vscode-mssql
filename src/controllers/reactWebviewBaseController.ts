@@ -15,6 +15,7 @@ import {
     GetPlatformRequest,
     GetStateRequest,
     GetThemeRequest,
+    KeyBindingsChangeNotification,
     LoadStatsNotification,
     LogEvent,
     LogNotification,
@@ -48,6 +49,7 @@ import {
 } from "vscode-jsonrpc/node";
 import { MessageReader } from "vscode-languageclient";
 import { Deferred } from "../protocol";
+import * as Constants from "../constants/constants";
 
 class WebviewControllerMessageReader extends AbstractMessageReader implements MessageReader {
     private _onData: Emitter<Message>;
@@ -204,6 +206,7 @@ export abstract class ReactWebviewBaseController<State, Reducers> implements vsc
         }
         this._registerDefaultRequestHandlers();
         this.setupTheming();
+        this.setupKeyBindings();
     }
 
     protected registerDisposable(disposable: vscode.Disposable) {
@@ -255,6 +258,23 @@ export abstract class ReactWebviewBaseController<State, Reducers> implements vsc
         void this.sendNotification(
             ColorThemeChangeNotification.type,
             vscode.window.activeColorTheme.kind,
+        );
+    }
+
+    protected setupKeyBindings() {
+        this._disposables.push(
+            vscode.workspace.onDidChangeConfiguration((e) => {
+                if (e.affectsConfiguration(Constants.configShortcuts)) {
+                    void this.sendNotification(
+                        KeyBindingsChangeNotification.type,
+                        this.readKeyBindingsConfig(),
+                    );
+                }
+            }),
+        );
+        void this.sendNotification(
+            KeyBindingsChangeNotification.type,
+            this.readKeyBindingsConfig(),
         );
     }
 
@@ -524,6 +544,12 @@ export abstract class ReactWebviewBaseController<State, Reducers> implements vsc
      */
     public whenWebviewReady(): Promise<void> {
         return this._webviewReady.promise;
+    }
+
+    private readKeyBindingsConfig(): Record<string, string> {
+        return vscode.workspace
+            .getConfiguration()
+            .get<Record<string, string>>(Constants.configShortcuts);
     }
 }
 

@@ -68,7 +68,6 @@ export interface QueryResultWebviewState extends ExecutionPlanWebviewState {
     inMemoryDataProcessingThreshold?: number;
     initializationError?: string;
     selectionSummary?: SelectionSummary;
-    keyBindings?: Record<string, string>;
 }
 
 export interface SelectionSummary {
