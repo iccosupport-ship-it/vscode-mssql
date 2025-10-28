@@ -40,28 +40,7 @@ import { useQueryResultSelector } from "./queryResultSelector";
 import { ExecuteCommandRequest } from "../../../sharedInterfaces/webview";
 import { ExecutionPlanGraph } from "../../../sharedInterfaces/executionPlan";
 import { SLICKGRID_ROW_ID_PROP } from "./table/utils";
-import {
-    kbChangeColumnWidth,
-    kbCopyAllHeaders,
-    kbCopyAsCsv,
-    kbCopyAsInClause,
-    kbCopyAsInsert,
-    kbCopyAsJson,
-    kbCopySelection,
-    kbCopyWithHeaders,
-    kbMaximizeGrid,
-    kbNextGrid,
-    kbPrevGrid,
-    kbSaveAsCsv,
-    kbSaveAsExcel,
-    kbSaveAsInsert,
-    kbSaveAsJson,
-    kbSelectAll,
-    kbSwitchToMessagesTab,
-    kbSwitchToResultsTab,
-    kbSwitchToTextView,
-} from "../../common/constants";
-import { eventMatchesShortcut, getShortcutInfo, ShortcutInfo } from "../../common/keyboardUtils";
+import { eventMatchesShortcut, getShortcutInfo } from "../../common/keyboardUtils";
 import { useVscodeWebview2 } from "../../common/vscodeWebviewProvider2";
 
 const useStyles = makeStyles({
@@ -205,7 +184,7 @@ export const QueryResultPane = () => {
     const executionPlanGraphs = useQueryResultSelector<ExecutionPlanGraph[] | undefined>(
         (s) => s.executionPlanState?.executionPlanGraphs,
     );
-    const { keyBindings } = useVscodeWebview2();
+    const { keyboardShortcuts: keyBindings } = useVscodeWebview2();
     const isProgrammaticScroll = useRef(true);
     isProgrammaticScroll.current = true;
 

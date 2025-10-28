@@ -29,7 +29,7 @@ const DeploymentStateProvider: React.FC<DeploymentProviderProps> = ({ children }
             value={{
                 state: webviewState?.state as any,
                 themeKind: webviewState?.themeKind,
-                keyBindings: webviewState?.keyBindings,
+                keyBindings: webviewState?.keyboardShortcuts,
                 ...getCoreRPCs(webviewState),
                 //#region Common Reducers
                 initializeDeploymentSpecifics: function (deploymentType: DeploymentType): void {

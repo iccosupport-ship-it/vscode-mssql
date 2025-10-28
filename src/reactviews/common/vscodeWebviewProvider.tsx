@@ -16,15 +16,17 @@ import {
     ColorThemeChangeNotification,
     ColorThemeKind,
     GetEOLRequest,
-    GetKeyBindingsRequest,
+    GetKeyBindingsConfigRequest,
     GetLocalizationRequest,
     GetStateRequest,
     GetThemeRequest,
     LoadStatsNotification,
     StateChangeNotification,
+    WebviewShortcuts,
 } from "../../sharedInterfaces/webview";
 import { getEOL } from "./utils";
 import { vsCodeApiInstance } from "./acquireVsCodeApi";
+import { parseWebviewKeyboardShortcutConfig } from "./keyboardUtils";
 
 /**
  * Context for vscode webview functionality like theming, state management, rpc and vscode api.
@@ -51,7 +53,7 @@ export interface VscodeWebviewContext<State, Reducers> {
     /**
      * Key bindings for the webview.
      */
-    keyBindings: Record<string, string>;
+    keyboardShortcuts: WebviewShortcuts;
     /**
      * Localization status. The value is true when the localization file content is received from the extension.
      * This is used to force a re-render of the component when the localization file content is received.
@@ -82,7 +84,7 @@ export function VscodeWebviewProvider<State, Reducers>({ children }: VscodeWebvi
     const vscodeApi = vscodeApiInstance;
     const extensionRpc = WebviewRpc.getInstance<Reducers>(vscodeApi);
     const [theme, setTheme] = useState(ColorThemeKind.Light);
-    const [keyBindings, setKeyBindings] = useState<Record<string, string>>({});
+    const [keyBindings, setKeyBindings] = useState<WebviewShortcuts>({} as WebviewShortcuts);
     const [state, setState] = useState<State>();
     const [localization, setLocalization] = useState<boolean>(false);
     const [EOL, setEOL] = useState<string>(getEOL());
@@ -94,8 +96,10 @@ export function VscodeWebviewProvider<State, Reducers>({ children }: VscodeWebvi
         }
 
         async function getKeyBindings() {
-            const keyBindings = await extensionRpc.sendRequest(GetKeyBindingsRequest.type);
-            setKeyBindings(keyBindings);
+            const keyBindingConfig = await extensionRpc.sendRequest(
+                GetKeyBindingsConfigRequest.type,
+            );
+            setKeyBindings(parseWebviewKeyboardShortcutConfig(keyBindingConfig));
         }
 
         async function getState() {
@@ -158,7 +162,7 @@ export function VscodeWebviewProvider<State, Reducers>({ children }: VscodeWebvi
                 extensionRpc: extensionRpc,
                 state: state,
                 themeKind: theme,
-                keyBindings: keyBindings,
+                keyboardShortcuts: keyBindings,
                 localization: localization,
                 EOL: EOL,
             }}>

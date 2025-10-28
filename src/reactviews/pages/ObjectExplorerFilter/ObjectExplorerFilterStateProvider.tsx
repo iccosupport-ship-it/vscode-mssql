@@ -34,7 +34,7 @@ const ObjectExplorerFilterStateProvider: React.FC<ObjectExplorerFilterStateProvi
                 //isLocalizationLoaded: webviewState?.localization,
                 state: objectExplorerFilterState,
                 themeKind: webviewState?.themeKind,
-                keyBindings: webviewState?.keyBindings,
+                keyBindings: webviewState?.keyboardShortcuts,
                 submit: function (filters): void {
                     webviewState?.extensionRpc.action("submit", {
                         filters: filters,

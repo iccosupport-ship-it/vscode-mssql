@@ -40,7 +40,7 @@ const ConnectionDialogStateProvider: React.FC<ConnectionDialogProviderProps> = (
             value={{
                 state: state,
                 themeKind: webviewContext?.themeKind,
-                keyBindings: webviewContext?.keyBindings,
+                keyBindings: webviewContext?.keyboardShortcuts,
                 ...getCoreRPCs(webviewContext),
                 loadConnection: function (connection: IConnectionDialogProfile): void {
                     webviewContext?.extensionRpc.action("loadConnection", {

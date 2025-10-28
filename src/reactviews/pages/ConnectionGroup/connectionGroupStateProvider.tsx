@@ -29,7 +29,7 @@ const ConnectionGroupStateProvider: React.FC<ConnectionGroupProviderProps> = ({ 
             value={{
                 state: webviewContext.state,
                 themeKind: webviewContext.themeKind,
-                keyBindings: webviewContext.keyBindings,
+                keyBindings: webviewContext.keyboardShortcuts,
                 ...getCoreRPCs(webviewContext),
                 closeDialog: () => webviewContext?.extensionRpc.action("closeDialog"),
                 saveConnectionGroup: (connectionGroupSpec: ConnectionGroupSpec) =>

@@ -66,7 +66,7 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
     );
     const fontSettings = useQueryResultSelector((state) => state.fontSettings);
     const autoSizeColumns = useQueryResultSelector((state) => state.autoSizeColumns);
-    const { themeKind, keyBindings } = useVscodeWebview2();
+    const { themeKind, keyboardShortcuts: keyBindings } = useVscodeWebview2();
 
     const gridContainerRef = useRef<HTMLDivElement>(null);
     const isTableCreated = useRef<boolean>(false);

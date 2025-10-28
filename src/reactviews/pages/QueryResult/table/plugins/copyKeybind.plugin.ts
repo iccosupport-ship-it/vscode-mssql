@@ -22,37 +22,14 @@ import {
 } from "../utils";
 import { QueryResultReactProvider } from "../../queryResultStateProvider";
 import {
-    kbCopyAllHeaders,
-    kbCopyAsCsv,
-    kbCopyAsInClause,
-    kbCopyAsInsert,
-    kbCopyAsJson,
-    kbCopySelection,
-    kbCopyWithHeaders,
-    kbSaveAsCsv,
-    kbSaveAsExcel,
-    kbSaveAsInsert,
-    kbSaveAsJson,
-} from "../../../../common/constants";
-import {
     eventMatchesShortcut,
     getShortcutInfo,
     ShortcutInfo,
 } from "../../../../common/keyboardUtils";
-
-interface CopyShortcutMap {
-    copySelection: ShortcutInfo;
-    copyWithHeaders: ShortcutInfo;
-    copyAllHeaders: ShortcutInfo;
-    copyAsCsv: ShortcutInfo;
-    copyAsJson: ShortcutInfo;
-    copyAsInsertInto: ShortcutInfo;
-    copyAsInClause: ShortcutInfo;
-    saveAsJson: ShortcutInfo;
-    saveAsCsv: ShortcutInfo;
-    saveAsExcel: ShortcutInfo;
-    saveAsInsert: ShortcutInfo;
-}
+import {
+    WebviewAction,
+    WebviewKeyboardShortcutConfiguration,
+} from "../../../../../sharedInterfaces/webview";
 
 /**
  * Implements the various clipboard and export keyboard shortcuts for slickgrid
@@ -62,13 +39,13 @@ export class CopyKeybind<T extends Slick.SlickData> implements Slick.Plugin<T> {
     private handler = new Slick.EventHandler();
     private uri: string;
     private resultSetSummary: ResultSetSummary;
-    private shortcuts!: CopyShortcutMap;
+    private shortcuts!: Record<WebviewAction, ShortcutInfo>;
 
     constructor(
         uri: string,
         resultSetSummary: ResultSetSummary,
         private _qrContext: QueryResultReactProvider,
-        keyBindings?: Record<string, string>,
+        keyBindings: WebviewKeyboardShortcutConfiguration,
     ) {
         this.uri = uri;
         this.resultSetSummary = resultSetSummary;
@@ -86,21 +63,19 @@ export class CopyKeybind<T extends Slick.SlickData> implements Slick.Plugin<T> {
         this.handler.unsubscribeAll();
     }
 
-    public updateShortcuts(keyBindings?: Record<string, string>): void {
-        const getBinding = (key: string) => keyBindings?.[key];
-
+    public updateShortcuts(keyBindings: WebviewKeyboardShortcutConfiguration): void {
         this.shortcuts = {
-            copySelection: getShortcutInfo(getBinding(kbCopySelection)),
-            copyWithHeaders: getShortcutInfo(getBinding(kbCopyWithHeaders)),
-            copyAllHeaders: getShortcutInfo(getBinding(kbCopyAllHeaders)),
-            copyAsCsv: getShortcutInfo(getBinding(kbCopyAsCsv)),
-            copyAsJson: getShortcutInfo(getBinding(kbCopyAsJson)),
-            copyAsInsertInto: getShortcutInfo(getBinding(kbCopyAsInsert)),
-            copyAsInClause: getShortcutInfo(getBinding(kbCopyAsInClause)),
-            saveAsJson: getShortcutInfo(getBinding(kbSaveAsJson)),
-            saveAsCsv: getShortcutInfo(getBinding(kbSaveAsCsv)),
-            saveAsExcel: getShortcutInfo(getBinding(kbSaveAsExcel)),
-            saveAsInsert: getShortcutInfo(getBinding(kbSaveAsInsert)),
+            copySelection: getShortcutInfo(keyBindings[WebviewAction.CopySelection]),
+            copyWithHeaders: getShortcutInfo(keyBindings[WebviewAction.CopyWithHeaders]),
+            copyAllHeaders: getShortcutInfo(keyBindings[WebviewAction.CopyAllHeaders]),
+            copyAsCsv: getShortcutInfo(keyBindings[WebviewAction.CopyAsCsv]),
+            copyAsJson: getShortcutInfo(keyBindings[WebviewAction.CopyAsJson]),
+            copyAsInsertInto: getShortcutInfo(keyBindings[WebviewAction.CopyAsInsert]),
+            copyAsInClause: getShortcutInfo(keyBindings[WebviewAction.CopyAsInClause]),
+            saveAsJson: getShortcutInfo(keyBindings[WebviewAction.SaveAsJson]),
+            saveAsCsv: getShortcutInfo(keyBindings[WebviewAction.SaveAsCsv]),
+            saveAsExcel: getShortcutInfo(keyBindings[WebviewAction.SaveAsExcel]),
+            saveAsInsert: getShortcutInfo(keyBindings[WebviewAction.SaveAsInsert]),
         };
     }
 

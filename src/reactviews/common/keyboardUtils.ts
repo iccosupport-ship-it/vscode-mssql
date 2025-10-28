@@ -3,23 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import {
+    WebviewShortcut,
+    WebviewKeyCombination,
+    WebviewShortcuts,
+    WebviewKeyboardShortcutConfiguration,
+    WebviewAction,
+} from "../../sharedInterfaces/webview";
 import { isMac } from "./utils";
 
-export interface ShortcutMatcher {
-    key?: string;
-    code?: string;
-    ctrlKey?: boolean;
-    shiftKey?: boolean;
-    altKey?: boolean;
-    metaKey?: boolean;
-}
-
-export interface ShortcutInfo {
-    matcher: ShortcutMatcher;
-    display: string;
-}
-
-type TokenHandler = (matcher: ShortcutMatcher, displayTokens: string[]) => void;
+type TokenHandler = (matcher: WebviewKeyCombination, displayTokens: string[]) => void;
 
 type KeyResolution = {
     key: string;
@@ -123,6 +116,11 @@ const specialKeyMap: Record<string, KeyResolution> = {
 
 const FUNCTION_KEY_REGEX = /^f([1-9]|1[0-2])$/;
 
+/**
+ * Normalizes the raw keyboard shortcut string into tokens.
+ * @param raw Raw keyboard shortcut string
+ * @returns Array of normalized tokens
+ */
 function normalize(raw?: string): string[] {
     if (!raw) {
         return [];
@@ -133,6 +131,11 @@ function normalize(raw?: string): string[] {
         .filter((token) => token.length > 0);
 }
 
+/**
+ * Resolves a key token into its key, code, and display representation.
+ * @param token Key token to resolve
+ * @returns Resolved key information or undefined if not recognized
+ */
 function resolveKeyToken(token: string): KeyResolution | undefined {
     if (token.length === 1 && token >= "a" && token <= "z") {
         return {
@@ -158,12 +161,17 @@ function resolveKeyToken(token: string): KeyResolution | undefined {
     return specialKeyMap[token];
 }
 
-function buildShortcut(tokens: string[]): ShortcutInfo | undefined {
+/**
+ * Builds a webview shortcut from the given tokens.
+ * @param tokens Tokens representing the keyboard shortcut
+ * @returns Parsed webview shortcut or undefined if invalid
+ */
+function buildShortcut(tokens: string[]): WebviewShortcut | undefined {
     if (!tokens.length) {
         return undefined;
     }
 
-    const matcher: ShortcutMatcher = {};
+    const matcher: WebviewKeyCombination = {};
     const displayTokens: string[] = [];
     let keyAssigned = false;
 
@@ -196,41 +204,74 @@ function buildShortcut(tokens: string[]): ShortcutInfo | undefined {
         return undefined;
     }
 
-    return { matcher, display: displayTokens.join("+") };
+    return { keyCombination: matcher, label: displayTokens.join("+") };
 }
 
-export function getShortcutInfo(raw: string | undefined): ShortcutInfo {
+/**
+ * Gets the shortcut information from the raw keyboard shortcut string.
+ * @param raw Raw keyboard shortcut string from configuration
+ * @returns Parsed webview shortcut
+ */
+export function getShortcutInfo(raw: string | undefined): WebviewShortcut {
     const primaryTokens = normalize(raw);
     const primary = buildShortcut(primaryTokens);
     if (primary) {
         return primary;
     }
 
-    return { matcher: {}, display: "" };
+    return { keyCombination: {}, label: "" };
 }
 
-export function eventMatchesShortcut(event: KeyboardEvent, matcher: ShortcutMatcher): boolean {
-    if (matcher.ctrlKey !== undefined && matcher.ctrlKey !== event.ctrlKey) {
+/**
+ * Parses the webview keyboard shortcut configuration into shortcut information.
+ * @param config Keyboard shortcut configuration
+ * @returns Parsed webview shortcuts
+ */
+export function parseWebviewKeyboardShortcutConfig(
+    config: WebviewKeyboardShortcutConfiguration,
+): WebviewShortcuts {
+    const webviewKeyBinding = {} as WebviewShortcuts;
+    Object.keys(config).forEach((key) => {
+        const keyType = key as WebviewAction;
+        webviewKeyBinding[keyType] = getShortcutInfo(
+            config[key as keyof WebviewKeyboardShortcutConfiguration],
+        );
+    });
+    return webviewKeyBinding;
+}
+
+/**
+ * Matches a raw keyboard event against the event generated from user configuration.
+ * @param event Raw keyboard event
+ * @param keyCombination parsed key combination from user configuration
+ * @returns True if the event matches the configuration, false otherwise
+ */
+export function eventMatchesShortcut(
+    event: KeyboardEvent,
+    keyCombination: WebviewKeyCombination,
+): boolean {
+    if (keyCombination.ctrlKey !== undefined && keyCombination.ctrlKey !== event.ctrlKey) {
         return false;
     }
-    if (matcher.metaKey !== undefined && matcher.metaKey !== event.metaKey) {
+    if (keyCombination.metaKey !== undefined && keyCombination.metaKey !== event.metaKey) {
         return false;
     }
-    if (matcher.altKey !== undefined && matcher.altKey !== event.altKey) {
+    if (keyCombination.altKey !== undefined && keyCombination.altKey !== event.altKey) {
         return false;
     }
-    if (matcher.shiftKey !== undefined && matcher.shiftKey !== event.shiftKey) {
+    if (keyCombination.shiftKey !== undefined && keyCombination.shiftKey !== event.shiftKey) {
         return false;
     }
 
-    if (matcher.code !== undefined && matcher.code !== event.code) {
+    if (keyCombination.code !== undefined && keyCombination.code !== event.code) {
         return false;
     }
 
-    if (matcher.code === undefined && matcher.key !== undefined) {
+    if (keyCombination.code === undefined && keyCombination.key !== undefined) {
         const eventKey = event.key.length === 1 ? event.key.toLowerCase() : event.key;
-        const matcherKey = matcher.key.length === 1 ? matcher.key.toLowerCase() : matcher.key;
-        if (eventKey !== matcherKey) {
+        const shortcutKey =
+            keyCombination.key.length === 1 ? keyCombination.key.toLowerCase() : keyCombination.key;
+        if (eventKey !== shortcutKey) {
             return false;
         }
     }

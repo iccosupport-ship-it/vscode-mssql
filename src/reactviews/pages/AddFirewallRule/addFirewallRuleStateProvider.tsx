@@ -27,7 +27,7 @@ const AddFirewallRuleStateProvider: React.FC<AddFirewallRuleProviderProps> = ({ 
             value={{
                 state: webviewContext.state,
                 themeKind: webviewContext.themeKind,
-                keyBindings: webviewContext.keyBindings,
+                keyBindings: webviewContext.keyboardShortcuts,
                 ...getCoreRPCs(webviewContext),
                 addFirewallRule: function (firewallRuleSpec: FirewallRuleSpec): void {
                     webviewContext?.extensionRpc.action("addFirewallRule", {

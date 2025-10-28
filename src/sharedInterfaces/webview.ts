@@ -143,7 +143,7 @@ export interface WebviewContextProps<TState> {
     /**
      * Key bindings for the webview.
      */
-    keyBindings: Record<string, string>;
+    keyBindings: WebviewShortcuts;
     log(message: string, level?: LoggerLevel): void;
     sendActionEvent(event: WebviewTelemetryActionEvent): void;
     sendErrorEvent(event: WebviewTelemetryErrorEvent): void;
@@ -176,7 +176,9 @@ export namespace ColorThemeChangeNotification {
  * This is used to notify the webview of key binding changes.
  */
 export namespace KeyBindingsChangeNotification {
-    export const type = new NotificationType<Record<string, string>>("onDidChangeKeyBindings");
+    export const type = new NotificationType<WebviewKeyboardShortcutConfiguration>(
+        "onDidChangeKeyBindings",
+    );
 }
 
 /**
@@ -210,8 +212,10 @@ export namespace GetThemeRequest {
 /**
  * Request to get key bindings for the webview.
  */
-export namespace GetKeyBindingsRequest {
-    export const type = new RequestType<void, Record<string, string>, void>("getKeyBindings");
+export namespace GetKeyBindingsConfigRequest {
+    export const type = new RequestType<void, WebviewKeyboardShortcutConfiguration, void>(
+        "getKeyBindingsConfig",
+    );
 }
 
 /**
@@ -296,3 +300,64 @@ export interface CoreRPCs {
     sendActionEvent(event: WebviewTelemetryActionEvent): void;
     sendErrorEvent(event: WebviewTelemetryErrorEvent): void;
 }
+
+export enum WebviewAction {
+    QueryResultSwitchToTextView = "event.queryResults.switchToResultsTab",
+    QueryResultSwitchToMessagesTab = "event.queryResults.switchToMessagesTab",
+    QueryResultPrevGrid = "event.queryResults.prevGrid",
+    QueryResultNextGrid = "event.queryResults.nextGrid",
+    QueryResultMaximizeGrid = "event.queryResults.maximizeGrid",
+    SaveAsJson = "event.queryResults.saveAsJSON",
+    SaveAsCsv = "event.queryResults.saveAsCSV",
+    SaveAsExcel = "event.queryResults.saveAsExcel",
+    SaveAsInsert = "event.queryResults.saveAsInsert",
+    CopySelection = "event.resultGrid.copySelection",
+    CopyWithHeaders = "event.resultGrid.copyWithHeaders",
+    CopyAllHeaders = "event.resultGrid.copyAllHeaders",
+    SelectAll = "event.resultGrid.selectAll",
+    CopyAsCsv = "event.resultGrid.copyAsCSV",
+    CopyAsJson = "event.resultGrid.copyAsJSON",
+    CopyAsInsert = "event.resultGrid.copyAsInsert",
+    CopyAsInClause = "event.resultGrid.copyAsInClause",
+    ChangeColumnWidth = "event.resultGrid.changeColumnWidth",
+    ExpandSelectionLeft = "event.resultGrid.expandSelectionLeft",
+    ExpandSelectionRight = "event.resultGrid.expandSelectionRight",
+    ExpandSelectionUp = "event.resultGrid.expandSelectionUp",
+    ExpandSelectionDown = "event.resultGrid.expandSelectionDown",
+    OpenColumnMenu = "event.resultGrid.openColumnMenu",
+    MoveToRowStart = "event.resultGrid.moveToRowStart",
+    MoveToRowEnd = "event.resultGrid.moveToRowEnd",
+    SelectColumn = "event.resultGrid.selectColumn",
+    SelectRow = "event.resultGrid.selectRow",
+    ToggleSort = "event.resultGrid.toggleSort",
+}
+
+/**
+ * Keyboard shortcut configuration for webview actions.
+ */
+export type WebviewKeyboardShortcutConfiguration = Record<WebviewAction, string>;
+
+/**
+ * Representation of a key combination for a webview shortcut.
+ */
+export interface WebviewKeyCombination {
+    key?: string;
+    code?: string;
+    ctrlKey?: boolean;
+    shiftKey?: boolean;
+    altKey?: boolean;
+    metaKey?: boolean;
+}
+
+/**
+ * Representation of a webview shortcut including its key combination and label.
+ */
+export interface WebviewShortcut {
+    keyCombination: WebviewKeyCombination;
+    label: string;
+}
+
+/**
+ * Collection of webview shortcuts mapped by their actions.
+ */
+export type WebviewShortcuts = Record<WebviewAction, WebviewShortcut>;
