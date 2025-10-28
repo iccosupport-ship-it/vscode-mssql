@@ -222,6 +222,12 @@ export function getShortcutInfo(raw: string | undefined): WebviewShortcut {
     return { keyCombination: {}, label: "" };
 }
 
+function getDefaultConfig(): WebviewKeyboardShortcutConfiguration {
+    return {
+        [WebviewAction.ResultGridSelectAll]: "ctrlcmd+a",
+    } as WebviewKeyboardShortcutConfiguration;
+}
+
 /**
  * Parses the webview keyboard shortcut configuration into shortcut information.
  * @param config Keyboard shortcut configuration
@@ -231,6 +237,7 @@ export function parseWebviewKeyboardShortcutConfig(
     config: WebviewKeyboardShortcutConfiguration,
 ): WebviewShortcuts {
     const webviewKeyBinding = {} as WebviewShortcuts;
+    config = { ...getDefaultConfig(), ...config };
     Object.keys(config).forEach((key) => {
         const keyType = key as WebviewAction;
         webviewKeyBinding[keyType] = getShortcutInfo(
