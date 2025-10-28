@@ -27,7 +27,8 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { locConstants } from "../../../../common/locConstants";
 import { SortProperties } from "../../../../../sharedInterfaces/queryResult";
-import { altShiftOKeyboardShortcut } from "../../../../common/constants";
+import { useVscodeWebview2 } from "../../../../common/vscodeWebviewProvider2";
+import { WebviewAction } from "../../../../../sharedInterfaces/webview";
 
 export type FilterValue = string | undefined;
 
@@ -258,6 +259,7 @@ export const ColumnMenuPopup: React.FC<ColumnMenuPopupProps> = ({
         () => new Set(initialSelected),
     );
     const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+    const { keyboardShortcuts } = useVscodeWebview2();
 
     const filteredItems = useMemo(() => {
         const trimmed = search.trim().toLowerCase();
@@ -528,7 +530,9 @@ export const ColumnMenuPopup: React.FC<ColumnMenuPopupProps> = ({
             style={{ left: position.left, top: position.top }}
             role="dialog"
             aria-modal="true"
-            aria-label={locConstants.queryResult.showMenu}
+            aria-label={locConstants.queryResult.showMenu(
+                keyboardShortcuts[WebviewAction.OpenColumnMenu]?.label,
+            )}
             onMouseDown={(e) => e.stopPropagation()}
             onKeyDown={handleRootKeyDown}>
             <div className={styles.titleBar}>
@@ -540,7 +544,7 @@ export const ColumnMenuPopup: React.FC<ColumnMenuPopupProps> = ({
                             fontWeight: "100",
                             marginLeft: "6px",
                         }}>
-                        {altShiftOKeyboardShortcut}
+                        {keyboardShortcuts[WebviewAction.ToggleSort]?.label}
                     </span>
                 </Text>
                 <Button

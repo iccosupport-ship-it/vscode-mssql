@@ -468,7 +468,16 @@ export class LocConstants {
             message: l10n.t("Message"),
             openResultInNewTab: l10n.t("Open in New Tab"),
             showplanXML: l10n.t("Showplan XML"),
-            showMenu: l10n.t("Show Menu (F3)"),
+            showMenu: (shortcut: string) => {
+                if (shortcut) {
+                    return l10n.t({
+                        message: "Show Menu ({0})",
+                        args: [shortcut],
+                        comment: ["{0} is the keyboard shortcut for showing the menu"],
+                    });
+                }
+                return l10n.t("Show Menu");
+            },
             sortAscending: l10n.t("Sort Ascending"),
             sortDescending: l10n.t("Sort Descending"),
             clearSort: l10n.t("Clear Sort"),
