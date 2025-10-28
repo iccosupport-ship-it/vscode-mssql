@@ -304,6 +304,7 @@ export interface CoreRPCs {
 export enum WebviewAction {
     QueryResultSwitchToResultsTab = "event.queryResults.switchToResultsTab",
     QueryResultSwitchToMessagesTab = "event.queryResults.switchToMessagesTab",
+    QQueryResultSwitchToQueryPlanTab = "event.queryResults.switchToQueryPlanTab",
     QueryResultPrevGrid = "event.queryResults.prevGrid",
     QueryResultNextGrid = "event.queryResults.nextGrid",
     QueryResultSwitchToTextView = "event.queryResults.switchToTextView",

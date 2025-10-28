@@ -1547,6 +1547,7 @@
                         "_comment": "Use 'ctrlcmd' to represent 'ctrl' on Windows/Linux and 'cmd' on macOS.",
                         "event.queryResults.switchToResultsTab": "ctrl+alt+R",
                         "event.queryResults.switchToMessagesTab": "ctrl+alt+Y",
+                        "event.queryResults.switchToQueryPlanTab": "ctrl+alt+E",
                         "event.queryResults.prevGrid": "ctrlcmd+up",
                         "event.queryResults.nextGrid": "ctrlcmd+down",
                         "event.queryResults.switchToTextView": "",

@@ -437,6 +437,16 @@ export class LocConstants {
 
     public get queryResult() {
         return {
+            resultTabTooltip: (shortcut?: string) => {
+                if (shortcut) {
+                    return l10n.t({
+                        message: "Results ({0})",
+                        args: [shortcut],
+                        comment: ["{0} is the keyboard shortcut for the results tab"],
+                    });
+                }
+                return l10n.t("Results");
+            },
             results: (count: number) =>
                 l10n.t({
                     message: "Results ({0})",
@@ -444,6 +454,16 @@ export class LocConstants {
                     comment: ["{0} is the number of results"],
                 }),
             messages: l10n.t("Messages"),
+            messagesTabTooltip: (shortcut?: string) => {
+                if (shortcut) {
+                    return l10n.t({
+                        message: "Messages ({0})",
+                        args: [shortcut],
+                        comment: ["{0} is the keyboard shortcut for the messages tab"],
+                    });
+                }
+                return l10n.t("Messages");
+            },
             timestamp: l10n.t("Timestamp"),
             message: l10n.t("Message"),
             openResultInNewTab: l10n.t("Open in New Tab"),
@@ -493,7 +513,23 @@ export class LocConstants {
                 return l10n.t("Save as INSERT INTO");
             },
             clickHereToHideThisPanel: l10n.t("Hide this panel"),
-            queryPlan: l10n.t("Query Plan"),
+            queryPlanTooltip: (shortcut?: string) => {
+                if (shortcut) {
+                    return l10n.t({
+                        message: "Query Plan ({0})",
+                        args: [shortcut],
+                        comment: ["{0} is the keyboard shortcut for the query plan tab"],
+                    });
+                }
+                return l10n.t("Query Plan");
+            },
+            queryPlan: (count: number) => {
+                return l10n.t({
+                    message: "Query Plan ({0})",
+                    args: [count],
+                    comment: ["{0} is the number of query plans"],
+                });
+            },
             selectAll: l10n.t("Select All"),
             copy: l10n.t("Copy"),
             copyWithHeaders: l10n.t("Copy with Headers"),

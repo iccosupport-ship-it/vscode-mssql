@@ -246,38 +246,27 @@ export function parseWebviewKeyboardShortcutConfig(
  * @param keyCombination parsed key combination from user configuration
  * @returns True if the event matches the configuration, false otherwise
  */
-export function eventMatchesShortcut(
-    event: KeyboardEvent,
-    keyCombination: WebviewKeyCombination,
-): boolean {
-    if (!keyCombination) {
-        return false;
-    }
-    if (keyCombination.ctrlKey !== undefined && keyCombination.ctrlKey !== event.ctrlKey) {
-        return false;
-    }
-    if (keyCombination.metaKey !== undefined && keyCombination.metaKey !== event.metaKey) {
-        return false;
-    }
-    if (keyCombination.altKey !== undefined && keyCombination.altKey !== event.altKey) {
-        return false;
-    }
-    if (keyCombination.shiftKey !== undefined && keyCombination.shiftKey !== event.shiftKey) {
-        return false;
+export function eventMatchesShortcut(event: KeyboardEvent, combo: WebviewKeyCombination): boolean {
+    if (!combo) return false;
+
+    // Treat undefined modifier as "don't care".
+    if (combo.ctrlKey !== undefined && combo.ctrlKey !== event.ctrlKey) return false;
+    if (combo.metaKey !== undefined && combo.metaKey !== event.metaKey) return false;
+    if (combo.altKey !== undefined && combo.altKey !== event.altKey) return false;
+    if (combo.shiftKey !== undefined && combo.shiftKey !== event.shiftKey) return false;
+
+    // If a code is provided, it must match.
+    if (combo.code) {
+        return combo.code === event.code;
     }
 
-    if (keyCombination.code !== undefined && keyCombination.code !== event.code) {
-        return false;
-    }
-
-    if (keyCombination.code === undefined && keyCombination.key !== undefined) {
+    // Otherwise match by `key` if provided.
+    if (combo.key) {
         const eventKey = event.key.length === 1 ? event.key.toLowerCase() : event.key;
-        const shortcutKey =
-            keyCombination.key.length === 1 ? keyCombination.key.toLowerCase() : keyCombination.key;
-        if (eventKey !== shortcutKey) {
-            return false;
-        }
+        const comboKey = combo.key.length === 1 ? combo.key.toLowerCase() : combo.key;
+        return eventKey === comboKey;
     }
 
-    return true;
+    // If neither code nor key specified, we can't match.
+    return false;
 }

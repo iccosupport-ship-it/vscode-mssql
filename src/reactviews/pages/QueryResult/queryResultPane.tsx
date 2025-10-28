@@ -490,7 +490,6 @@ export const QueryResultPane = () => {
             const viewMode = getCurrentViewMode();
             const gridCount = getGridCount();
             let handled = false;
-
             if (
                 eventMatchesShortcut(
                     event,
@@ -509,6 +508,17 @@ export const QueryResultPane = () => {
             ) {
                 context.setResultTab(qr.QueryResultPaneTabs.Messages);
                 handled = true;
+            } else if (
+                eventMatchesShortcut(
+                    event,
+                    keyboardShortcuts[WebviewAction.QQueryResultSwitchToQueryPlanTab]
+                        ?.keyCombination,
+                )
+            ) {
+                if (isExecutionPlan) {
+                    context.setResultTab(qr.QueryResultPaneTabs.ExecutionPlan);
+                    handled = true;
+                }
             } else if (
                 eventMatchesShortcut(
                     event,
@@ -972,20 +982,31 @@ export const QueryResultPane = () => {
                     {Object.keys(resultSetSummaries).length > 0 && (
                         <Tab
                             value={qr.QueryResultPaneTabs.Results}
+                            title={locConstants.queryResult.resultTabTooltip(
+                                keyboardShortcuts[WebviewAction.QueryResultSwitchToResultsTab]
+                                    ?.label,
+                            )}
                             key={qr.QueryResultPaneTabs.Results}>
                             {locConstants.queryResult.results(getGridCount())}
                         </Tab>
                     )}
                     <Tab
                         value={qr.QueryResultPaneTabs.Messages}
+                        title={locConstants.queryResult.messagesTabTooltip(
+                            keyboardShortcuts[WebviewAction.QueryResultSwitchToMessagesTab]?.label,
+                        )}
                         key={qr.QueryResultPaneTabs.Messages}>
                         {locConstants.queryResult.messages}
                     </Tab>
                     {Object.keys(resultSetSummaries).length > 0 && isExecutionPlan && (
                         <Tab
                             value={qr.QueryResultPaneTabs.ExecutionPlan}
+                            title={locConstants.queryResult.queryPlanTooltip(
+                                keyboardShortcuts[WebviewAction.QQueryResultSwitchToQueryPlanTab]
+                                    ?.label,
+                            )}
                             key={qr.QueryResultPaneTabs.ExecutionPlan}>
-                            {`${locConstants.queryResult.queryPlan} (${executionPlanGraphs?.length || 0})`}
+                            {`${locConstants.queryResult.queryPlan(executionPlanGraphs?.length || 0)}`}
                         </Tab>
                     )}
                 </TabList>
