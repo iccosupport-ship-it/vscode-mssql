@@ -297,11 +297,11 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
             props.linkHandler!,
             props.gridId,
             { dataProvider: dataProvider, columns: columns },
+            keyBindings,
             tableOptions,
             props.gridParentRef,
             autoSizeColumns,
             themeKind,
-            keyBindings,
         );
         void setupState();
         collection.setCollectionChangedCallback((startIndex, count) => {

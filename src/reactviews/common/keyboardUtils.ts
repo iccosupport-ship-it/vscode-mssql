@@ -250,6 +250,9 @@ export function eventMatchesShortcut(
     event: KeyboardEvent,
     keyCombination: WebviewKeyCombination,
 ): boolean {
+    if (!keyCombination) {
+        return false;
+    }
     if (keyCombination.ctrlKey !== undefined && keyCombination.ctrlKey !== event.ctrlKey) {
         return false;
     }

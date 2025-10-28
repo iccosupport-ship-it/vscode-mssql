@@ -49,7 +49,6 @@ export interface QueryResultReactProvider
         x: number,
         y: number,
         onAction: (action: GridContextMenuAction) => void | Promise<void>,
-        shortcuts?: Partial<Record<GridContextMenuAction, string>>,
     ) => void;
     hideGridContextMenu: () => void;
     showColumnFilterPopup: (options: ColumnFilterPopupOptions) => void;
@@ -116,9 +115,9 @@ const QueryResultStateProvider: React.FC<QueryResultProviderProps> = ({ children
             },
 
             // Grid context menu API
-            showGridContextMenu: (x: number, y: number, onAction, shortcuts) => {
+            showGridContextMenu: (x: number, y: number, onAction) => {
                 hideFilterPopup();
-                setMenuState({ open: true, x, y, onAction, shortcuts });
+                setMenuState({ open: true, x, y, onAction });
             },
             hideGridContextMenu: () => {
                 setMenuState((s) => ({ ...s, open: false }));
@@ -208,7 +207,6 @@ const QueryResultStateProvider: React.FC<QueryResultProviderProps> = ({ children
                         setMenuState((s) => ({ ...s, open: false }));
                     }}
                     onClose={() => setMenuState((s) => ({ ...s, open: false }))}
-                    shortcuts={menuState.shortcuts}
                 />
             )}
             {filterPopupState && (

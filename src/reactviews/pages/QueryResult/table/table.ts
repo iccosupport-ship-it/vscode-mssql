@@ -18,7 +18,6 @@ import {
     GetColumnWidthsRequest,
     GetFiltersRequest,
     GetGridScrollPositionRequest,
-    GridContextMenuAction,
     ResultSetSummary,
     SetColumnWidthsRequest,
     SetGridScrollPositionNotification,
@@ -27,7 +26,7 @@ import { QueryResultReactProvider } from "../queryResultStateProvider";
 import { CopyKeybind } from "./plugins/copyKeybind.plugin";
 import { AutoColumnSize } from "./plugins/autoColumnSize.plugin";
 import { MouseButton } from "../../../common/utils";
-import { ColorThemeKind } from "../../../../sharedInterfaces/webview";
+import { ColorThemeKind, WebviewShortcuts } from "../../../../sharedInterfaces/webview";
 
 function getDefaultOptions<T extends Slick.SlickData>(): Slick.GridOptions<T> {
     return {
@@ -72,11 +71,11 @@ export class Table<T extends Slick.SlickData> implements IThemable {
         private linkHandler: (fileContent: string, fileType: string) => void,
         private gridId: string,
         configuration: ITableConfiguration<T>,
+        shortcuts: WebviewShortcuts,
         options?: Slick.GridOptions<T>,
         gridParentRef?: React.RefObject<HTMLDivElement>,
         autoSizeColumns: boolean = false,
         themeKind: ColorThemeKind = ColorThemeKind.Dark,
-        keyBindings?: Record<string, string>,
     ) {
         this.linkHandler = linkHandler;
         this.headerFilter = new HeaderMenu(this.uri, themeKind, this.context, gridId);
@@ -94,8 +93,8 @@ export class Table<T extends Slick.SlickData> implements IThemable {
             context,
             uri,
             resultSetSummary,
+            shortcuts,
             this.headerFilter,
-            keyBindings,
         );
         if (
             !configuration ||
@@ -152,16 +151,12 @@ export class Table<T extends Slick.SlickData> implements IThemable {
         this.styleElement = DOM.createStyleSheet(this._container);
         this._grid = new Slick.Grid<T>(this._tableContainer, this._data, [], newOptions);
         this.registerPlugin(this.headerFilter);
-        this.registerPlugin(
-            new ContextMenu(this.uri, this.resultSetSummary, this.context, () =>
-                this.getContextMenuShortcutDisplays(),
-            ),
-        );
+        this.registerPlugin(new ContextMenu(this.uri, this.resultSetSummary, this.context));
         this.copyKeybindPlugin = new CopyKeybind(
             this.uri,
             this.resultSetSummary,
             this.context,
-            keyBindings,
+            shortcuts,
         );
         this.registerPlugin(this.copyKeybindPlugin);
 
@@ -520,24 +515,9 @@ export class Table<T extends Slick.SlickData> implements IThemable {
         this._grid.unregisterPlugin(plugin);
     }
 
-    updateShortcuts(keyBindings?: Record<string, string>): void {
-        this.selectionModel.updateShortcuts(keyBindings);
-        this.copyKeybindPlugin.updateShortcuts(keyBindings);
-    }
-
-    getContextMenuShortcutDisplays(): Partial<Record<GridContextMenuAction, string>> {
-        const copyDisplays = this.copyKeybindPlugin.getShortcutDisplays();
-        const selectionDisplays = this.selectionModel.getShortcutDisplays();
-        return {
-            [GridContextMenuAction.SelectAll]: selectionDisplays.selectAll,
-            [GridContextMenuAction.CopySelection]: copyDisplays.copySelection,
-            [GridContextMenuAction.CopyWithHeaders]: copyDisplays.copyWithHeaders,
-            [GridContextMenuAction.CopyHeaders]: copyDisplays.copyAllHeaders,
-            [GridContextMenuAction.CopyAsCsv]: copyDisplays.copyAsCsv,
-            [GridContextMenuAction.CopyAsJson]: copyDisplays.copyAsJson,
-            [GridContextMenuAction.CopyAsInsertInto]: copyDisplays.copyAsInsertInto,
-            [GridContextMenuAction.CopyAsInClause]: copyDisplays.copyAsInClause,
-        };
+    updateShortcuts(keyBindings: WebviewShortcuts): void {
+        this.selectionModel.shortcuts = keyBindings;
+        this.copyKeybindPlugin.shortcuts = keyBindings;
     }
 
     focusGrid(): void {

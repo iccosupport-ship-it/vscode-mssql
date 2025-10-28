@@ -21,7 +21,7 @@ import {
     tryCombineSelectionsForResults,
 } from "../utils";
 import { QueryResultReactProvider } from "../../queryResultStateProvider";
-import { eventMatchesShortcut, getShortcutInfo } from "../../../../common/keyboardUtils";
+import { eventMatchesShortcut } from "../../../../common/keyboardUtils";
 import { WebviewAction, WebviewShortcuts } from "../../../../../sharedInterfaces/webview";
 
 /**

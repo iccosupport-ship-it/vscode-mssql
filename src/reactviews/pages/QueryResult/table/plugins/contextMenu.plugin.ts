@@ -29,7 +29,6 @@ export class ContextMenu<T extends Slick.SlickData> {
         private uri: string,
         private resultSetSummary: ResultSetSummary,
         private queryResultContext: QueryResultReactProvider,
-        private getShortcutDisplays?: () => Partial<Record<GridContextMenuAction, string>>,
     ) {
         this.uri = uri;
         this.resultSetSummary = resultSetSummary;
@@ -63,9 +62,6 @@ export class ContextMenu<T extends Slick.SlickData> {
         const adjustedX = Math.min(Math.max(mouseEvent.pageX, margin), maxX);
         const adjustedY = Math.min(Math.max(mouseEvent.pageY, margin), maxY);
 
-        // Ask outer React app to show menu at coordinates
-        const shortcuts = this.getShortcutDisplays?.();
-
         this.queryResultContext.showGridContextMenu(
             adjustedX,
             adjustedY,
@@ -73,7 +69,6 @@ export class ContextMenu<T extends Slick.SlickData> {
                 await this.handleMenuAction(action);
                 this.queryResultContext.hideGridContextMenu();
             },
-            shortcuts,
         );
     }
 

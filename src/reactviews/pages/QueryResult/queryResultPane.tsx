@@ -23,7 +23,7 @@ import {
     DataGridCell,
     RowRenderer,
 } from "@fluentui-contrib/react-data-grid-react-window";
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { DatabaseSearch24Regular, ErrorCircle24Regular, OpenRegular } from "@fluentui/react-icons";
 import * as qr from "../../../sharedInterfaces/queryResult";
 import ResultGrid, { ResultGridHandle } from "./resultGrid";
@@ -484,9 +484,6 @@ export const QueryResultPane = () => {
         ],
     );
 
-    const matchesShortcut = (event: KeyboardEvent, shortcut: ShortcutInfo) =>
-        hasShortcut(shortcut) && eventMatchesShortcut(event, shortcut.matcher);
-
     useEffect(() => {
         const handler = (event: KeyboardEvent) => {
             const isResultsTab = tabStates?.resultPaneTab === qr.QueryResultPaneTabs.Results;
@@ -494,15 +491,30 @@ export const QueryResultPane = () => {
             const gridCount = getGridCount();
             let handled = false;
 
-            if (matchesShortcut(event, paneShortcuts.switchToResultsTab)) {
+            if (
+                eventMatchesShortcut(
+                    event,
+                    keyboardShortcuts[WebviewAction.QueryResultSwitchToResultsTab]?.keyCombination,
+                )
+            ) {
                 if (Object.keys(resultSetSummaries ?? {}).length > 0) {
                     context.setResultTab(qr.QueryResultPaneTabs.Results);
                     handled = true;
                 }
-            } else if (matchesShortcut(event, paneShortcuts.switchToMessagesTab)) {
+            } else if (
+                eventMatchesShortcut(
+                    event,
+                    keyboardShortcuts[WebviewAction.QueryResultSwitchToMessagesTab]?.keyCombination,
+                )
+            ) {
                 context.setResultTab(qr.QueryResultPaneTabs.Messages);
                 handled = true;
-            } else if (matchesShortcut(event, paneShortcuts.switchToTextView)) {
+            } else if (
+                eventMatchesShortcut(
+                    event,
+                    keyboardShortcuts[WebviewAction.QueryResultSwitchToTextView]?.keyCombination,
+                )
+            ) {
                 if (isResultsTab) {
                     const newMode =
                         viewMode === qr.QueryResultViewMode.Grid
@@ -511,7 +523,12 @@ export const QueryResultPane = () => {
                     context.setResultViewMode(newMode);
                     handled = true;
                 }
-            } else if (matchesShortcut(event, paneShortcuts.maximize)) {
+            } else if (
+                eventMatchesShortcut(
+                    event,
+                    keyboardShortcuts[WebviewAction.QueryResultMaximizeGrid]?.keyCombination,
+                )
+            ) {
                 if (isResultsTab && viewMode === qr.QueryResultViewMode.Grid && gridCount > 1) {
                     const targetIndex = resolveGridIndexForShortcut();
                     if (targetIndex !== undefined) {
@@ -519,28 +536,27 @@ export const QueryResultPane = () => {
                         handled = true;
                     }
                 }
-            } else if (matchesShortcut(event, paneShortcuts.prevGrid)) {
+            } else if (
+                eventMatchesShortcut(
+                    event,
+                    keyboardShortcuts[WebviewAction.QueryResultPrevGrid]?.keyCombination,
+                )
+            ) {
                 if (isResultsTab && viewMode === qr.QueryResultViewMode.Grid && gridCount > 0) {
                     navigateGrid(-1);
                     handled = true;
                 }
-            } else if (matchesShortcut(event, paneShortcuts.nextGrid)) {
+            } else if (
+                eventMatchesShortcut(
+                    event,
+                    keyboardShortcuts[WebviewAction.QueryResultNextGrid]?.keyCombination,
+                )
+            ) {
                 if (isResultsTab && viewMode === qr.QueryResultViewMode.Grid && gridCount > 0) {
                     navigateGrid(1);
                     handled = true;
                 }
-            } else if (matchesShortcut(event, paneShortcuts.changeColumnWidth)) {
-                if (isResultsTab && viewMode === qr.QueryResultViewMode.Grid && gridCount > 0) {
-                    const targetIndex = resolveGridIndexForShortcut() ?? 0;
-                    const gridHandle = gridRefs.current[targetIndex];
-                    if (gridHandle) {
-                        gridHandle.focusGrid?.();
-                        gridHandle.autoSizeActiveColumn?.();
-                        handled = true;
-                    }
-                }
             }
-
             if (handled) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -552,7 +568,6 @@ export const QueryResultPane = () => {
             document.removeEventListener("keydown", handler, true);
         };
     }, [
-        paneShortcuts,
         tabStates?.resultPaneTab,
         getCurrentViewMode,
         getGridCount,
@@ -685,14 +700,6 @@ export const QueryResultPane = () => {
                         viewMode={viewMode}
                         onToggleMaximize={() => toggleGridMaximize(gridIndex)}
                         isMaximized={maximizedGridIndex === gridIndex}
-                        maximizeShortcut={paneShortcuts.maximize.display}
-                        toggleViewShortcut={paneShortcuts.switchToTextView.display}
-                        saveShortcuts={{
-                            csv: commandShortcutDisplays.saveCsv,
-                            json: commandShortcutDisplays.saveJson,
-                            excel: commandShortcutDisplays.saveExcel,
-                            insert: commandShortcutDisplays.saveInsert,
-                        }}
                     />
                 )}
             </div>
@@ -720,18 +727,7 @@ export const QueryResultPane = () => {
                                 fontSettings={fontSettings}
                             />
                         </div>
-                        <CommandBar
-                            uri={uri}
-                            viewMode={viewMode}
-                            maximizeShortcut={paneShortcuts.maximize.display}
-                            toggleViewShortcut={paneShortcuts.switchToTextView.display}
-                            saveShortcuts={{
-                                csv: commandShortcutDisplays.saveCsv,
-                                json: commandShortcutDisplays.saveJson,
-                                excel: commandShortcutDisplays.saveExcel,
-                                insert: commandShortcutDisplays.saveInsert,
-                            }}
-                        />
+                        <CommandBar uri={uri} viewMode={viewMode} />
                     </div>
                 </div>
             );
