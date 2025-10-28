@@ -225,6 +225,7 @@ export function getShortcutInfo(raw: string | undefined): WebviewShortcut {
 function getDefaultConfig(): WebviewKeyboardShortcutConfiguration {
     return {
         [WebviewAction.ResultGridSelectAll]: "ctrlcmd+a",
+        [WebviewAction.ResultGridCopySelection]: "ctrlcmd+c",
     } as WebviewKeyboardShortcutConfiguration;
 }
 
