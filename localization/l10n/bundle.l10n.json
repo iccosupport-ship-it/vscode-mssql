@@ -364,9 +364,26 @@
     "Sort Ascending": "Sort Ascending",
     "Sort Descending": "Sort Descending",
     "Clear Sort": "Clear Sort",
+    "Save as CSV ({0})/{0} is the keyboard shortcut for saving as CSV": {
+        "message": "Save as CSV ({0})",
+        "comment": ["{0} is the keyboard shortcut for saving as CSV"]
+    },
     "Save as CSV": "Save as CSV",
+    "Save as Excel ({0})/{0} is the keyboard shortcut for saving as Excel": {
+        "message": "Save as Excel ({0})",
+        "comment": ["{0} is the keyboard shortcut for saving as Excel"]
+    },
     "Save as Excel": "Save as Excel",
+    "Save as JSON ({0})/{0} is the keyboard shortcut for saving as JSON": {
+        "message": "Save as JSON ({0})",
+        "comment": ["{0} is the keyboard shortcut for saving as JSON"]
+    },
     "Save as JSON": "Save as JSON",
+    "Save as INSERT INTO ({0})/{0} is the keyboard shortcut for saving as INSERT INTO": {
+        "message": "Save as INSERT INTO ({0})",
+        "comment": ["{0} is the keyboard shortcut for saving as INSERT INTO"]
+    },
+    "Save as INSERT INTO": "Save as INSERT INTO",
     "Hide this panel": "Hide this panel",
     "Query Plan": "Query Plan",
     "Select All": "Select All",
@@ -377,15 +394,28 @@
     "Copy as JSON": "Copy as JSON",
     "Copy as IN clause": "Copy as IN clause",
     "Copy as INSERT INTO": "Copy as INSERT INTO",
-    "Save as INSERT": "Save as INSERT",
     "NULL": "NULL",
     "Blanks": "Blanks",
     "Search...": "Search...",
+    "Maximize ({0})/{0} is the keyboard shortcut for maximizing the grid": {
+        "message": "Maximize ({0})",
+        "comment": ["{0} is the keyboard shortcut for maximizing the grid"]
+    },
     "Maximize": "Maximize",
+    "Restore ({0})/{0} is the keyboard shortcut for restoring the grid": {
+        "message": "Restore ({0})",
+        "comment": ["{0} is the keyboard shortcut for restoring the grid"]
+    },
     "Restore": "Restore",
-    "Grid View": "Grid View",
-    "Text View": "Text View",
+    "Switch to Grid View ({0})/{0} is the keyboard shortcut for switching to grid view": {
+        "message": "Switch to Grid View ({0})",
+        "comment": ["{0} is the keyboard shortcut for switching to grid view"]
+    },
     "Switch to Grid View": "Switch to Grid View",
+    "Switch to Text View ({0})/{0} is the keyboard shortcut for switching to text view": {
+        "message": "Switch to Text View ({0})",
+        "comment": ["{0} is the keyboard shortcut for switching to text view"]
+    },
     "Switch to Text View": "Switch to Text View",
     "No results to display": "No results to display",
     "Error generating text view. Please try switching back to grid view.": "Error generating text view. Please try switching back to grid view.",
