@@ -369,7 +369,11 @@
     "Message": "Message",
     "Open in New Tab": "Open in New Tab",
     "Showplan XML": "Showplan XML",
-    "Show Menu (F3)": "Show Menu (F3)",
+    "Show Menu ({0})/{0} is the keyboard shortcut for showing the menu": {
+        "message": "Show Menu ({0})",
+        "comment": ["{0} is the keyboard shortcut for showing the menu"]
+    },
+    "Show Menu": "Show Menu",
     "Sort Ascending": "Sort Ascending",
     "Sort Descending": "Sort Descending",
     "Clear Sort": "Clear Sort",
