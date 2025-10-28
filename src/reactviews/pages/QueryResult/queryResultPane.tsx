@@ -13,7 +13,6 @@ import {
     Title3,
     createTableColumn,
     makeStyles,
-    shorthands,
     Text,
     Spinner,
 } from "@fluentui/react-components";
@@ -37,10 +36,10 @@ import { ExecutionPlanStateProvider } from "../ExecutionPlan/executionPlanStateP
 import { hasResultsOrMessages, splitMessages } from "./queryResultUtils";
 import { QueryResultCommandsContext } from "./queryResultStateProvider";
 import { useQueryResultSelector } from "./queryResultSelector";
-import { ExecuteCommandRequest } from "../../../sharedInterfaces/webview";
+import { ExecuteCommandRequest, WebviewAction } from "../../../sharedInterfaces/webview";
 import { ExecutionPlanGraph } from "../../../sharedInterfaces/executionPlan";
 import { SLICKGRID_ROW_ID_PROP } from "./table/utils";
-import { eventMatchesShortcut, getShortcutInfo } from "../../common/keyboardUtils";
+import { eventMatchesShortcut } from "../../common/keyboardUtils";
 import { useVscodeWebview2 } from "../../common/vscodeWebviewProvider2";
 
 const useStyles = makeStyles({
@@ -62,10 +61,10 @@ const useStyles = makeStyles({
         flex: 1,
     },
     tabContent: {
-        ...shorthands.flex(1),
+        flex: 1,
         width: "100%",
         height: "100%",
-        ...shorthands.overflow("auto"),
+        overflow: "auto",
     },
     queryResultContainer: {
         width: "100%",
@@ -184,7 +183,7 @@ export const QueryResultPane = () => {
     const executionPlanGraphs = useQueryResultSelector<ExecutionPlanGraph[] | undefined>(
         (s) => s.executionPlanState?.executionPlanGraphs,
     );
-    const { keyboardShortcuts: keyBindings } = useVscodeWebview2();
+    const { keyboardShortcuts } = useVscodeWebview2();
     const isProgrammaticScroll = useRef(true);
     isProgrammaticScroll.current = true;
 
@@ -197,58 +196,6 @@ export const QueryResultPane = () => {
     const [maximizedGridIndex, setMaximizedGridIndex] = useState<number | undefined>(undefined);
     const gridIndexByElementIdRef = useRef<Record<string, number>>({});
     const gridElementIdsRef = useRef<string[]>([]);
-
-    const shortcutInfos = useMemo(
-        () => ({
-            maximize: getShortcutInfo(keyBindings?.[kbMaximizeGrid]),
-            switchToResultsTab: getShortcutInfo(keyBindings?.[kbSwitchToResultsTab]),
-            switchToMessagesTab: getShortcutInfo(keyBindings?.[kbSwitchToMessagesTab]),
-            switchToTextView: getShortcutInfo(keyBindings?.[kbSwitchToTextView]),
-            prevGrid: getShortcutInfo(keyBindings?.[kbPrevGrid]),
-            nextGrid: getShortcutInfo(keyBindings?.[kbNextGrid]),
-            changeColumnWidth: getShortcutInfo(keyBindings?.[kbChangeColumnWidth]),
-            selectAll: getShortcutInfo(keyBindings?.[kbSelectAll]),
-            copySelection: getShortcutInfo(keyBindings?.[kbCopySelection]),
-            copyWithHeaders: getShortcutInfo(keyBindings?.[kbCopyWithHeaders]),
-            copyAllHeaders: getShortcutInfo(keyBindings?.[kbCopyAllHeaders]),
-            copyAsCsv: getShortcutInfo(keyBindings?.[kbCopyAsCsv]),
-            copyAsJson: getShortcutInfo(keyBindings?.[kbCopyAsJson]),
-            copyAsInsert: getShortcutInfo(keyBindings?.[kbCopyAsInsert]),
-            copyAsInClause: getShortcutInfo(keyBindings?.[kbCopyAsInClause]),
-            saveAsJson: getShortcutInfo(keyBindings?.[kbSaveAsJson]),
-            saveAsCsv: getShortcutInfo(keyBindings?.[kbSaveAsCsv]),
-            saveAsExcel: getShortcutInfo(keyBindings?.[kbSaveAsExcel]),
-            saveAsInsert: getShortcutInfo(keyBindings?.[kbSaveAsInsert]),
-        }),
-        [keyBindings],
-    );
-
-    const paneShortcuts = useMemo(
-        () => ({
-            maximize: shortcutInfos.maximize,
-            switchToResultsTab: shortcutInfos.switchToResultsTab,
-            switchToMessagesTab: shortcutInfos.switchToMessagesTab,
-            switchToTextView: shortcutInfos.switchToTextView,
-            prevGrid: shortcutInfos.prevGrid,
-            nextGrid: shortcutInfos.nextGrid,
-            changeColumnWidth: shortcutInfos.changeColumnWidth,
-        }),
-        [shortcutInfos],
-    );
-
-    const commandShortcutDisplays = useMemo(
-        () => ({
-            toggleView: shortcutInfos.switchToTextView.display,
-            saveCsv: shortcutInfos.saveAsCsv.display,
-            saveJson: shortcutInfos.saveAsJson.display,
-            saveExcel: shortcutInfos.saveAsExcel.display,
-            saveInsert: shortcutInfos.saveAsInsert.display,
-        }),
-        [shortcutInfos],
-    );
-
-    const hasShortcut = (shortcut: ShortcutInfo) =>
-        shortcut && Object.keys(shortcut.matcher).length > 0;
 
     const getGridCount = useCallback(() => {
         let count = 0;

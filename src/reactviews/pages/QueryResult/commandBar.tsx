@@ -9,6 +9,7 @@ import { QueryResultCommandsContext } from "./queryResultStateProvider";
 import { useVscodeWebview2 } from "../../common/vscodeWebviewProvider2";
 import { useQueryResultSelector } from "./queryResultSelector";
 import * as qr from "../../../sharedInterfaces/queryResult";
+import { WebviewAction } from "../../../sharedInterfaces/webview";
 import { locConstants } from "../../common/locConstants";
 import {
     saveAsCsvIcon,
@@ -41,14 +42,6 @@ export interface CommandBarProps {
     viewMode?: qr.QueryResultViewMode;
     onToggleMaximize?: () => void;
     isMaximized?: boolean;
-    maximizeShortcut?: string;
-    toggleViewShortcut?: string;
-    saveShortcuts?: {
-        csv?: string;
-        json?: string;
-        excel?: string;
-        insert?: string;
-    };
 }
 
 const CommandBar = (props: CommandBarProps) => {
@@ -59,6 +52,15 @@ const CommandBar = (props: CommandBarProps) => {
         Record<number, Record<number, qr.ResultSetSummary>>
     >((s) => s.resultSetSummaries);
     const selection = useQueryResultSelector<qr.ISlickRange[] | undefined>((s) => s.selection);
+    const { keyboardShortcuts } = useVscodeWebview2();
+
+    const maximizeShortcut = keyboardShortcuts[WebviewAction.QueryResultMaximizeGrid];
+    const restoreShortcut = keyboardShortcuts[WebviewAction.QueryResultMaximizeGrid];
+    const toggleViewShortcut = keyboardShortcuts[WebviewAction.QueryResultSwitchToTextView];
+    const saveAsJsonShortcut = keyboardShortcuts[WebviewAction.SaveAsJson];
+    const saveAsCsvShortcut = keyboardShortcuts[WebviewAction.SaveAsCsv];
+    const saveAsExcelShortcut = keyboardShortcuts[WebviewAction.SaveAsExcel];
+    const saveAsInsertShortcut = keyboardShortcuts[WebviewAction.SaveAsInsert];
 
     if (context === undefined) {
         return undefined;
@@ -100,30 +102,28 @@ const CommandBar = (props: CommandBarProps) => {
     };
 
     const isMaximized = props.isMaximized ?? false;
-    const maximizeTooltip = props.maximizeShortcut
-        ? `${locConstants.queryResult.maximize} (${props.maximizeShortcut})`
-        : locConstants.queryResult.maximize;
-    const restoreTooltip = props.maximizeShortcut
-        ? `${locConstants.queryResult.restore} (${props.maximizeShortcut})`
-        : locConstants.queryResult.restore;
-    const toggleViewTooltip = props.toggleViewShortcut
-        ? (text: string) => `${text} (${props.toggleViewShortcut})`
-        : (text: string) => text;
-
-    const withShortcut = (label: string, shortcut?: string) =>
-        shortcut && shortcut.length > 0 ? `${label} (${shortcut})` : label;
+    const maximizeTooltip = locConstants.queryResult.maximize(maximizeShortcut?.label);
+    const restoreTooltip = locConstants.queryResult.restore(restoreShortcut?.label);
+    const toggleToGridViewTooltip = locConstants.queryResult.toggleToGridView(
+        toggleViewShortcut?.label,
+    );
+    const toggleToTextViewTooltip = locConstants.queryResult.toggleToTextView(
+        toggleViewShortcut?.label,
+    );
+    const saveAsCsvTooltip = locConstants.queryResult.saveAsCsv(saveAsCsvShortcut?.label);
+    const saveAsJsonTooltip = locConstants.queryResult.saveAsJson(saveAsJsonShortcut?.label);
+    const saveAsExcelTooltip = locConstants.queryResult.saveAsExcel(saveAsExcelShortcut?.label);
+    const saveAsInsertTooltip = locConstants.queryResult.saveAsInsert(saveAsInsertShortcut?.label);
 
     if (props.viewMode === qr.QueryResultViewMode.Text) {
         return (
             <div className={classes.commandBar}>
-                <Tooltip
-                    content={toggleViewTooltip(locConstants.queryResult.toggleToGridView)}
-                    relationship="label">
+                <Tooltip content={toggleToGridViewTooltip} relationship="label">
                     <Button
                         appearance="subtle"
                         onClick={toggleViewMode}
                         icon={<TableRegular />}
-                        title={toggleViewTooltip(locConstants.queryResult.toggleToGridView)}
+                        title={toggleToGridViewTooltip}
                     />
                 </Tooltip>
             </div>
@@ -136,8 +136,8 @@ const CommandBar = (props: CommandBarProps) => {
             <Tooltip
                 content={
                     props.viewMode === qr.QueryResultViewMode.Grid
-                        ? toggleViewTooltip(locConstants.queryResult.toggleToTextView)
-                        : toggleViewTooltip(locConstants.queryResult.toggleToGridView)
+                        ? toggleToTextViewTooltip
+                        : toggleToGridViewTooltip
                 }
                 relationship="label">
                 <Button
@@ -152,8 +152,8 @@ const CommandBar = (props: CommandBarProps) => {
                     }
                     title={
                         props.viewMode === qr.QueryResultViewMode.Grid
-                            ? toggleViewTooltip(locConstants.queryResult.toggleToTextView)
-                            : toggleViewTooltip(locConstants.queryResult.toggleToGridView)
+                            ? toggleToTextViewTooltip
+                            : toggleToGridViewTooltip
                     }
                 />
             </Tooltip>
@@ -178,9 +178,7 @@ const CommandBar = (props: CommandBarProps) => {
                 </Tooltip>
             )}
 
-            <Tooltip
-                content={withShortcut(locConstants.queryResult.saveAsCsv, props.saveShortcuts?.csv)}
-                relationship="label">
+            <Tooltip content={saveAsCsvTooltip} relationship="label">
                 <Button
                     appearance="subtle"
                     onClick={(_event) => {
@@ -188,18 +186,10 @@ const CommandBar = (props: CommandBarProps) => {
                     }}
                     icon={<img className={classes.buttonImg} src={saveAsCsvIcon(themeKind)} />}
                     className="codicon saveCsv"
-                    title={withShortcut(
-                        locConstants.queryResult.saveAsCsv,
-                        props.saveShortcuts?.csv,
-                    )}
+                    title={saveAsCsvTooltip}
                 />
             </Tooltip>
-            <Tooltip
-                content={withShortcut(
-                    locConstants.queryResult.saveAsJson,
-                    props.saveShortcuts?.json,
-                )}
-                relationship="label">
+            <Tooltip content={saveAsJsonTooltip} relationship="label">
                 <Button
                     appearance="subtle"
                     onClick={(_event) => {
@@ -207,18 +197,10 @@ const CommandBar = (props: CommandBarProps) => {
                     }}
                     icon={<img className={classes.buttonImg} src={saveAsJsonIcon(themeKind)} />}
                     className="codicon saveJson"
-                    title={withShortcut(
-                        locConstants.queryResult.saveAsJson,
-                        props.saveShortcuts?.json,
-                    )}
+                    title={saveAsJsonTooltip}
                 />
             </Tooltip>
-            <Tooltip
-                content={withShortcut(
-                    locConstants.queryResult.saveAsExcel,
-                    props.saveShortcuts?.excel,
-                )}
-                relationship="label">
+            <Tooltip content={saveAsExcelTooltip} relationship="label">
                 <Button
                     appearance="subtle"
                     onClick={(_event) => {
@@ -226,18 +208,10 @@ const CommandBar = (props: CommandBarProps) => {
                     }}
                     icon={<img className={classes.buttonImg} src={saveAsExcelIcon(themeKind)} />}
                     className="codicon saveExcel"
-                    title={withShortcut(
-                        locConstants.queryResult.saveAsExcel,
-                        props.saveShortcuts?.excel,
-                    )}
+                    title={saveAsExcelTooltip}
                 />
             </Tooltip>
-            <Tooltip
-                content={withShortcut(
-                    locConstants.queryResult.saveAsInsert,
-                    props.saveShortcuts?.insert,
-                )}
-                relationship="label">
+            <Tooltip content={saveAsInsertTooltip} relationship="label">
                 <Button
                     appearance="subtle"
                     onClick={(_event) => {
@@ -245,10 +219,7 @@ const CommandBar = (props: CommandBarProps) => {
                     }}
                     icon={<img className={classes.buttonImg} src={saveAsInsertIcon(themeKind)} />}
                     className="codicon saveInsert"
-                    title={withShortcut(
-                        locConstants.queryResult.saveAsInsert,
-                        props.saveShortcuts?.insert,
-                    )}
+                    title={saveAsInsertTooltip}
                 />
             </Tooltip>
         </Toolbar>

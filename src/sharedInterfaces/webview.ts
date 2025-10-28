@@ -302,10 +302,11 @@ export interface CoreRPCs {
 }
 
 export enum WebviewAction {
-    QueryResultSwitchToTextView = "event.queryResults.switchToResultsTab",
+    QueryResultSwitchToResultsTab = "event.queryResults.switchToResultsTab",
     QueryResultSwitchToMessagesTab = "event.queryResults.switchToMessagesTab",
     QueryResultPrevGrid = "event.queryResults.prevGrid",
     QueryResultNextGrid = "event.queryResults.nextGrid",
+    QueryResultSwitchToTextView = "event.queryResults.switchToTextView",
     QueryResultMaximizeGrid = "event.queryResults.maximizeGrid",
     SaveAsJson = "event.queryResults.saveAsJSON",
     SaveAsCsv = "event.queryResults.saveAsCSV",
