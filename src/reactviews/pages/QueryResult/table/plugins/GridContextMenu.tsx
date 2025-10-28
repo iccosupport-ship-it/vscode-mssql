@@ -14,13 +14,8 @@ import {
 } from "@fluentui/react-components";
 import { locConstants } from "../../../../common/locConstants";
 import { GridContextMenuAction } from "../../../../../sharedInterfaces/queryResult";
-import { isMac } from "../../../../common/utils";
-import {
-    cmdAKeyboardShortcut,
-    cmdCKeyboardShortcut,
-    ctrlAKeyboardShortcut,
-    ctrlCKeyboardShortcut,
-} from "../../../../common/constants";
+import { useVscodeWebview2 } from "../../../../common/vscodeWebviewProvider2";
+import { WebviewAction } from "../../../../../sharedInterfaces/webview";
 
 export interface GridContextMenuProps {
     x: number;
@@ -28,7 +23,6 @@ export interface GridContextMenuProps {
     open: boolean;
     onAction: (action: GridContextMenuAction) => void;
     onClose: () => void;
-    shortcuts?: Partial<Record<GridContextMenuAction, string>>;
 }
 
 // Virtual element used by Fluent UI positioning to anchor the popover at an arbitrary point
@@ -85,36 +79,11 @@ export const GridContextMenu: React.FC<GridContextMenuProps> = ({
     open,
     onAction,
     onClose,
-    shortcuts,
 }) => {
     const virtualTarget = useMemo(() => createVirtualElement(x, y), [x, y]);
     const popoverRef = useRef<HTMLDivElement | null>(null);
     const classes = useStyles();
-
-    const shortcutFor = (action: GridContextMenuAction, fallback?: string) => {
-        if (!shortcuts || !(action in shortcuts)) {
-            // If shortcuts config doesn't exist or this action isn't in it, use fallback
-            return fallback;
-        }
-        const value = shortcuts[action];
-        // If explicitly set (even to empty string), use that value; empty string means no shortcut
-        return value && value.length > 0 ? value : undefined;
-    };
-
-    const selectAllShortcut = shortcutFor(
-        GridContextMenuAction.SelectAll,
-        isMac() ? cmdAKeyboardShortcut : ctrlAKeyboardShortcut,
-    );
-
-    const copySelectionShortcut = shortcutFor(
-        GridContextMenuAction.CopySelection,
-        isMac() ? cmdCKeyboardShortcut : ctrlCKeyboardShortcut,
-    );
-
-    const renderShortcut = (shortcut?: string) =>
-        shortcut && shortcut.length > 0 ? (
-            <span className={classes.secondary}>{shortcut}</span>
-        ) : undefined;
+    const { keyboardShortcuts } = useVscodeWebview2();
 
     return (
         <div
@@ -127,7 +96,7 @@ export const GridContextMenu: React.FC<GridContextMenuProps> = ({
             <Menu
                 open={open}
                 positioning={{
-                    target: virtualTarget as any,
+                    target: virtualTarget,
                     position: "below",
                     align: "start",
                     offset: 4,
@@ -146,29 +115,29 @@ export const GridContextMenu: React.FC<GridContextMenuProps> = ({
                     <MenuList className={classes.menuList}>
                         <MenuItem
                             className={classes.menuItem}
-                            secondaryContent={renderShortcut(selectAllShortcut)}
+                            secondaryContent={keyboardShortcuts[WebviewAction.SelectAll]?.label}
                             onClick={() => onAction(GridContextMenuAction.SelectAll)}>
                             {locConstants.queryResult.selectAll}
                         </MenuItem>
                         <MenuItem
                             className={classes.menuItem}
-                            secondaryContent={renderShortcut(copySelectionShortcut)}
+                            secondaryContent={keyboardShortcuts[WebviewAction.CopySelection]?.label}
                             onClick={() => onAction(GridContextMenuAction.CopySelection)}>
                             {locConstants.queryResult.copy}
                         </MenuItem>
                         <MenuItem
                             className={classes.menuItem}
-                            secondaryContent={renderShortcut(
-                                shortcutFor(GridContextMenuAction.CopyWithHeaders),
-                            )}
+                            secondaryContent={
+                                keyboardShortcuts[WebviewAction.CopyWithHeaders]?.label
+                            }
                             onClick={() => onAction(GridContextMenuAction.CopyWithHeaders)}>
                             {locConstants.queryResult.copyWithHeaders}
                         </MenuItem>
                         <MenuItem
                             className={classes.menuItem}
-                            secondaryContent={renderShortcut(
-                                shortcutFor(GridContextMenuAction.CopyHeaders),
-                            )}
+                            secondaryContent={
+                                keyboardShortcuts[WebviewAction.CopyAllHeaders]?.label
+                            }
                             onClick={() => onAction(GridContextMenuAction.CopyHeaders)}>
                             {locConstants.queryResult.copyHeaders}
                         </MenuItem>
@@ -182,25 +151,25 @@ export const GridContextMenu: React.FC<GridContextMenuProps> = ({
                                 <MenuList className={classes.menuList}>
                                     <MenuItem
                                         className={`${classes.menuItem} ${classes.submenuTrigger}`}
-                                        secondaryContent={renderShortcut(
-                                            shortcutFor(GridContextMenuAction.CopyAsCsv),
-                                        )}
+                                        secondaryContent={
+                                            keyboardShortcuts[WebviewAction.CopyAsCsv]?.label
+                                        }
                                         onClick={() => onAction(GridContextMenuAction.CopyAsCsv)}>
                                         {locConstants.queryResult.copyAsCsv}
                                     </MenuItem>
                                     <MenuItem
                                         className={`${classes.menuItem} ${classes.submenuTrigger}`}
-                                        secondaryContent={renderShortcut(
-                                            shortcutFor(GridContextMenuAction.CopyAsJson),
-                                        )}
+                                        secondaryContent={
+                                            keyboardShortcuts[WebviewAction.CopyAsJson]?.label
+                                        }
                                         onClick={() => onAction(GridContextMenuAction.CopyAsJson)}>
                                         {locConstants.queryResult.copyAsJson}
                                     </MenuItem>
                                     <MenuItem
                                         className={`${classes.menuItem} ${classes.submenuTrigger}`}
-                                        secondaryContent={renderShortcut(
-                                            shortcutFor(GridContextMenuAction.CopyAsInsertInto),
-                                        )}
+                                        secondaryContent={
+                                            keyboardShortcuts[WebviewAction.CopyAsInsert]?.label
+                                        }
                                         onClick={() =>
                                             onAction(GridContextMenuAction.CopyAsInsertInto)
                                         }>
@@ -208,9 +177,9 @@ export const GridContextMenu: React.FC<GridContextMenuProps> = ({
                                     </MenuItem>
                                     <MenuItem
                                         className={`${classes.menuItem} ${classes.submenuTrigger}`}
-                                        secondaryContent={renderShortcut(
-                                            shortcutFor(GridContextMenuAction.CopyAsInClause),
-                                        )}
+                                        secondaryContent={
+                                            keyboardShortcuts[WebviewAction.CopyAsInClause]?.label
+                                        }
                                         onClick={() =>
                                             onAction(GridContextMenuAction.CopyAsInClause)
                                         }>
