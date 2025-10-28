@@ -72,7 +72,7 @@ const SchemaDesignerStateProvider: React.FC<SchemaDesignerProviderProps> = ({ ch
         SchemaDesigner.SchemaDesignerWebviewState,
         SchemaDesigner.SchemaDesignerReducers
     >();
-    const { state, extensionRpc, themeKind } = webviewContext;
+    const { state, extensionRpc, themeKind, keyBindings } = webviewContext;
 
     // Setups for schema designer model
     const [datatypes, setDatatypes] = useState<string[]>([]);
@@ -453,6 +453,7 @@ const SchemaDesignerStateProvider: React.FC<SchemaDesignerProviderProps> = ({ ch
                 extensionRpc: extensionRpc,
                 state: state,
                 themeKind: themeKind,
+                keyBindings,
                 schemaNames,
                 datatypes,
                 findTableText,

@@ -62,6 +62,7 @@ import {
     kbSwitchToTextView,
 } from "../../common/constants";
 import { eventMatchesShortcut, getShortcutInfo, ShortcutInfo } from "../../common/keyboardUtils";
+import { useVscodeWebview2 } from "../../common/vscodeWebviewProvider2";
 
 const useStyles = makeStyles({
     root: {
@@ -204,9 +205,7 @@ export const QueryResultPane = () => {
     const executionPlanGraphs = useQueryResultSelector<ExecutionPlanGraph[] | undefined>(
         (s) => s.executionPlanState?.executionPlanGraphs,
     );
-    const keyBindings = useQueryResultSelector<Record<string, string> | undefined>(
-        (s) => s.keyBindings,
-    );
+    const { keyBindings } = useVscodeWebview2();
     const isProgrammaticScroll = useRef(true);
     isProgrammaticScroll.current = true;
 

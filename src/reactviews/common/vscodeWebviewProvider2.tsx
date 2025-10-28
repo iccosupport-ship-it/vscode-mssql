@@ -16,6 +16,7 @@ import {
     ColorThemeChangeNotification,
     ColorThemeKind,
     GetEOLRequest,
+    GetKeyBindingsRequest,
     GetLocalizationRequest,
     GetStateRequest,
     GetThemeRequest,
@@ -50,6 +51,10 @@ export interface VscodeWebviewContext2Props<State, Reducers> {
      */
     themeKind: ColorThemeKind;
     /**
+     * Key bindings for the webview.
+     */
+    keyBindings: Record<string, string>;
+    /**
      * Localization status. The value is true when the localization file content is received from the extension.
      * This is used to force a re-render of the component when the localization file content is received.
      */
@@ -80,6 +85,7 @@ export function VscodeWebviewProvider2<State, Reducers>({ children }: VscodeWebv
     const extensionRpc = WebviewRpc.getInstance<Reducers>(vscodeApi);
 
     const [theme, setTheme] = useState(ColorThemeKind.Light);
+    const [keyBindings, setKeyBindings] = useState<Record<string, string>>({});
     const [localization, setLocalization] = useState<boolean>(false);
     const [EOL, setEOL] = useState<string>(getEOL());
 
@@ -118,8 +124,9 @@ export function VscodeWebviewProvider2<State, Reducers>({ children }: VscodeWebv
         async function bootstrap() {
             try {
                 // Coordinate all initialization operations
-                const [theme, initialState, eol, fileContents] = await Promise.all([
+                const [theme, keyBindings, initialState, eol, fileContents] = await Promise.all([
                     extensionRpc.sendRequest(GetThemeRequest.type),
+                    extensionRpc.sendRequest(GetKeyBindingsRequest.type),
                     extensionRpc.sendRequest(GetStateRequest.type<State>()),
                     extensionRpc.sendRequest(GetEOLRequest.type),
                     extensionRpc.sendRequest(GetLocalizationRequest.type),
@@ -127,6 +134,7 @@ export function VscodeWebviewProvider2<State, Reducers>({ children }: VscodeWebv
 
                 // Set state atomically
                 setTheme(theme);
+                setKeyBindings(keyBindings);
                 stateRef.current = initialState;
                 setEOL(eol);
 
@@ -167,6 +175,7 @@ export function VscodeWebviewProvider2<State, Reducers>({ children }: VscodeWebv
                 getSnapshot,
                 subscribe,
                 themeKind: theme,
+                keyBindings: keyBindings,
                 localization: localization,
                 EOL: EOL,
             }}>

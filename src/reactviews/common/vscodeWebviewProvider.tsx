@@ -16,6 +16,7 @@ import {
     ColorThemeChangeNotification,
     ColorThemeKind,
     GetEOLRequest,
+    GetKeyBindingsRequest,
     GetLocalizationRequest,
     GetStateRequest,
     GetThemeRequest,
@@ -48,6 +49,10 @@ export interface VscodeWebviewContext<State, Reducers> {
      */
     themeKind: ColorThemeKind;
     /**
+     * Key bindings for the webview.
+     */
+    keyBindings: Record<string, string>;
+    /**
      * Localization status. The value is true when the localization file content is received from the extension.
      * This is used to force a re-render of the component when the localization file content is received.
      */
@@ -77,6 +82,7 @@ export function VscodeWebviewProvider<State, Reducers>({ children }: VscodeWebvi
     const vscodeApi = vscodeApiInstance;
     const extensionRpc = WebviewRpc.getInstance<Reducers>(vscodeApi);
     const [theme, setTheme] = useState(ColorThemeKind.Light);
+    const [keyBindings, setKeyBindings] = useState<Record<string, string>>({});
     const [state, setState] = useState<State>();
     const [localization, setLocalization] = useState<boolean>(false);
     const [EOL, setEOL] = useState<string>(getEOL());
@@ -85,6 +91,11 @@ export function VscodeWebviewProvider<State, Reducers>({ children }: VscodeWebvi
         async function getTheme() {
             const theme = await extensionRpc.sendRequest(GetThemeRequest.type);
             setTheme(theme);
+        }
+
+        async function getKeyBindings() {
+            const keyBindings = await extensionRpc.sendRequest(GetKeyBindingsRequest.type);
+            setKeyBindings(keyBindings);
         }
 
         async function getState() {
@@ -121,6 +132,7 @@ export function VscodeWebviewProvider<State, Reducers>({ children }: VscodeWebvi
         }
 
         void getTheme();
+        void getKeyBindings();
         void getState();
         void loadStats();
         void getLocalization();
@@ -146,6 +158,7 @@ export function VscodeWebviewProvider<State, Reducers>({ children }: VscodeWebvi
                 extensionRpc: extensionRpc,
                 state: state,
                 themeKind: theme,
+                keyBindings: keyBindings,
                 localization: localization,
                 EOL: EOL,
             }}>

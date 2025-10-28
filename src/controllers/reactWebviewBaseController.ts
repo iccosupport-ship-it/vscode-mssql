@@ -11,6 +11,7 @@ import {
     ExecuteCommandParams,
     ExecuteCommandRequest,
     GetEOLRequest,
+    GetKeyBindingsRequest,
     GetLocalizationRequest,
     GetPlatformRequest,
     GetStateRequest,
@@ -337,6 +338,10 @@ export abstract class ReactWebviewBaseController<State, Reducers> implements vsc
 
         this.onRequest(GetThemeRequest.type, () => {
             return vscode.window.activeColorTheme.kind;
+        });
+
+        this.onRequest(GetKeyBindingsRequest.type, () => {
+            return this.readKeyBindingsConfig();
         });
 
         this.onRequest(GetLocalizationRequest.type, async () => {

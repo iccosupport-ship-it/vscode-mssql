@@ -140,10 +140,13 @@ export interface WebviewContextProps<TState> {
      * Theme of the webview.
      */
     themeKind: ColorThemeKind;
+    /**
+     * Key bindings for the webview.
+     */
+    keyBindings: Record<string, string>;
     log(message: string, level?: LoggerLevel): void;
     sendActionEvent(event: WebviewTelemetryActionEvent): void;
     sendErrorEvent(event: WebviewTelemetryErrorEvent): void;
-    keyBindings: Record<string, string>;
 }
 
 export enum MessageType {
@@ -202,6 +205,13 @@ export namespace GetStateRequest {
  */
 export namespace GetThemeRequest {
     export const type = new RequestType<void, ColorThemeKind, void>("getTheme");
+}
+
+/**
+ * Request to get key bindings for the webview.
+ */
+export namespace GetKeyBindingsRequest {
+    export const type = new RequestType<void, Record<string, string>, void>("getKeyBindings");
 }
 
 /**
