@@ -21,15 +21,8 @@ import {
     tryCombineSelectionsForResults,
 } from "../utils";
 import { QueryResultReactProvider } from "../../queryResultStateProvider";
-import {
-    eventMatchesShortcut,
-    getShortcutInfo,
-    ShortcutInfo,
-} from "../../../../common/keyboardUtils";
-import {
-    WebviewAction,
-    WebviewKeyboardShortcutConfiguration,
-} from "../../../../../sharedInterfaces/webview";
+import { eventMatchesShortcut, getShortcutInfo } from "../../../../common/keyboardUtils";
+import { WebviewAction, WebviewShortcuts } from "../../../../../sharedInterfaces/webview";
 
 /**
  * Implements the various clipboard and export keyboard shortcuts for slickgrid
@@ -39,17 +32,15 @@ export class CopyKeybind<T extends Slick.SlickData> implements Slick.Plugin<T> {
     private handler = new Slick.EventHandler();
     private uri: string;
     private resultSetSummary: ResultSetSummary;
-    private shortcuts!: Record<WebviewAction, ShortcutInfo>;
 
     constructor(
         uri: string,
         resultSetSummary: ResultSetSummary,
         private _qrContext: QueryResultReactProvider,
-        keyBindings: WebviewKeyboardShortcutConfiguration,
+        public shortcuts: WebviewShortcuts,
     ) {
         this.uri = uri;
         this.resultSetSummary = resultSetSummary;
-        this.updateShortcuts(keyBindings);
     }
 
     public init(grid: Slick.Grid<T>) {
@@ -63,55 +54,59 @@ export class CopyKeybind<T extends Slick.SlickData> implements Slick.Plugin<T> {
         this.handler.unsubscribeAll();
     }
 
-    public updateShortcuts(keyBindings: WebviewKeyboardShortcutConfiguration): void {
-        this.shortcuts = {
-            copySelection: getShortcutInfo(keyBindings[WebviewAction.CopySelection]),
-            copyWithHeaders: getShortcutInfo(keyBindings[WebviewAction.CopyWithHeaders]),
-            copyAllHeaders: getShortcutInfo(keyBindings[WebviewAction.CopyAllHeaders]),
-            copyAsCsv: getShortcutInfo(keyBindings[WebviewAction.CopyAsCsv]),
-            copyAsJson: getShortcutInfo(keyBindings[WebviewAction.CopyAsJson]),
-            copyAsInsertInto: getShortcutInfo(keyBindings[WebviewAction.CopyAsInsert]),
-            copyAsInClause: getShortcutInfo(keyBindings[WebviewAction.CopyAsInClause]),
-            saveAsJson: getShortcutInfo(keyBindings[WebviewAction.SaveAsJson]),
-            saveAsCsv: getShortcutInfo(keyBindings[WebviewAction.SaveAsCsv]),
-            saveAsExcel: getShortcutInfo(keyBindings[WebviewAction.SaveAsExcel]),
-            saveAsInsert: getShortcutInfo(keyBindings[WebviewAction.SaveAsInsert]),
-        };
-    }
-
     private async handleKeyDown(e: KeyboardEvent): Promise<void> {
         let handled = false;
-        if (this.matches(e, this.shortcuts.copySelection)) {
+        if (eventMatchesShortcut(e, this.shortcuts[WebviewAction.CopySelection].keyCombination)) {
             handled = true;
             await this.copySelection(false);
-        } else if (this.matches(e, this.shortcuts.copyWithHeaders)) {
+        } else if (
+            eventMatchesShortcut(e, this.shortcuts[WebviewAction.CopyWithHeaders].keyCombination)
+        ) {
             handled = true;
             await this.copySelection(true);
-        } else if (this.matches(e, this.shortcuts.copyAllHeaders)) {
+        } else if (
+            eventMatchesShortcut(e, this.shortcuts[WebviewAction.CopyAllHeaders].keyCombination)
+        ) {
             handled = true;
             await this.copyHeaders();
-        } else if (this.matches(e, this.shortcuts.copyAsCsv)) {
+        } else if (
+            eventMatchesShortcut(e, this.shortcuts[WebviewAction.CopyAsCsv].keyCombination)
+        ) {
             handled = true;
             await this.copyAsCsv();
-        } else if (this.matches(e, this.shortcuts.copyAsJson)) {
+        } else if (
+            eventMatchesShortcut(e, this.shortcuts[WebviewAction.CopyAsJson].keyCombination)
+        ) {
             handled = true;
             await this.copyAsJson();
-        } else if (this.matches(e, this.shortcuts.copyAsInsertInto)) {
+        } else if (
+            eventMatchesShortcut(e, this.shortcuts[WebviewAction.CopyAsInsert].keyCombination)
+        ) {
             handled = true;
             await this.copyAsInsertInto();
-        } else if (this.matches(e, this.shortcuts.copyAsInClause)) {
+        } else if (
+            eventMatchesShortcut(e, this.shortcuts[WebviewAction.CopyAsInClause].keyCombination)
+        ) {
             handled = true;
             await this.copyAsInClause();
-        } else if (this.matches(e, this.shortcuts.saveAsJson)) {
+        } else if (
+            eventMatchesShortcut(e, this.shortcuts[WebviewAction.SaveAsJson].keyCombination)
+        ) {
             handled = true;
             await this.saveResults("json");
-        } else if (this.matches(e, this.shortcuts.saveAsCsv)) {
+        } else if (
+            eventMatchesShortcut(e, this.shortcuts[WebviewAction.SaveAsCsv].keyCombination)
+        ) {
             handled = true;
             await this.saveResults("csv");
-        } else if (this.matches(e, this.shortcuts.saveAsExcel)) {
+        } else if (
+            eventMatchesShortcut(e, this.shortcuts[WebviewAction.SaveAsExcel].keyCombination)
+        ) {
             handled = true;
             await this.saveResults("excel");
-        } else if (this.matches(e, this.shortcuts.saveAsInsert)) {
+        } else if (
+            eventMatchesShortcut(e, this.shortcuts[WebviewAction.SaveAsInsert].keyCombination)
+        ) {
             handled = true;
             await this.saveResults("insert");
         }
@@ -120,12 +115,6 @@ export class CopyKeybind<T extends Slick.SlickData> implements Slick.Plugin<T> {
             e.preventDefault();
             e.stopPropagation();
         }
-    }
-
-    private matches(event: KeyboardEvent, shortcut: ShortcutInfo): boolean {
-        return shortcut && Object.keys(shortcut.matcher).length > 0
-            ? eventMatchesShortcut(event, shortcut.matcher)
-            : false;
     }
 
     private getConvertedSelection(): ISlickRange[] {
@@ -214,33 +203,5 @@ export class CopyKeybind<T extends Slick.SlickData> implements Slick.Plugin<T> {
             format,
             origin: QueryResultSaveAsTrigger.Toolbar,
         });
-    }
-
-    public getShortcutDisplays(): {
-        copySelection: string;
-        copyWithHeaders: string;
-        copyAllHeaders: string;
-        copyAsCsv: string;
-        copyAsJson: string;
-        copyAsInsertInto: string;
-        copyAsInClause: string;
-        saveAsJson: string;
-        saveAsCsv: string;
-        saveAsExcel: string;
-        saveAsInsert: string;
-    } {
-        return {
-            copySelection: this.shortcuts.copySelection.display,
-            copyWithHeaders: this.shortcuts.copyWithHeaders.display,
-            copyAllHeaders: this.shortcuts.copyAllHeaders.display,
-            copyAsCsv: this.shortcuts.copyAsCsv.display,
-            copyAsJson: this.shortcuts.copyAsJson.display,
-            copyAsInsertInto: this.shortcuts.copyAsInsertInto.display,
-            copyAsInClause: this.shortcuts.copyAsInClause.display,
-            saveAsJson: this.shortcuts.saveAsJson.display,
-            saveAsCsv: this.shortcuts.saveAsCsv.display,
-            saveAsExcel: this.shortcuts.saveAsExcel.display,
-            saveAsInsert: this.shortcuts.saveAsInsert.display,
-        };
     }
 }
