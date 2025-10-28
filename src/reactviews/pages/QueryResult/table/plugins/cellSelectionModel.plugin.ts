@@ -24,24 +24,8 @@ import {
     getPreviousFocusableElementOutside,
     isMetaKeyPressed,
 } from "../../../../common/utils";
-import {
-    kbExpandSelectionDown,
-    kbExpandSelectionLeft,
-    kbExpandSelectionRight,
-    kbExpandSelectionUp,
-    kbMoveToRowEnd,
-    kbMoveToRowStart,
-    kbOpenColumnMenu,
-    kbSelectAll,
-    kbSelectColumn,
-    kbSelectRow,
-    kbToggleSort,
-} from "../../../../common/constants";
-import {
-    eventMatchesShortcut,
-    getShortcutInfo,
-    ShortcutInfo,
-} from "../../../../common/keyboardUtils";
+import { eventMatchesShortcut } from "../../../../common/keyboardUtils";
+import { WebviewAction, WebviewShortcuts } from "../../../../../sharedInterfaces/webview";
 
 export interface ICellSelectionModelOptions {
     cellRangeSelector?: any;
@@ -59,20 +43,6 @@ interface EventTargetWithClassName extends EventTarget {
     className: string | undefined;
 }
 
-interface SelectionShortcutMap {
-    expandSelectionLeft: ShortcutInfo;
-    expandSelectionRight: ShortcutInfo;
-    expandSelectionUp: ShortcutInfo;
-    expandSelectionDown: ShortcutInfo;
-    openColumnMenu: ShortcutInfo;
-    selectAll: ShortcutInfo;
-    moveToRowStart: ShortcutInfo;
-    moveToRowEnd: ShortcutInfo;
-    selectColumn: ShortcutInfo;
-    selectRow: ShortcutInfo;
-    toggleSort: ShortcutInfo;
-}
-
 export class CellSelectionModel<T extends Slick.SlickData>
     implements Slick.SelectionModel<T, Array<Slick.Range>>
 {
@@ -80,7 +50,6 @@ export class CellSelectionModel<T extends Slick.SlickData>
     private selector: ICellRangeSelector<T>;
     private ranges: Array<Slick.Range> = [];
     private _handler = new Slick.EventHandler();
-    private shortcuts!: SelectionShortcutMap;
 
     public onSelectedRangesChanged = new Slick.Event<Array<Slick.Range>>();
 
@@ -89,8 +58,8 @@ export class CellSelectionModel<T extends Slick.SlickData>
         private context: QueryResultReactProvider,
         private uri: string,
         private resultSetSummary: ResultSetSummary,
+        public shortcuts: WebviewShortcuts,
         private headerFilter?: HeaderMenu<T>,
-        keyBindings?: Record<string, string>,
     ) {
         this.options = mixin(this.options, defaults, false);
         if (this.options.cellRangeSelector) {
@@ -103,8 +72,6 @@ export class CellSelectionModel<T extends Slick.SlickData>
                 },
             });
         }
-
-        this.updateShortcuts(keyBindings);
     }
 
     public init(grid: Slick.Grid<T>) {
@@ -157,30 +124,6 @@ export class CellSelectionModel<T extends Slick.SlickData>
     public destroy() {
         this._handler.unsubscribeAll();
         this.grid.unregisterPlugin(this.selector);
-    }
-
-    public updateShortcuts(keyBindings?: Record<string, string>): void {
-        const getBinding = (key: string) => keyBindings?.[key];
-
-        this.shortcuts = {
-            expandSelectionLeft: getShortcutInfo(getBinding(kbExpandSelectionLeft)),
-            expandSelectionRight: getShortcutInfo(getBinding(kbExpandSelectionRight)),
-            expandSelectionUp: getShortcutInfo(getBinding(kbExpandSelectionUp)),
-            expandSelectionDown: getShortcutInfo(getBinding(kbExpandSelectionDown)),
-            openColumnMenu: getShortcutInfo(getBinding(kbOpenColumnMenu)),
-            selectAll: getShortcutInfo(getBinding(kbSelectAll)),
-            moveToRowStart: getShortcutInfo(getBinding(kbMoveToRowStart)),
-            moveToRowEnd: getShortcutInfo(getBinding(kbMoveToRowEnd)),
-            selectColumn: getShortcutInfo(getBinding(kbSelectColumn)),
-            selectRow: getShortcutInfo(getBinding(kbSelectRow)),
-            toggleSort: getShortcutInfo(getBinding(kbToggleSort)),
-        };
-    }
-
-    public getShortcutDisplays(): { selectAll: string } {
-        return {
-            selectAll: this.shortcuts?.selectAll?.display ?? "",
-        };
     }
 
     private removeInvalidRanges(ranges: Array<Slick.Range>): Array<Slick.Range> {
@@ -666,57 +609,90 @@ export class CellSelectionModel<T extends Slick.SlickData>
         let isHandled = false;
         const shortcuts = this.shortcuts;
 
-        if (!isHandled && this.matches(e, shortcuts.expandSelectionLeft)) {
+        if (
+            !isHandled &&
+            eventMatchesShortcut(e, shortcuts[WebviewAction.ExpandSelectionLeft].keyCombination)
+        ) {
             this.expandSelection(KeyCode.ArrowLeft);
             isHandled = true;
         }
 
-        if (!isHandled && this.matches(e, shortcuts.expandSelectionRight)) {
+        if (
+            !isHandled &&
+            eventMatchesShortcut(e, shortcuts[WebviewAction.ExpandSelectionRight].keyCombination)
+        ) {
             this.expandSelection(KeyCode.ArrowRight);
             isHandled = true;
         }
 
-        if (!isHandled && this.matches(e, shortcuts.expandSelectionUp)) {
+        if (
+            !isHandled &&
+            eventMatchesShortcut(e, shortcuts[WebviewAction.ExpandSelectionUp].keyCombination)
+        ) {
             this.expandSelection(KeyCode.ArrowUp);
             isHandled = true;
         }
 
-        if (!isHandled && this.matches(e, shortcuts.expandSelectionDown)) {
+        if (
+            !isHandled &&
+            eventMatchesShortcut(e, shortcuts[WebviewAction.ExpandSelectionDown].keyCombination)
+        ) {
             this.expandSelection(KeyCode.ArrowDown);
             isHandled = true;
         }
 
-        if (!isHandled && this.matches(e, shortcuts.openColumnMenu)) {
+        if (
+            !isHandled &&
+            eventMatchesShortcut(e, shortcuts[WebviewAction.OpenColumnMenu].keyCombination)
+        ) {
             await this.headerFilter?.openMenuForActiveColumn();
             isHandled = true;
         }
 
-        if (!isHandled && this.matches(e, shortcuts.selectAll)) {
+        if (
+            !isHandled &&
+            eventMatchesShortcut(e, shortcuts[WebviewAction.SelectAll].keyCombination)
+        ) {
             await this.handleSelectAll();
             isHandled = true;
         }
 
-        if (!isHandled && this.matches(e, shortcuts.moveToRowStart)) {
+        if (
+            !isHandled &&
+            eventMatchesShortcut(e, shortcuts[WebviewAction.MoveToRowStart].keyCombination)
+        ) {
             this.moveToFirstCellInRow();
             isHandled = true;
         }
 
-        if (!isHandled && this.matches(e, shortcuts.moveToRowEnd)) {
+        if (
+            !isHandled &&
+            eventMatchesShortcut(e, shortcuts[WebviewAction.MoveToRowEnd].keyCombination)
+        ) {
             this.moveToLastCellInRow();
             isHandled = true;
         }
 
-        if (!isHandled && this.matches(e, shortcuts.selectColumn)) {
+        if (
+            !isHandled &&
+            eventMatchesShortcut(e, shortcuts[WebviewAction.SelectColumn].keyCombination)
+        ) {
             this.selectActiveCellColumn();
             isHandled = true;
         }
 
-        if (!isHandled && this.matches(e, shortcuts.selectRow)) {
+        if (
+            !isHandled &&
+            eventMatchesShortcut(e, shortcuts[WebviewAction.SelectRow].keyCombination)
+        ) {
             this.selectActiveCellRow();
             isHandled = true;
         }
 
-        if (!isHandled && this.matches(e, shortcuts.toggleSort)) {
+        if (
+            !isHandled &&
+            eventMatchesShortcut(e, shortcuts[WebviewAction.ToggleSort].keyCombination)
+        ) {
             await this.toggleSortForActiveCell();
             isHandled = true;
         }
@@ -744,12 +720,6 @@ export class CellSelectionModel<T extends Slick.SlickData>
             e.preventDefault();
             e.stopPropagation();
         }
-    }
-
-    private matches(event: KeyboardEvent, shortcut: ShortcutInfo): boolean {
-        return shortcut && Object.keys(shortcut.matcher).length > 0
-            ? eventMatchesShortcut(event, shortcut.matcher)
-            : false;
     }
 
     private expandSelection(
