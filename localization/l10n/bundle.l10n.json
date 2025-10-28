@@ -351,11 +351,20 @@
     "Privacy Statement": "Privacy Statement",
     "Microsoft will process the feedback you submit pursuant to your organization’s instructions in order to improve your and your organization’s experience with this product. If you have any questions...": "Microsoft will process the feedback you submit pursuant to your organization’s instructions in order to improve your and your organization’s experience with this product. If you have any questions...",
     "Microsoft will process the feedback you submit pursuant to your organization’s instructions in order to improve your and your organization’s experience with this product. If you have any questions about the use of feedback data, please contact your tenant administrator. Processing of feedback data is governed by the Microsoft Products and Services Data Protection Addendum between your organization and Microsoft, and the feedback you submit is considered Personal Data under that addendum.": "Microsoft will process the feedback you submit pursuant to your organization’s instructions in order to improve your and your organization’s experience with this product. If you have any questions about the use of feedback data, please contact your tenant administrator. Processing of feedback data is governed by the Microsoft Products and Services Data Protection Addendum between your organization and Microsoft, and the feedback you submit is considered Personal Data under that addendum.",
+    "Results ({0})/{0} is the keyboard shortcut for the results tab": {
+        "message": "Results ({0})",
+        "comment": ["{0} is the keyboard shortcut for the results tab"]
+    },
+    "Results": "Results",
     "Results ({0})/{0} is the number of results": {
         "message": "Results ({0})",
         "comment": ["{0} is the number of results"]
     },
     "Messages": "Messages",
+    "Messages ({0})/{0} is the keyboard shortcut for the messages tab": {
+        "message": "Messages ({0})",
+        "comment": ["{0} is the keyboard shortcut for the messages tab"]
+    },
     "Timestamp": "Timestamp",
     "Message": "Message",
     "Open in New Tab": "Open in New Tab",
@@ -385,7 +394,15 @@
     },
     "Save as INSERT INTO": "Save as INSERT INTO",
     "Hide this panel": "Hide this panel",
+    "Query Plan ({0})/{0} is the keyboard shortcut for the query plan tab": {
+        "message": "Query Plan ({0})",
+        "comment": ["{0} is the keyboard shortcut for the query plan tab"]
+    },
     "Query Plan": "Query Plan",
+    "Query Plan ({0})/{0} is the number of query plans": {
+        "message": "Query Plan ({0})",
+        "comment": ["{0} is the number of query plans"]
+    },
     "Select All": "Select All",
     "Copy with Headers": "Copy with Headers",
     "Copy Headers": "Copy Headers",
@@ -1033,7 +1050,6 @@
     "CSV": "CSV",
     "JSON": "JSON",
     "Excel": "Excel",
-    "Results": "Results",
     "Select all": "Select all",
     "Executing query...": "Executing query...",
     "Query executed": "Query executed",

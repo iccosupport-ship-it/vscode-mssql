@@ -2051,6 +2051,10 @@
     <trans-unit id="++CODE++04d7b48339271ea67d3c8493e07e90bc68dc565485eebe5e0b67c21c1586e3c0">
       <source xml:lang="en">Messages</source>
     </trans-unit>
+    <trans-unit id="++CODE++d383f047a2ab3c6127191873e02bfe1e822d683f30c084fb0a6f54bad4716328">
+      <source xml:lang="en">Messages ({0})</source>
+      <note>{0} is the keyboard shortcut for the messages tab</note>
+    </trans-unit>
     <trans-unit id="++CODE++2d275a74912cca2e02e6d41f9cae3a75ceef3ed0ef734eff3710e10eb7112228">
       <source xml:lang="en">Metric</source>
     </trans-unit>
@@ -2547,6 +2551,14 @@
     <trans-unit id="++CODE++f44ad102b5dd5df1b5691408d19d39ee92cc1c9ad20f7125845df3d961a805d3">
       <source xml:lang="en">Query Plan</source>
     </trans-unit>
+    <trans-unit id="++CODE++bebc9b760db9e5ba55f2632c57871653521c9094223eeb46476e3d7d49218b89">
+      <source xml:lang="en">Query Plan ({0})</source>
+      <note>{0} is the number of query plans</note>
+    </trans-unit>
+    <trans-unit id="++CODE++849546c6df0763a6f8aa890e76dff62d494b20db8125f937e529ad74e52c34f1">
+      <source xml:lang="en">Query Plan ({0})</source>
+      <note>{0} is the keyboard shortcut for the query plan tab</note>
+    </trans-unit>
     <trans-unit id="++CODE++9e83dc6d2db272ac27cc875b994f834b62b7202a49b69e885f8f4e8f9c29a452">
       <source xml:lang="en">Query executed</source>
     </trans-unit>
@@ -2650,6 +2662,10 @@
     <trans-unit id="++CODE++ccb11e8d73c1d40ef67b26d9ca77a50ab2987d9ac9af361e065c3c1c6699c116">
       <source xml:lang="en">Results ({0})</source>
       <note>{0} is the number of results</note>
+    </trans-unit>
+    <trans-unit id="++CODE++82d510eecb9f37659e99b55edff96e66aced3765063d0981d26bb433381f1945">
+      <source xml:lang="en">Results ({0})</source>
+      <note>{0} is the keyboard shortcut for the results tab</note>
     </trans-unit>
     <trans-unit id="++CODE++a71f9e2908cf7df2e5ce9dafa67f3f4949fc4c74f525b9f4a6229ff6a7f93c86">
       <source xml:lang="en">Results copied to clipboard</source>
