@@ -78,7 +78,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
         themeKind: ColorThemeKind = ColorThemeKind.Dark,
     ) {
         this.linkHandler = linkHandler;
-        this.headerFilter = new HeaderMenu(this.uri, themeKind, this.context, gridId);
+        this.headerFilter = new HeaderMenu(this.uri, themeKind, this.context, gridId, shortcuts);
         this.headerFilter.onFilterApplied.subscribe(async () => {
             this.selectionModel.setSelectedRanges([]);
             await this.selectionModel.updateSummaryText();
