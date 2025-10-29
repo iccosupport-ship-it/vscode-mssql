@@ -229,6 +229,7 @@ export namespace SetFiltersRequest {
 
 export interface GetColumnWidthsParams {
     uri: string;
+    gridId: string;
 }
 
 export namespace GetColumnWidthsRequest {
@@ -237,7 +238,8 @@ export namespace GetColumnWidthsRequest {
 
 export interface SetColumnWidthsParams {
     uri: string;
-    columnWidths: number[];
+    gridId: string;
+    widths: number[];
 }
 
 export namespace SetColumnWidthsRequest {

@@ -148,11 +148,11 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
             if (!tableRef.current) return;
             await tableRef.current.setupFilterState();
             await tableRef.current.restoreColumnWidths();
-            await tableRef.current.setupScrollPosition();
             tableRef.current.headerFilter.enabled =
                 tableRef.current.grid.getDataLength() < inMemoryDataProcessingThreshold!;
 
             tableRef.current.rerenderGrid();
+            await tableRef.current.setupScrollPosition();
         };
         const DEFAULT_FONT_SIZE = 12;
 

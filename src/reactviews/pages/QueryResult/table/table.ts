@@ -193,14 +193,15 @@ export class Table<T extends Slick.SlickData> implements IThemable {
                 .map((v) => v.width);
             let currentColumnSizes = await this.context.extensionRpc.sendRequest(
                 GetColumnWidthsRequest.type,
-                { uri: this.uri },
+                { uri: this.uri, gridId: this.gridId },
             );
             if (currentColumnSizes === columnSizes) {
                 return;
             }
             await this.context.extensionRpc.sendRequest(SetColumnWidthsRequest.type, {
                 uri: this.uri,
-                columnWidths: columnSizes as number[],
+                gridId: this.gridId,
+                widths: columnSizes as number[],
             });
         });
 
@@ -231,6 +232,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
             GetColumnWidthsRequest.type,
             {
                 uri: this.uri,
+                gridId: this.gridId,
             },
         );
 
@@ -311,7 +313,6 @@ export class Table<T extends Slick.SlickData> implements IThemable {
         );
         if (scrollPosition) {
             setTimeout(() => {
-                this._grid.scrollRowToTop(scrollPosition.scrollTop);
                 const containerNode = this._grid.getContainerNode();
                 const viewport = containerNode
                     ? (containerNode.querySelector(".slick-viewport") as HTMLElement)
@@ -319,6 +320,9 @@ export class Table<T extends Slick.SlickData> implements IThemable {
                 if (viewport) {
                     viewport.scrollLeft = scrollPosition.scrollLeft;
                 }
+                this._grid.scrollRowToTop(scrollPosition.scrollTop);
+                this._grid.invalidate();
+                this._grid.render();
             }, 0);
         }
     }

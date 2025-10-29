@@ -215,11 +215,14 @@ export function registerCommonRequestHandlers(
     });
 
     webviewController.onRequest(qr.SetColumnWidthsRequest.type, async (message) => {
-        store.set(message.uri, SubKeys.ColumnWidth, message.columnWidths);
+        const currentWidths = store.get(message.uri, SubKeys.ColumnWidth) || {};
+        currentWidths[message.gridId] = message.widths;
+        store.set(message.uri, SubKeys.ColumnWidth, currentWidths);
     });
 
     webviewController.onRequest(qr.GetColumnWidthsRequest.type, async (message) => {
-        return store.get(message.uri, SubKeys.ColumnWidth);
+        const allWidths = store.get(message.uri, SubKeys.ColumnWidth) || {};
+        return allWidths[message.gridId] || [];
     });
 
     webviewController.onNotification(qr.SetGridScrollPositionNotification.type, async (message) => {
