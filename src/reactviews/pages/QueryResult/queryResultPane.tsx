@@ -21,8 +21,6 @@ import CommandBar from "./commandBar";
 import { TextView } from "./textView";
 import { locConstants } from "../../common/locConstants";
 import { ACTIONBAR_WIDTH_PX, SCROLLBAR_PX, TABLE_ALIGN_PX } from "./table/table";
-import { ExecutionPlanPage } from "../ExecutionPlan/executionPlanPage";
-import { ExecutionPlanStateProvider } from "../ExecutionPlan/executionPlanStateProvider";
 import { hasResultsOrMessages } from "./queryResultUtils";
 import { QueryResultCommandsContext } from "./queryResultStateProvider";
 import { useQueryResultSelector } from "./queryResultSelector";
