@@ -8,21 +8,11 @@ import {
     Link,
     Tab,
     TabList,
-    TableColumnDefinition,
-    TableColumnSizingOptions,
     Title3,
-    createTableColumn,
     makeStyles,
     Text,
     Spinner,
 } from "@fluentui/react-components";
-import {
-    DataGridBody,
-    DataGrid,
-    DataGridRow,
-    DataGridCell,
-    RowRenderer,
-} from "@fluentui-contrib/react-data-grid-react-window";
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { DatabaseSearch24Regular, ErrorCircle24Regular, OpenRegular } from "@fluentui/react-icons";
 import * as qr from "../../../sharedInterfaces/queryResult";
@@ -33,7 +23,7 @@ import { locConstants } from "../../common/locConstants";
 import { ACTIONBAR_WIDTH_PX, SCROLLBAR_PX, TABLE_ALIGN_PX } from "./table/table";
 import { ExecutionPlanPage } from "../ExecutionPlan/executionPlanPage";
 import { ExecutionPlanStateProvider } from "../ExecutionPlan/executionPlanStateProvider";
-import { hasResultsOrMessages, splitMessages } from "./queryResultUtils";
+import { hasResultsOrMessages } from "./queryResultUtils";
 import { QueryResultCommandsContext } from "./queryResultStateProvider";
 import { useQueryResultSelector } from "./queryResultSelector";
 import { ExecuteCommandRequest, WebviewAction } from "../../../sharedInterfaces/webview";
@@ -41,6 +31,8 @@ import { ExecutionPlanGraph } from "../../../sharedInterfaces/executionPlan";
 import { SLICKGRID_ROW_ID_PROP } from "./table/utils";
 import { eventMatchesShortcut } from "../../common/keyboardUtils";
 import { useVscodeWebview2 } from "../../common/vscodeWebviewProvider2";
+import { QueryMessageTab } from "./queryMessageTab";
+import { QueryExecutionPlanTab } from "./queryExecutionPlanTab";
 
 const useStyles = makeStyles({
     root: {
@@ -83,15 +75,6 @@ const useStyles = makeStyles({
         position: "absolute",
         top: "0px",
         right: "0px",
-    },
-    messagesContainer: {
-        width: "100%",
-        height: "100%",
-        fontFamily: "var(--vscode-editor-font-family)",
-        flexDirection: "column",
-        "> *": {
-            marginBottom: "10px",
-        },
     },
     messagesLink: {
         fontSize: "var(--vscode-editor-font-size)",
@@ -191,7 +174,7 @@ export const QueryResultPane = () => {
     const ribbonRef = useRef<HTMLDivElement>(null);
     const gridParentRef = useRef<HTMLDivElement>(null);
     const scrollablePanelRef = useRef<HTMLDivElement>(null);
-    const [messageGridHeight, setMessageGridHeight] = useState(0);
+    //const [messageGridHeight, setMessageGridHeight] = useState(0);
     const gridRefs = useRef<Array<ResultGridHandle | undefined>>([]);
     const [maximizedGridIndex, setMaximizedGridIndex] = useState<number | undefined>(undefined);
     const gridIndexByElementIdRef = useRef<Record<string, number>>({});
@@ -226,9 +209,6 @@ export const QueryResultPane = () => {
             }
 
             const availableHeight = getAvailableHeight(resultPaneParent, ribbonRef.current);
-            if (tabStates?.resultPaneTab === qr.QueryResultPaneTabs.Messages) {
-                setMessageGridHeight(availableHeight);
-            }
             if (resultPaneParent.clientWidth && availableHeight) {
                 const gridHeight = calculateGridHeight(gridCount, availableHeight);
                 const gridWidth = calculateGridWidth(resultPaneParent, gridCount, availableHeight);
@@ -764,114 +744,6 @@ export const QueryResultPane = () => {
     };
     //#endregion
 
-    //#region Message Grid
-    const columnsDef: TableColumnDefinition<qr.IMessage>[] = [
-        createTableColumn({
-            columnId: "time",
-            renderHeaderCell: () => <>{locConstants.queryResult.timestamp}</>,
-            renderCell: (item) => (
-                <div>
-                    <DataGridCell focusMode="group" style={{ minHeight: "18px", width: "100px" }}>
-                        {item.batchId === undefined ? item.time : null}
-                    </DataGridCell>
-                </div>
-            ),
-        }),
-        createTableColumn({
-            columnId: "message",
-            renderHeaderCell: () => <>{locConstants.queryResult.message}</>,
-            renderCell: (item) => {
-                if (item.link?.text && item.selection) {
-                    return (
-                        <DataGridCell focusMode="group" style={{ minHeight: "18px" }}>
-                            <div style={{ whiteSpace: "pre" }}>
-                                {item.message}{" "}
-                                <Link
-                                    className={classes.messagesLink}
-                                    onClick={async () => {
-                                        await context.extensionRpc.sendRequest(
-                                            qr.SetEditorSelectionRequest.type,
-                                            {
-                                                uri: item.link?.uri,
-                                                selectionData: item.selection,
-                                            },
-                                        );
-                                    }}
-                                    inline>
-                                    {item?.link?.text}
-                                </Link>
-                            </div>
-                        </DataGridCell>
-                    );
-                } else {
-                    return (
-                        <DataGridCell focusMode="group" style={{ minHeight: "18px" }}>
-                            <div
-                                style={{
-                                    whiteSpace: "pre",
-                                    color: item.isError
-                                        ? "var(--vscode-errorForeground)"
-                                        : undefined,
-                                }}>
-                                {item.message}
-                            </div>
-                        </DataGridCell>
-                    );
-                }
-            },
-        }),
-    ];
-    const renderRow: RowRenderer<qr.IMessage> = ({ item, rowId }, style) => {
-        return (
-            <DataGridRow<qr.IMessage>
-                key={rowId}
-                className={classes.messagesRows}
-                style={style}
-                aria-label={locConstants.queryResult.message}
-                role={locConstants.queryResult.message}
-                aria-roledescription={locConstants.queryResult.message}>
-                {({ renderCell }) => <>{renderCell(item)}</>}
-            </DataGridRow>
-        );
-    };
-
-    const [columns] = useState<TableColumnDefinition<qr.IMessage>[]>(columnsDef);
-    const items: qr.IMessage[] = splitMessages(messages);
-
-    const sizingOptions: TableColumnSizingOptions = {
-        time: {
-            minWidth: 100,
-            idealWidth: 100,
-            defaultWidth: 100,
-        },
-        message: {
-            minWidth: 500,
-            idealWidth: 500,
-            defaultWidth: 500,
-        },
-    };
-
-    const [columnSizingOption] = useState<TableColumnSizingOptions>(sizingOptions);
-
-    const renderMessageGrid = () => {
-        return (
-            <DataGrid
-                items={items}
-                columns={columns}
-                focusMode="cell"
-                resizableColumns={true}
-                columnSizingOptions={columnSizingOption}
-                role={locConstants.queryResult.messages}
-                aria-label={locConstants.queryResult.messages}
-                aria-roledescription={locConstants.queryResult.messages}>
-                <DataGridBody<qr.IMessage> itemSize={18} height={messageGridHeight}>
-                    {renderRow}
-                </DataGridBody>
-            </DataGrid>
-        );
-    };
-    //#endregion
-
     const getWebviewLocation = async () => {
         const res = await context.extensionRpc.sendRequest(qr.GetWebviewLocationRequest.type, {
             uri: uri,
@@ -1041,26 +913,10 @@ export const QueryResultPane = () => {
                     Object.keys(resultSetSummaries).length > 0 &&
                     renderResultPanel()}
                 {tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Messages && (
-                    <div
-                        className={classes.messagesContainer}
-                        data-vscode-context={JSON.stringify({
-                            webviewSection: "queryResultMessagesPane",
-                            uri: uri,
-                        })}>
-                        {renderMessageGrid()}
-                    </div>
+                    <QueryMessageTab />
                 )}
                 {tabStates!.resultPaneTab === qr.QueryResultPaneTabs.ExecutionPlan &&
-                    isExecutionPlan && (
-                        <div
-                            id={"executionPlanResultsTab"}
-                            className={classes.queryResultContainer}
-                            style={{ height: "100%", minHeight: "300px" }}>
-                            <ExecutionPlanStateProvider>
-                                <ExecutionPlanPage />
-                            </ExecutionPlanStateProvider>
-                        </div>
-                    )}
+                    isExecutionPlan && <QueryExecutionPlanTab />}
             </div>
         </div>
     );
