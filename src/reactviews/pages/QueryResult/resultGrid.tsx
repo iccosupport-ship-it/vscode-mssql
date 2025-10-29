@@ -12,13 +12,14 @@ import { RowNumberColumn } from "./table/plugins/rowNumberColumn.plugin";
 import { VirtualizedCollection } from "./table/asyncDataView";
 import { HybridDataProvider } from "./table/hybridDataProvider";
 import { hyperLinkFormatter, textFormatter, DBCellValue, escape } from "./table/formatters";
-import { DbCellValue, ResultSetSummary } from "../../../sharedInterfaces/queryResult";
 import * as DOM from "./table/dom";
 import { locConstants } from "../../common/locConstants";
 import { QueryResultCommandsContext } from "./queryResultStateProvider";
 import { LogCallback } from "../../../sharedInterfaces/webview";
 import { useQueryResultSelector } from "./queryResultSelector";
 import { useVscodeWebview2 } from "../../common/vscodeWebviewProvider2";
+import * as qr from "../../../sharedInterfaces/queryResult";
+import { SLICKGRID_ROW_ID_PROP } from "./table/utils";
 
 window.jQuery = $ as any;
 require("slickgrid/lib/jquery.event.drag-2.3.0.js");
@@ -35,13 +36,9 @@ declare global {
 }
 
 export interface ResultGridProps {
-    loadFunc: (offset: number, count: number) => Thenable<any[]>;
-    resultSetSummary?: ResultSetSummary;
-    divId?: string;
-    uri?: string;
-    gridParentRef?: React.RefObject<HTMLDivElement>;
-    linkHandler: (fileContent: string, fileType: string) => void;
+    resultSetSummary: qr.ResultSetSummary;
     gridId: string;
+    gridParentRef: React.RefObject<HTMLDivElement>;
 }
 
 export interface ResultGridHandle {
@@ -61,9 +58,16 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         return undefined;
     }
 
-    const inMemoryDataProcessingThreshold = useQueryResultSelector<number | undefined>(
-        (state) => state.inMemoryDataProcessingThreshold,
-    );
+    const uri = useQueryResultSelector((state) => state.uri);
+    if (!uri) {
+        return undefined;
+    }
+
+    const inMemoryDataProcessingThreshold =
+        useQueryResultSelector<number | undefined>(
+            (state) => state.inMemoryDataProcessingThreshold,
+        ) ?? 5000;
+
     const fontSettings = useQueryResultSelector((state) => state.fontSettings);
     const autoSizeColumns = useQueryResultSelector((state) => state.autoSizeColumns);
     const { themeKind, keyboardShortcuts: keyBindings } = useVscodeWebview2();
@@ -143,6 +147,46 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         tableRef.current.autoSizeActiveColumn();
     };
 
+    const fetchRows = async (offset: number, count: number) => {
+        // Making sure we don't fetch more rows than available
+        if (props.resultSetSummary && offset + count > props.resultSetSummary.rowCount) {
+            count = props.resultSetSummary.rowCount - offset;
+        }
+
+        const response = await context.extensionRpc.sendRequest(qr.GetRowsRequest.type, {
+            uri: uri,
+            batchId: props.resultSetSummary.batchId,
+            resultId: props.resultSetSummary.id,
+            rowStart: offset,
+            numberOfRows: count,
+        });
+
+        if (!response) {
+            return [];
+        }
+        let r = response as qr.ResultSetSubset;
+        var columnLength = props.resultSetSummary?.columnInfo?.length;
+        return r.rows.map((r, rowOffset) => {
+            let dataWithSchema: {
+                [key: string]: any;
+            } = {};
+            // skip the first column since its a number column
+            for (let i = 1; columnLength && i < columnLength + 1; i++) {
+                const cell = r[i - 1];
+                const displayValue = cell.isNull ? "NULL" : (cell.displayValue ?? "");
+                const ariaLabel = displayValue;
+                dataWithSchema[(i - 1).toString()] = {
+                    displayValue: displayValue,
+                    ariaLabel: ariaLabel,
+                    isNull: cell.isNull,
+                    invariantCultureDisplayValue: displayValue,
+                };
+                dataWithSchema[SLICKGRID_ROW_ID_PROP] = offset + rowOffset;
+            }
+            return dataWithSchema;
+        });
+    };
+
     const updateRowCountOnly = () => {
         if (tableRef.current && props.resultSetSummary) {
             // Update the data provider with new row count
@@ -174,7 +218,7 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
 
         const ROW_HEIGHT = fontSettings.fontSize! + 12; // 12 px is the padding
         const COLUMN_WIDTH = Math.max((fontSettings.fontSize! / DEFAULT_FONT_SIZE) * 120, 120); // Scale width with font size, but keep a minimum of 120px
-        if (!props.resultSetSummary || !props.linkHandler) {
+        if (!props.resultSetSummary) {
             return;
         }
 
@@ -194,7 +238,7 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
                             : (
                                   row: number | undefined,
                                   cell: any | undefined,
-                                  value: DbCellValue,
+                                  value: qr.DbCellValue,
                                   columnDef: any | undefined,
                                   dataContext: any | undefined,
                               ):
@@ -259,20 +303,13 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
             50,
             (_index) => {},
             props.resultSetSummary?.rowCount ?? 0,
-            props.loadFunc,
+            fetchRows,
         );
 
         let dataProvider = new HybridDataProvider(
             collection,
-            (_startIndex, _count) => {
-                if (props.resultSetSummary?.rowCount && props.resultSetSummary?.rowCount > 0) {
-                    return props.loadFunc(_startIndex, _count);
-                } else {
-                    console.info(`No rows to load: start index: ${_startIndex}, count: ${_count}`);
-                    return Promise.resolve([]);
-                }
-            },
-            (data: DbCellValue) => {
+            fetchRows,
+            (data: qr.DbCellValue) => {
                 if (!data || data.isNull) {
                     return undefined;
                 }
@@ -291,10 +328,10 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         tableRef.current = new Table(
             div,
             defaultTableStyles,
-            props.uri!,
+            uri,
             props.resultSetSummary!,
             context,
-            props.linkHandler!,
+            context.openFileThroughLink,
             props.gridId,
             { dataProvider: dataProvider, columns: columns },
             keyBindings,
@@ -361,7 +398,7 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
     return <div id="gridContainter" ref={gridContainerRef}></div>;
 });
 
-function isJsonCell(value: DbCellValue): boolean {
+function isJsonCell(value: qr.DbCellValue): boolean {
     return !!(value && !value.isNull && value.displayValue?.match(IsJsonRegex));
 }
 

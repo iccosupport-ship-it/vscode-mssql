@@ -14,7 +14,6 @@ import { mixin } from "./objects";
 import { HeaderMenu } from "./plugins/headerFilter.plugin";
 import { ContextMenu } from "./plugins/contextMenu.plugin";
 import {
-    ColumnFilterState,
     GetColumnWidthsRequest,
     GetFiltersRequest,
     GetGridScrollPositionRequest,
@@ -202,13 +201,14 @@ export class Table<T extends Slick.SlickData> implements IThemable {
                 .map((v) => v.width);
             let currentColumnSizes = await this.context.extensionRpc.sendRequest(
                 GetColumnWidthsRequest.type,
-                { uri: this.uri },
+                { uri: this.uri, resultId: this.gridId },
             );
             if (currentColumnSizes === columnSizes) {
                 return;
             }
             await this.context.extensionRpc.sendRequest(SetColumnWidthsRequest.type, {
                 uri: this.uri,
+                resultId: this.gridId,
                 columnWidths: columnSizes as number[],
             });
         });
@@ -224,7 +224,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
                 SetGridScrollPositionNotification.type,
                 {
                     uri: this.uri,
-                    gridId: this.gridId,
+                    resultId: this.gridId,
                     scrollLeft: viewport.leftPx,
                     scrollTop: viewport.top,
                 },
@@ -240,6 +240,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
             GetColumnWidthsRequest.type,
             {
                 uri: this.uri,
+                resultId: this.gridId,
             },
         );
 
@@ -265,38 +266,31 @@ export class Table<T extends Slick.SlickData> implements IThemable {
     public async setupFilterState(): Promise<boolean> {
         let sortColumn: Slick.Column<T> | undefined = undefined;
         let sortDirection: boolean | undefined = undefined;
-        const filterMapArray = await this.context.extensionRpc.sendRequest(GetFiltersRequest.type, {
+        const filterMap = await this.context.extensionRpc.sendRequest(GetFiltersRequest.type, {
             uri: this.uri,
+            resultId: this.gridId,
         });
-        if (!filterMapArray) {
+        if (!filterMap) {
             return false;
         }
-        const filterMap = filterMapArray.find((filter) => filter[this.gridId]);
-        if (!filterMap || !filterMap[this.gridId]) {
-            this.context.log("No filters found in store");
-            return false;
-        }
+
         for (const column of this.columns) {
-            for (const columnFilterMap of filterMap[this.gridId]) {
-                if (columnFilterMap[column.id!]) {
-                    const filterStateArray = columnFilterMap[column.id!];
-                    filterStateArray.forEach((filterState: ColumnFilterState) => {
-                        if (filterState.columnDef === column.field) {
-                            (column as FilterableColumn<T>).filterValues = filterState.filterValues;
-                        }
-                    });
-                    let columnSortDirection = columnFilterMap[column.id!][0].sorted;
-                    if (
-                        (columnSortDirection === "ASC" || columnSortDirection === "DESC") &&
-                        !sortDirection
-                    ) {
-                        sortColumn = column;
-                        (column as FilterableColumn<T>).sorted = columnSortDirection;
-                        sortDirection = columnSortDirection === "ASC" ? true : false;
-                    }
-                }
+            const filterState = filterMap[column.id!];
+            if (!filterState) {
+                continue;
+            }
+            (column as FilterableColumn<T>).filterValues = filterState.filterValues;
+            let columnSortDirection = filterState.sorted;
+            if (
+                (columnSortDirection === "ASC" || columnSortDirection === "DESC") &&
+                !sortDirection
+            ) {
+                sortColumn = column;
+                (column as FilterableColumn<T>).sorted = columnSortDirection;
+                sortDirection = columnSortDirection === "ASC" ? true : false;
             }
         }
+
         await this._data.filter(this.columns);
         if (sortDirection !== undefined && sortColumn) {
             let sortArgs = {
@@ -315,7 +309,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
             GetGridScrollPositionRequest.type,
             {
                 uri: this.uri,
-                gridId: this.gridId,
+                resultId: this.gridId,
             },
         );
         if (scrollPosition) {

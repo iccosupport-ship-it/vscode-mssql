@@ -223,7 +223,7 @@ export default class SqlDocumentService implements vscode.Disposable {
         }
 
         // Delete filters and dimension states for the closed document
-        store.deleteMainKey(closedDocumentUri);
+        store.deleteUriState(closedDocumentUri);
     }
 
     /**

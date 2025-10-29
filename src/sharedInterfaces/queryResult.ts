@@ -204,23 +204,20 @@ export interface ColumnFilterState {
 /**
  * Maps the column filter state for a specific column
  */
-export type ColumnFilterMap = Record<string, ColumnFilterState[]>;
-
-/**
- * Maps all the column filters for a specific grid ID
- */
-export type GridColumnMap = Record<string, ColumnFilterMap[]>;
+export type ColumnFilterMap = Record<string, ColumnFilterState>;
 
 export interface GetFiltersParams {
     uri: string;
+    resultId: string;
 }
 export namespace GetFiltersRequest {
-    export const type = new RequestType<GetFiltersParams, GridColumnMap[], void>("getFilters");
+    export const type = new RequestType<GetFiltersParams, ColumnFilterMap, void>("getFilters");
 }
 
 export interface SetFiltersParams {
     uri: string;
-    filters: GridColumnMap[];
+    resultId: string;
+    filters: ColumnFilterMap;
 }
 
 export namespace SetFiltersRequest {
@@ -229,6 +226,7 @@ export namespace SetFiltersRequest {
 
 export interface GetColumnWidthsParams {
     uri: string;
+    resultId: string;
 }
 
 export namespace GetColumnWidthsRequest {
@@ -237,6 +235,7 @@ export namespace GetColumnWidthsRequest {
 
 export interface SetColumnWidthsParams {
     uri: string;
+    resultId: string;
     columnWidths: number[];
 }
 
@@ -377,7 +376,7 @@ export namespace GetRowsRequest {
  */
 export interface SetGridScrollPositionParams {
     uri: string;
-    gridId: string;
+    resultId: string;
     scrollTop: number;
     scrollLeft: number;
 }
@@ -392,7 +391,7 @@ export namespace SetGridScrollPositionNotification {
 
 export interface GetGridScrollPositionParams {
     uri: string;
-    gridId: string;
+    resultId: string;
 }
 
 export interface GetGridScrollPositionResponse {
@@ -433,6 +432,46 @@ export namespace GetGridPaneScrollPositionRequest {
         GetGridPaneScrollPositionResponse,
         void
     >("getGridPaneScrollPosition");
+}
+
+export namespace SetMessagesTabScrollPositionNotification {
+    export const type = new NotificationType<{ uri: string; scrollTop: number }>(
+        "setMessagesTabScrollPosition",
+    );
+}
+
+export namespace GetMessagesTabScrollPositionRequest {
+    export const type = new RequestType<{ uri: string }, { scrollTop: number }, void>(
+        "getMessagesTabScrollPosition",
+    );
+}
+
+export namespace SetMaximizedGridNotification {
+    export const type = new NotificationType<{ uri: string; resultId: string }>("setMaximizedGrid");
+}
+
+export namespace GetMaximizedGridRequest {
+    export const type = new RequestType<{ uri: string }, { resultId: string | null }, void>(
+        "getMaximizedGrid",
+    );
+}
+
+export namespace SetActiveSelectionsNotification {
+    export const type = new NotificationType<{
+        uri: string;
+        resultId: string;
+        selections: ISlickRange[];
+    }>("setActiveSelections");
+}
+
+export namespace GetActiveSelectionsRequest {
+    export const type = new RequestType<
+        { uri: string; resultId: string },
+        {
+            selections: ISlickRange[];
+        },
+        void
+    >("getActiveSelections");
 }
 
 export enum GridContextMenuAction {

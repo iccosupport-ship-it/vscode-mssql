@@ -147,6 +147,7 @@ export const QueryMessageTab = () => {
     };
     const [columnSizingOption] = useState<TableColumnSizingOptions>(sizingOptions);
 
+    // Resize observer to track container height changes so the grid can adjust accordingly
     useEffect(() => {
         if (!containerRef.current) return;
 
@@ -161,7 +162,7 @@ export const QueryMessageTab = () => {
         return () => {
             resizeObserver.disconnect();
         };
-    }, []); // Empty dependency array ensures this runs only once on mount and unmount
+    }, []);
 
     return (
         <div

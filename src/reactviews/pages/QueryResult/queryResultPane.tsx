@@ -13,24 +13,21 @@ import {
     Text,
     Spinner,
 } from "@fluentui/react-components";
-import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { DatabaseSearch24Regular, ErrorCircle24Regular, OpenRegular } from "@fluentui/react-icons";
 import * as qr from "../../../sharedInterfaces/queryResult";
-import ResultGrid, { ResultGridHandle } from "./resultGrid";
-import CommandBar from "./commandBar";
-import { TextView } from "./textView";
 import { locConstants } from "../../common/locConstants";
-import { ACTIONBAR_WIDTH_PX, SCROLLBAR_PX, TABLE_ALIGN_PX } from "./table/table";
 import { hasResultsOrMessages } from "./queryResultUtils";
 import { QueryResultCommandsContext } from "./queryResultStateProvider";
 import { useQueryResultSelector } from "./queryResultSelector";
 import { ExecuteCommandRequest, WebviewAction } from "../../../sharedInterfaces/webview";
 import { ExecutionPlanGraph } from "../../../sharedInterfaces/executionPlan";
-import { SLICKGRID_ROW_ID_PROP } from "./table/utils";
+import { getGridCount } from "./table/utils";
 import { eventMatchesShortcut } from "../../common/keyboardUtils";
 import { useVscodeWebview2 } from "../../common/vscodeWebviewProvider2";
 import { QueryMessageTab } from "./queryMessageTab";
 import { QueryExecutionPlanTab } from "./queryExecutionPlanTab";
+import { QueryResultsTab } from "./queryResultsTab";
 
 const useStyles = makeStyles({
     root: {
@@ -55,34 +52,6 @@ const useStyles = makeStyles({
         width: "100%",
         height: "100%",
         overflow: "auto",
-    },
-    queryResultContainer: {
-        width: "100%",
-        position: "relative",
-        display: "flex",
-        fontWeight: "normal",
-    },
-    textViewContainer: {
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        fontWeight: "normal",
-    },
-    queryResultPaneOpenButton: {
-        position: "absolute",
-        top: "0px",
-        right: "0px",
-    },
-    messagesLink: {
-        fontSize: "var(--vscode-editor-font-size)",
-        fontFamily: "var(--vscode-editor-font-family)",
-    },
-    messagesRows: {
-        lineHeight: "18px",
-        fontSize: "var(--vscode-editor-font-size)",
-        flexDirection: "row",
-        borderBottom: "none",
     },
     noResultMessage: {
         fontSize: "14px",
@@ -133,8 +102,6 @@ const useStyles = makeStyles({
     },
 });
 
-const MIN_GRID_HEIGHT = 273; // Minimum height for a grid
-
 function getAvailableHeight(resultPaneParent: HTMLDivElement, ribbonRef: HTMLDivElement) {
     return resultPaneParent.clientHeight - ribbonRef.clientHeight;
 }
@@ -156,7 +123,6 @@ export const QueryResultPane = () => {
     );
     const messages = useQueryResultSelector<qr.IMessage[]>((s) => s.messages);
     const uri = useQueryResultSelector<string | undefined>((s) => s.uri);
-    const fontSettings = useQueryResultSelector<qr.FontSettings>((s) => s.fontSettings);
     const tabStates = useQueryResultSelector<qr.QueryResultTabStates | undefined>(
         (s) => s.tabStates,
     );
@@ -170,256 +136,8 @@ export const QueryResultPane = () => {
 
     const resultPaneParentRef = useRef<HTMLDivElement>(null);
     const ribbonRef = useRef<HTMLDivElement>(null);
-    const gridParentRef = useRef<HTMLDivElement>(null);
     const scrollablePanelRef = useRef<HTMLDivElement>(null);
     //const [messageGridHeight, setMessageGridHeight] = useState(0);
-    const gridRefs = useRef<Array<ResultGridHandle | undefined>>([]);
-    const [maximizedGridIndex, setMaximizedGridIndex] = useState<number | undefined>(undefined);
-    const gridIndexByElementIdRef = useRef<Record<string, number>>({});
-    const gridElementIdsRef = useRef<string[]>([]);
-
-    const getGridCount = useCallback(() => {
-        let count = 0;
-        const batchIds = Object.keys(resultSetSummaries ?? {});
-        for (const batchId of batchIds) {
-            const summary = resultSetSummaries[parseInt(batchId)];
-            if (summary) {
-                count += Object.keys(summary).length;
-            }
-        }
-        return count;
-    }, [resultSetSummaries]);
-
-    // Resize grid when parent element resizes
-    useEffect(() => {
-        const gridCount = getGridCount();
-        if (gridCount === 0 && messages?.length === 0) {
-            return; // Exit if there are no results/messages grids to render
-        }
-
-        const resultPaneParent = resultPaneParentRef.current;
-        if (!resultPaneParent) {
-            return;
-        }
-        const observer = new ResizeObserver(() => {
-            if (!gridRefs.current || !ribbonRef.current) {
-                return;
-            }
-
-            const availableHeight = getAvailableHeight(resultPaneParent, ribbonRef.current);
-            if (resultPaneParent.clientWidth && availableHeight) {
-                const gridHeight = calculateGridHeight(gridCount, availableHeight);
-                const gridWidth = calculateGridWidth(resultPaneParent, gridCount, availableHeight);
-                if (gridCount > 1) {
-                    gridRefs.current.forEach((gridRef) => {
-                        gridRef?.resizeGrid(gridWidth, gridHeight);
-                    });
-                } else if (gridCount === 1) {
-                    gridRefs.current[0]?.resizeGrid(gridWidth, gridHeight);
-                }
-            }
-        });
-
-        observer.observe(resultPaneParent);
-
-        return () => {
-            observer.disconnect();
-        };
-    }, [getGridCount, messages, tabStates?.resultPaneTab]);
-
-    const calculateGridHeight = (gridCount: number, availableHeight: number) => {
-        if (gridCount > 1) {
-            // Calculate the grid height, ensuring it's not smaller than the minimum height
-            return Math.max(
-                (availableHeight - gridCount * TABLE_ALIGN_PX) / gridCount,
-                MIN_GRID_HEIGHT,
-            );
-        }
-        // gridCount is 1
-        return availableHeight - TABLE_ALIGN_PX;
-    };
-
-    const calculateGridWidth = (
-        resultPaneParent: HTMLDivElement,
-        gridCount: number,
-        availableHeight: number,
-    ) => {
-        if (gridCount > 1) {
-            let scrollbarAdjustment =
-                gridCount * MIN_GRID_HEIGHT >= availableHeight ? SCROLLBAR_PX : 0;
-
-            return resultPaneParent.clientWidth - ACTIONBAR_WIDTH_PX - scrollbarAdjustment;
-        }
-        // gridCount is 1
-        return resultPaneParent.clientWidth - ACTIONBAR_WIDTH_PX;
-    };
-
-    const linkHandler = (fileContent: string, fileType: string) => {
-        if (context) {
-            context.openFileThroughLink(fileContent, fileType);
-        }
-    };
-
-    //#region Result Display (Grid or Text)
-    const getCurrentViewMode = useCallback((): qr.QueryResultViewMode => {
-        return tabStates?.resultViewMode ?? qr.QueryResultViewMode.Grid;
-    }, [tabStates?.resultViewMode]);
-
-    const hideOtherGrids = useCallback((gridIndexToKeep: number) => {
-        gridRefs.current.forEach((grid, index) => {
-            if (!grid || index === gridIndexToKeep) {
-                return;
-            }
-            grid.hideGrid();
-        });
-    }, []);
-
-    const showOtherGrids = useCallback((gridIndexToKeep: number) => {
-        gridRefs.current.forEach((grid, index) => {
-            if (!grid || index === gridIndexToKeep) {
-                return;
-            }
-            grid.showGrid();
-        });
-    }, []);
-
-    const maximizeResults = useCallback((gridRef: ResultGridHandle) => {
-        if (!resultPaneParentRef.current || !ribbonRef.current) {
-            return;
-        }
-
-        const height =
-            getAvailableHeight(resultPaneParentRef.current, ribbonRef.current) - TABLE_ALIGN_PX;
-        const width = resultPaneParentRef.current.clientWidth - ACTIONBAR_WIDTH_PX;
-
-        gridRef.resizeGrid(width, height);
-    }, []);
-
-    const restoreResults = useCallback(
-        (scrollToGridIndex?: number) => {
-            if (!resultPaneParentRef.current || !ribbonRef.current) {
-                return;
-            }
-
-            const availableHeight = getAvailableHeight(
-                resultPaneParentRef.current,
-                ribbonRef.current,
-            );
-            const definedGridRefs = gridRefs.current.filter(
-                (grid): grid is ResultGridHandle => !!grid,
-            );
-
-            if (definedGridRefs.length === 0) {
-                return;
-            }
-
-            const height = calculateGridHeight(definedGridRefs.length, availableHeight);
-            const width = calculateGridWidth(
-                resultPaneParentRef.current,
-                definedGridRefs.length,
-                availableHeight,
-            );
-
-            definedGridRefs.forEach((gridRef) => {
-                gridRef.resizeGrid(width, height);
-            });
-
-            if (scrollToGridIndex !== undefined && resultSetSummaries) {
-                setTimeout(() => {
-                    let currentIndex = 0;
-                    for (const batchIdStr in resultSetSummaries) {
-                        const batchId = parseInt(batchIdStr);
-                        for (const resultIdStr in resultSetSummaries[batchId]) {
-                            const resultId = parseInt(resultIdStr);
-                            if (currentIndex === scrollToGridIndex) {
-                                const gridElement = document.getElementById(
-                                    `grid-parent-${batchId}-${resultId}`,
-                                );
-                                if (gridElement) {
-                                    gridElement.scrollIntoView({
-                                        behavior: "instant",
-                                        block: "start",
-                                    });
-                                }
-                                return;
-                            }
-                            currentIndex++;
-                        }
-                    }
-                }, 100);
-            }
-        },
-        [resultSetSummaries],
-    );
-
-    const toggleGridMaximize = useCallback(
-        (gridIndex: number) => {
-            if (getGridCount() <= 1) {
-                return;
-            }
-
-            const targetGrid = gridRefs.current[gridIndex];
-            if (!targetGrid) {
-                return;
-            }
-
-            if (maximizedGridIndex === gridIndex) {
-                showOtherGrids(gridIndex);
-                restoreResults(gridIndex);
-                setMaximizedGridIndex(undefined);
-                return;
-            }
-
-            if (maximizedGridIndex !== undefined && gridRefs.current[maximizedGridIndex]) {
-                showOtherGrids(maximizedGridIndex);
-                restoreResults(maximizedGridIndex);
-            } else {
-                restoreResults();
-            }
-
-            maximizeResults(targetGrid);
-            hideOtherGrids(gridIndex);
-            setMaximizedGridIndex(gridIndex);
-        },
-        [
-            getGridCount,
-            hideOtherGrids,
-            maximizeResults,
-            restoreResults,
-            showOtherGrids,
-            maximizedGridIndex,
-        ],
-    );
-
-    const getGridIndexFromElement = useCallback((element: Element | null): number | undefined => {
-        let current: Element | null = element;
-        while (current) {
-            if (current instanceof HTMLElement) {
-                const mappedIndex = gridIndexByElementIdRef.current[current.id];
-                if (typeof mappedIndex === "number") {
-                    return mappedIndex;
-                }
-                current = current.parentElement;
-            } else {
-                break;
-            }
-        }
-        return undefined;
-    }, []);
-
-    const resolveGridIndexForShortcut = useCallback((): number | undefined => {
-        const activeIndex = getGridIndexFromElement(document.activeElement);
-        if (activeIndex !== undefined && gridRefs.current[activeIndex]) {
-            return activeIndex;
-        }
-
-        if (maximizedGridIndex !== undefined && gridRefs.current[maximizedGridIndex]) {
-            return maximizedGridIndex;
-        }
-
-        const firstAvailableIndex = gridRefs.current.findIndex((grid) => !!grid);
-        return firstAvailableIndex === -1 ? undefined : firstAvailableIndex;
-    }, [getGridIndexFromElement, maximizedGridIndex]);
 
     const navigateGrid = useCallback(
         (direction: 1 | -1) => {
@@ -592,154 +310,6 @@ export const QueryResultPane = () => {
         showOtherGrids,
         tabStates?.resultPaneTab,
     ]);
-
-    const renderResultSet = (
-        batchId: number,
-        resultId: number,
-        gridIndex: number,
-        totalGridCount: number,
-    ) => {
-        const divId = `grid-parent-${batchId}-${resultId}`;
-        const gridId = `resultGrid-${batchId}-${resultId}`;
-        const viewMode = getCurrentViewMode();
-
-        gridIndexByElementIdRef.current[divId] = gridIndex;
-        gridElementIdsRef.current[gridIndex] = divId;
-
-        return (
-            <div
-                id={divId}
-                className={classes.queryResultContainer}
-                ref={gridParentRef}
-                style={{
-                    height:
-                        resultPaneParentRef.current && ribbonRef.current
-                            ? `${calculateGridHeight(
-                                  totalGridCount,
-                                  getAvailableHeight(
-                                      resultPaneParentRef.current!,
-                                      ribbonRef.current!,
-                                  ),
-                              )}px`
-                            : "",
-                    fontFamily: fontSettings.fontFamily
-                        ? fontSettings.fontFamily
-                        : "var(--vscode-font-family)",
-                    fontSize: `${fontSettings.fontSize ?? 12}px`,
-                }}>
-                {/* Render Grid View */}
-                {viewMode === qr.QueryResultViewMode.Grid && (
-                    <ResultGrid
-                        loadFunc={async (offset: number, count: number): Promise<any[]> => {
-                            const response = await context.extensionRpc.sendRequest(
-                                qr.GetRowsRequest.type,
-                                {
-                                    uri: uri!,
-                                    batchId: batchId,
-                                    resultId: resultId,
-                                    rowStart: offset,
-                                    numberOfRows: count,
-                                },
-                            );
-
-                            if (!response) {
-                                return [];
-                            }
-                            let r = response as qr.ResultSetSubset;
-                            var columnLength =
-                                resultSetSummaries[batchId][resultId]?.columnInfo?.length;
-                            return r.rows.map((r, rowOffset) => {
-                                let dataWithSchema: {
-                                    [key: string]: any;
-                                } = {};
-                                // skip the first column since its a number column
-                                for (let i = 1; columnLength && i < columnLength + 1; i++) {
-                                    const cell = r[i - 1];
-                                    const displayValue = cell.isNull
-                                        ? "NULL"
-                                        : (cell.displayValue ?? "");
-                                    const ariaLabel = displayValue;
-                                    dataWithSchema[(i - 1).toString()] = {
-                                        displayValue: displayValue,
-                                        ariaLabel: ariaLabel,
-                                        isNull: cell.isNull,
-                                        invariantCultureDisplayValue: displayValue,
-                                    };
-                                    dataWithSchema[SLICKGRID_ROW_ID_PROP] = offset + rowOffset;
-                                }
-                                return dataWithSchema;
-                            });
-                        }}
-                        ref={(gridRef) => {
-                            gridRefs.current[gridIndex] = gridRef ?? undefined;
-                        }}
-                        resultSetSummary={resultSetSummaries[batchId][resultId]}
-                        gridParentRef={gridParentRef}
-                        uri={uri}
-                        linkHandler={linkHandler}
-                        gridId={gridId}
-                    />
-                )}
-
-                {viewMode === qr.QueryResultViewMode.Grid && (
-                    <CommandBar
-                        uri={uri}
-                        resultSetSummary={resultSetSummaries[batchId][resultId]}
-                        viewMode={viewMode}
-                        onToggleMaximize={() => toggleGridMaximize(gridIndex)}
-                        isMaximized={maximizedGridIndex === gridIndex}
-                    />
-                )}
-            </div>
-        );
-    };
-
-    const renderResultPanel = () => {
-        const viewMode = getCurrentViewMode();
-        gridIndexByElementIdRef.current = {};
-        gridElementIdsRef.current = [];
-
-        // For text view, render a single TextView with all result sets and one CommandBar
-        if (viewMode === qr.QueryResultViewMode.Text) {
-            return (
-                <div className={classes.textViewContainer}>
-                    <div style={{ flex: 1, display: "flex", flexDirection: "row" }}>
-                        <div
-                            style={{
-                                width: `calc(100% - ${ACTIONBAR_WIDTH_PX}px)`,
-                                height: "100%",
-                            }}>
-                            <TextView
-                                uri={uri}
-                                resultSetSummaries={resultSetSummaries}
-                                fontSettings={fontSettings}
-                            />
-                        </div>
-                        <CommandBar uri={uri} viewMode={viewMode} />
-                    </div>
-                </div>
-            );
-        }
-
-        // Calculate total grid count
-        let totalGridCount = getGridCount();
-
-        const results = [];
-        let count = 0;
-        for (const batchIdStr in resultSetSummaries ?? {}) {
-            const batchId = parseInt(batchIdStr);
-            for (const resultIdStr in resultSetSummaries[batchId] ?? {}) {
-                const resultId = parseInt(resultIdStr);
-                results.push(
-                    <React.Fragment key={`result-${batchId}-${resultId}`}>
-                        {renderResultSet(batchId, resultId, count, totalGridCount)}
-                    </React.Fragment>,
-                );
-                count++;
-            }
-        }
-        return results;
-    };
     //#endregion
 
     const getWebviewLocation = async () => {
@@ -857,7 +427,7 @@ export const QueryResultPane = () => {
                                     ?.label,
                             )}
                             key={qr.QueryResultPaneTabs.Results}>
-                            {locConstants.queryResult.results(getGridCount())}
+                            {locConstants.queryResult.results(getGridCount(resultSetSummaries))}
                         </Tab>
                     )}
                     <Tab
@@ -907,9 +477,7 @@ export const QueryResultPane = () => {
                         { uri: uri, scrollTop },
                     );
                 }}>
-                {tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Results &&
-                    Object.keys(resultSetSummaries).length > 0 &&
-                    renderResultPanel()}
+                {tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Results && <QueryResultsTab />}
                 {tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Messages && (
                     <QueryMessageTab />
                 )}

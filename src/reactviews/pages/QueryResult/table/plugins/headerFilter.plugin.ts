@@ -15,9 +15,9 @@ import { EventManager } from "../../../../common/eventManager";
 import type { ColumnMenuPopupAnchorRect, FilterListItem, FilterValue } from "./ColumnMenuPopup";
 
 import {
+    ColumnFilterMap,
     ColumnFilterState,
     GetFiltersRequest,
-    GridColumnMap,
     SetFiltersRequest,
     ShowFilterDisabledMessageRequest,
     SortProperties,
@@ -553,15 +553,17 @@ export class HeaderMenu<T extends Slick.SlickData> {
                     GetFiltersRequest.type,
                     {
                         uri: this.uri,
+                        resultId: this.gridId,
                     },
                 );
                 if (!gridColumnMapArray) {
-                    gridColumnMapArray = [];
+                    return;
                 }
-                // Drill down into the grid column map array and clear the filter values for the specified column
+
                 gridColumnMapArray = this.clearFilterValues(gridColumnMapArray, columnDef.id!);
                 await this.queryResultContext.extensionRpc.sendRequest(SetFiltersRequest.type, {
                     uri: this.uri,
+                    resultId: this.gridId,
                     filters: gridColumnMapArray,
                 });
             }
@@ -583,25 +585,18 @@ export class HeaderMenu<T extends Slick.SlickData> {
      * @returns
      */
     private async updateState(newState: ColumnFilterState, columnId: string): Promise<void> {
-        let newStateArray: GridColumnMap[];
-        // Check if there is any existing filter state
-        if (!this.uri) {
-            this.queryResultContext.log("no uri set for query result state");
-            return;
-        }
         let currentFiltersArray = await this.queryResultContext.extensionRpc.sendRequest(
             GetFiltersRequest.type,
             {
                 uri: this.uri,
+                resultId: this.gridId,
             },
         );
-        if (!currentFiltersArray) {
-            currentFiltersArray = [];
-        }
-        newStateArray = this.combineFilters(currentFiltersArray, newState, columnId);
+        currentFiltersArray[columnId] = newState;
         await this.queryResultContext.extensionRpc.sendRequest(SetFiltersRequest.type, {
             uri: this.uri,
-            filters: newStateArray,
+            resultId: this.gridId,
+            filters: currentFiltersArray,
         });
     }
 
@@ -611,69 +606,12 @@ export class HeaderMenu<T extends Slick.SlickData> {
      * @param columnId
      * @returns
      */
-    private clearFilterValues(gridFiltersArray: GridColumnMap[], columnId: string) {
-        const targetGridFilters = gridFiltersArray.find((gridFilters) => gridFilters[this.gridId]);
-
-        if (!targetGridFilters) {
-            return gridFiltersArray;
-        }
-
-        for (const columnFilterMap of targetGridFilters[this.gridId]) {
-            if (columnFilterMap[columnId]) {
-                columnFilterMap[columnId] = columnFilterMap[columnId].map((filterState) => ({
-                    ...filterState,
-                    filterValues: [],
-                }));
-            }
-        }
-
+    private clearFilterValues(gridFiltersArray: ColumnFilterMap, columnId: string) {
+        gridFiltersArray[columnId] = {
+            ...gridFiltersArray[columnId],
+            filterValues: [],
+        };
         return gridFiltersArray;
-    }
-
-    /**
-     * Combines two GridColumnMaps into one, keeping filters separate for different gridIds and removing any duplicate filterValues within the same column id
-     * @param currentFiltersArray filters array for all grids
-     * @param newFilters
-     * @param columnId
-     * @returns
-     */
-    private combineFilters(
-        gridFiltersArray: GridColumnMap[],
-        newFilterState: ColumnFilterState,
-        columnId: string,
-    ): GridColumnMap[] {
-        // Find the appropriate GridColumnFilterMap for the gridId
-        let targetGridFilters = gridFiltersArray.find((gridFilters) => gridFilters[this.gridId]);
-
-        if (!targetGridFilters) {
-            // If no GridColumnFilterMap found for the gridId, create a new one
-            targetGridFilters = { [this.gridId]: [] };
-            gridFiltersArray.push(targetGridFilters);
-        }
-
-        let columnFilterMap = targetGridFilters[this.gridId].find((map) => map[columnId]);
-
-        if (!columnFilterMap) {
-            // If no existing ColumnFilterMap for this column, create a new one
-            columnFilterMap = { [columnId]: [newFilterState] };
-            targetGridFilters[this.gridId].push(columnFilterMap);
-        } else {
-            // Update the existing column filter state
-            const filterStates = columnFilterMap[columnId];
-            const existingIndex = filterStates.findIndex(
-                (filter) => filter.columnDef === newFilterState.columnDef,
-            );
-
-            if (existingIndex !== -1) {
-                // Replace existing filter state for the column
-                filterStates[existingIndex] = newFilterState;
-            } else {
-                // Add new filter state for this column
-                filterStates.push(newFilterState);
-            }
-        }
-
-        return [...gridFiltersArray];
     }
 
     private async handleMenuItemClick(
