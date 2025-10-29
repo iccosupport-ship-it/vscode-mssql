@@ -13,7 +13,7 @@ import {
     Text,
     Spinner,
 } from "@fluentui/react-components";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { DatabaseSearch24Regular, ErrorCircle24Regular, OpenRegular } from "@fluentui/react-icons";
 import * as qr from "../../../sharedInterfaces/queryResult";
 import { locConstants } from "../../common/locConstants";
@@ -102,10 +102,6 @@ const useStyles = makeStyles({
     },
 });
 
-function getAvailableHeight(resultPaneParent: HTMLDivElement, ribbonRef: HTMLDivElement) {
-    return resultPaneParent.clientHeight - ribbonRef.clientHeight;
-}
-
 export const QueryResultPane = () => {
     const classes = useStyles();
     const context = useContext(QueryResultCommandsContext);
@@ -139,52 +135,8 @@ export const QueryResultPane = () => {
     const scrollablePanelRef = useRef<HTMLDivElement>(null);
     //const [messageGridHeight, setMessageGridHeight] = useState(0);
 
-    const navigateGrid = useCallback(
-        (direction: 1 | -1) => {
-            const total = getGridCount();
-            if (total <= 1) {
-                return;
-            }
-
-            const currentIndex = resolveGridIndexForShortcut();
-            let targetIndex: number;
-            if (currentIndex === undefined) {
-                targetIndex = direction > 0 ? 0 : total - 1;
-            } else {
-                targetIndex = (currentIndex + direction + total) % total;
-            }
-
-            if (maximizedGridIndex !== undefined) {
-                showOtherGrids(maximizedGridIndex);
-                restoreResults(targetIndex);
-                setMaximizedGridIndex(undefined);
-            }
-
-            const targetId = gridElementIdsRef.current[targetIndex];
-            if (targetId) {
-                document.getElementById(targetId)?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center",
-                });
-            }
-
-            gridRefs.current[targetIndex]?.focusGrid?.();
-        },
-        [
-            getGridCount,
-            resolveGridIndexForShortcut,
-            maximizedGridIndex,
-            showOtherGrids,
-            restoreResults,
-            setMaximizedGridIndex,
-        ],
-    );
-
     useEffect(() => {
         const handler = (event: KeyboardEvent) => {
-            const isResultsTab = tabStates?.resultPaneTab === qr.QueryResultPaneTabs.Results;
-            const viewMode = getCurrentViewMode();
-            const gridCount = getGridCount();
             let handled = false;
             if (
                 eventMatchesShortcut(
@@ -204,64 +156,6 @@ export const QueryResultPane = () => {
             ) {
                 context.setResultTab(qr.QueryResultPaneTabs.Messages);
                 handled = true;
-            } else if (
-                eventMatchesShortcut(
-                    event,
-                    keyboardShortcuts[WebviewAction.QQueryResultSwitchToQueryPlanTab]
-                        ?.keyCombination,
-                )
-            ) {
-                if (isExecutionPlan) {
-                    context.setResultTab(qr.QueryResultPaneTabs.ExecutionPlan);
-                    handled = true;
-                }
-            } else if (
-                eventMatchesShortcut(
-                    event,
-                    keyboardShortcuts[WebviewAction.QueryResultSwitchToTextView]?.keyCombination,
-                )
-            ) {
-                if (isResultsTab) {
-                    const newMode =
-                        viewMode === qr.QueryResultViewMode.Grid
-                            ? qr.QueryResultViewMode.Text
-                            : qr.QueryResultViewMode.Grid;
-                    context.setResultViewMode(newMode);
-                    handled = true;
-                }
-            } else if (
-                eventMatchesShortcut(
-                    event,
-                    keyboardShortcuts[WebviewAction.QueryResultMaximizeGrid]?.keyCombination,
-                )
-            ) {
-                if (isResultsTab && viewMode === qr.QueryResultViewMode.Grid && gridCount > 1) {
-                    const targetIndex = resolveGridIndexForShortcut();
-                    if (targetIndex !== undefined) {
-                        toggleGridMaximize(targetIndex);
-                        handled = true;
-                    }
-                }
-            } else if (
-                eventMatchesShortcut(
-                    event,
-                    keyboardShortcuts[WebviewAction.QueryResultPrevGrid]?.keyCombination,
-                )
-            ) {
-                if (isResultsTab && viewMode === qr.QueryResultViewMode.Grid && gridCount > 0) {
-                    navigateGrid(-1);
-                    handled = true;
-                }
-            } else if (
-                eventMatchesShortcut(
-                    event,
-                    keyboardShortcuts[WebviewAction.QueryResultNextGrid]?.keyCombination,
-                )
-            ) {
-                if (isResultsTab && viewMode === qr.QueryResultViewMode.Grid && gridCount > 0) {
-                    navigateGrid(1);
-                    handled = true;
-                }
             }
             if (handled) {
                 event.preventDefault();
@@ -273,43 +167,7 @@ export const QueryResultPane = () => {
         return () => {
             document.removeEventListener("keydown", handler, true);
         };
-    }, [
-        tabStates?.resultPaneTab,
-        getCurrentViewMode,
-        getGridCount,
-        resolveGridIndexForShortcut,
-        toggleGridMaximize,
-        navigateGrid,
-        context,
-        resultSetSummaries,
-    ]);
-
-    useEffect(() => {
-        if (maximizedGridIndex === undefined) {
-            return;
-        }
-
-        const shouldReset =
-            tabStates?.resultPaneTab !== qr.QueryResultPaneTabs.Results ||
-            getCurrentViewMode() !== qr.QueryResultViewMode.Grid ||
-            getGridCount() <= 1 ||
-            !gridRefs.current[maximizedGridIndex];
-
-        if (!shouldReset) {
-            return;
-        }
-
-        showOtherGrids(maximizedGridIndex);
-        restoreResults(maximizedGridIndex);
-        setMaximizedGridIndex(undefined);
-    }, [
-        getCurrentViewMode,
-        getGridCount,
-        maximizedGridIndex,
-        restoreResults,
-        showOtherGrids,
-        tabStates?.resultPaneTab,
-    ]);
+    }, [tabStates?.resultPaneTab, getGridCount, context, resultSetSummaries]);
     //#endregion
 
     const getWebviewLocation = async () => {

@@ -55,9 +55,13 @@ export const QueryMessageTab = () => {
         return;
     }
     const messages = useQueryResultSelector<qr.IMessage[]>((s) => s.messages);
+    const tabStates = useQueryResultSelector((state) => state.tabStates);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerHeight, setContainerHeight] = useState(0);
+
+    const dataGridRef = useRef<any>(null);
+    const scrollOffsetRef = useRef<number>(0);
 
     const columnsDef: TableColumnDefinition<qr.IMessage>[] = [
         createTableColumn({
@@ -164,6 +168,39 @@ export const QueryMessageTab = () => {
         };
     }, []);
 
+    // Restore grid view container scroll position on mount
+    useEffect(() => {
+        async function restoreGridViewContainerScrollPosition() {
+            const scrollPosition = await context?.extensionRpc.sendRequest(
+                qr.GetMessagesTabScrollPositionRequest.type,
+                {
+                    uri: uri,
+                },
+            );
+            if (scrollPosition && scrollPosition.scrollTop > 0 && dataGridRef.current) {
+                // Use scrollTo method for FixedSizeList
+                dataGridRef.current.scrollTo(scrollPosition.scrollTop);
+                scrollOffsetRef.current = scrollPosition.scrollTop;
+            }
+        }
+
+        async function storeGridViewContainerScrollPosition() {
+            if (scrollOffsetRef.current > 0) {
+                await context?.extensionRpc.sendNotification(
+                    qr.SetMessagesTabScrollPositionNotification.type,
+                    {
+                        uri: uri,
+                        scrollTop: scrollOffsetRef.current,
+                    },
+                );
+            }
+        }
+        void restoreGridViewContainerScrollPosition();
+        return () => {
+            void storeGridViewContainerScrollPosition();
+        };
+    }, [context, uri, tabStates]);
+
     return (
         <div
             ref={containerRef}
@@ -181,7 +218,15 @@ export const QueryMessageTab = () => {
                 role={locConstants.queryResult.messages}
                 aria-label={locConstants.queryResult.messages}
                 aria-roledescription={locConstants.queryResult.messages}>
-                <DataGridBody<qr.IMessage> itemSize={18} height={containerHeight}>
+                <DataGridBody<qr.IMessage>
+                    itemSize={18}
+                    height={containerHeight}
+                    listProps={{
+                        ref: dataGridRef,
+                        onScroll: (e: any) => {
+                            scrollOffsetRef.current = e.scrollOffset;
+                        },
+                    }}>
                     {renderRow}
                 </DataGridBody>
             </DataGrid>

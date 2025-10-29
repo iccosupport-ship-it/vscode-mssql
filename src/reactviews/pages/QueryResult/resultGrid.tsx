@@ -148,6 +148,7 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
     };
 
     const fetchRows = async (offset: number, count: number) => {
+        console.log("Fetching rows:", props.gridId, offset, count);
         // Making sure we don't fetch more rows than available
         if (props.resultSetSummary && offset + count > props.resultSetSummary.rowCount) {
             count = props.resultSetSummary.rowCount - offset;
