@@ -67,21 +67,16 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         ) ?? 5000;
     const fontSettings = useQueryResultSelector((state) => state.fontSettings);
     const autoSizeColumns = useQueryResultSelector((state) => state.autoSizeColumns);
-    const rowCount = useQueryResultSelector<number | undefined>((state) => {
-        return state.resultSetSummaries[props.batchId][props.resultId]?.rowCount;
-    });
-    const latestRowCountRef = useRef<number | undefined>(rowCount);
-    useEffect(() => {
-        latestRowCountRef.current = rowCount;
-    }, [rowCount]);
-    const columnInfo = useQueryResultSelector<qr.IDbColumn[] | undefined>(
-        (state) => {
-            return state.resultSetSummaries[props.batchId][props.resultId]?.columnInfo;
-        },
-        (prev, next) => {
-            return deepEqual(prev, next);
-        },
+
+    const resultSetSummary = useQueryResultSelector(
+        (state) => state.resultSetSummaries[props.batchId]?.[props.resultId],
+        (a, b) => deepEqual(a, b), // Deep equality check to avoid unnecessary re-renders
     );
+
+    const latestRowCountRef = useRef<number>(resultSetSummary?.rowCount ?? 0);
+    useEffect(() => {
+        latestRowCountRef.current = resultSetSummary?.rowCount ?? 0;
+    }, [resultSetSummary?.rowCount]);
 
     const gridContainerRef = useRef<HTMLDivElement>(null);
     const isTableCreated = useRef<boolean>(false);
@@ -131,7 +126,7 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         if (!response) {
             return [];
         }
-        var columnLength = columnInfo?.length;
+        var columnLength = resultSetSummary?.columnInfo?.length;
         return response.rows.map((r, rowOffset) => {
             let dataWithSchema: {
                 [key: string]: any;
@@ -186,39 +181,14 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         updateTableKeyBindings();
     }, [keyBindings]);
 
-    // Update row count in slickgrid when row count changes
-    useEffect(() => {
-        function updateTableRowCount() {
-            console.log("Updating table row count to ", rowCount);
-            if (tableRef.current && rowCount !== undefined && rowCount > 0) {
-                // Update the data provider with new row count
-                const dataProvider = tableRef.current.getData() as HybridDataProvider<any>;
-                if (dataProvider && "length" in dataProvider) {
-                    dataProvider.length = rowCount;
-
-                    // Also update the underlying collection
-                    if (dataProvider.dataRows && "setLength" in dataProvider.dataRows) {
-                        dataProvider.dataRows.setLength(rowCount);
-                    }
-                }
-                tableRef.current.updateRowCount();
-                tableRef.current.rerenderGrid();
-            }
-        }
-        updateTableRowCount();
-    }, [rowCount]);
-
     // On Column Info change, create the table. Ideally this should run only once.
     useEffect(() => {
         const createTable = async () => {
-            if (!columnInfo) {
-                console.log("Waiting for valid columnInfo");
-                return;
-            }
             if (isTableCreated.current) {
-                console.log("Table already created, skipping recreation.");
                 return; // Maybe update column definitions instead of recreating the table
             }
+            const columnInfo = resultSetSummary?.columnInfo;
+            const rowCount = resultSetSummary?.rowCount;
             console.log("Creating table with columns: ", columnInfo, "initial rowCount:", rowCount);
 
             // Setting up dimensions based on font settings
@@ -333,8 +303,31 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
             isTableCreated.current = true;
         };
 
-        void createTable();
-    }, [columnInfo]);
+        function updateTableRowCount() {
+            const rowCount = latestRowCountRef.current;
+            console.log("Updating table row count to ", rowCount);
+            if (tableRef.current && rowCount !== undefined && rowCount > 0) {
+                // Update the data provider with new row count
+                const dataProvider = tableRef.current.getData() as HybridDataProvider<any>;
+                if (dataProvider && "length" in dataProvider) {
+                    dataProvider.length = rowCount;
+
+                    // Also update the underlying collection
+                    if (dataProvider.dataRows && "setLength" in dataProvider.dataRows) {
+                        dataProvider.dataRows.setLength(rowCount);
+                    }
+                }
+                tableRef.current.updateRowCount();
+                tableRef.current.rerenderGrid();
+            }
+        }
+
+        if (tableRef.current) {
+            updateTableRowCount();
+        } else {
+            void createTable();
+        }
+    }, [resultSetSummary]);
 
     return <div id="gridContainter" ref={gridContainerRef}></div>;
 });
