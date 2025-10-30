@@ -20,6 +20,7 @@ import {
     ResultSetSummary,
     SetColumnWidthsRequest,
     SetGridScrollPositionNotification,
+    SortProperties,
 } from "../../../../sharedInterfaces/queryResult";
 import { QueryResultReactProvider } from "../queryResultStateProvider";
 import { CopyKeybind } from "./plugins/copyKeybind.plugin";
@@ -265,7 +266,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
      */
     public async setupFilterState(): Promise<boolean> {
         let sortColumn: Slick.Column<T> | undefined = undefined;
-        let sortDirection: boolean | undefined = undefined;
+        let sortState: SortProperties | undefined = undefined;
         const filterMap = await this.context.extensionRpc.sendRequest(GetFiltersRequest.type, {
             uri: this.uri,
             resultId: this.gridId,
@@ -290,29 +291,43 @@ export class Table<T extends Slick.SlickData> implements IThemable {
             hasFilters = hasFilters || (filterState.filterValues?.length ?? 0) > 0;
 
             const columnSortDirection = filterState.sorted;
-            if (
-                (columnSortDirection === "ASC" || columnSortDirection === "DESC") &&
-                !sortDirection
-            ) {
-                sortColumn = column;
-                filterableColumn.sorted = columnSortDirection;
-                sortDirection = columnSortDirection === "ASC" ? true : false;
-            } else if (!columnSortDirection) {
-                filterableColumn.sorted = undefined;
+            let normalizedSort: SortProperties = SortProperties.NONE;
+            if (columnSortDirection === SortProperties.ASC) {
+                normalizedSort = SortProperties.ASC;
+            } else if (columnSortDirection === SortProperties.DESC) {
+                normalizedSort = SortProperties.DESC;
+            } else if (typeof columnSortDirection === "string") {
+                const upper = columnSortDirection.toUpperCase();
+                if (upper === "ASC") {
+                    normalizedSort = SortProperties.ASC;
+                } else if (upper === "DESC") {
+                    normalizedSort = SortProperties.DESC;
+                }
             }
+
+            if (!sortState && normalizedSort !== SortProperties.NONE) {
+                sortColumn = column;
+                sortState = normalizedSort;
+            }
+
+            filterableColumn.sorted =
+                normalizedSort !== SortProperties.NONE ? normalizedSort : undefined;
         }
 
         if (hasFilters) {
             await this._data.filter(this.columns);
         }
-        if (sortDirection !== undefined && sortColumn) {
+        if (sortState !== undefined && sortColumn) {
             let sortArgs = {
                 grid: this._grid,
                 multiColumnSort: false,
                 sortCol: sortColumn,
-                sortAsc: sortDirection,
+                sortAsc: sortState === SortProperties.ASC,
             };
             await this._data.sort(sortArgs);
+            this.headerFilter.updateSortStateFromExternal(sortColumn.id!, sortState);
+        } else {
+            this.headerFilter.clearSortState();
         }
         return true;
     }

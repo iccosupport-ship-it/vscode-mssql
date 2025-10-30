@@ -183,13 +183,19 @@ export class HeaderMenu<T extends Slick.SlickData> {
         $menuButton.appendTo(args.node);
 
         this._columnFilterButtonMapping.set(column.id!, buttonEl);
-        if (this._columnSortStateMapping.get(column.id!) === undefined) {
-            this._columnSortStateMapping.set(column.id!, SortProperties.NONE);
+
+        let existingSort = this._columnSortStateMapping.get(column.id!);
+        if (existingSort === undefined) {
+            existingSort = column.sorted ?? SortProperties.NONE;
+            this._columnSortStateMapping.set(column.id!, existingSort);
+        } else if (column.sorted && existingSort !== column.sorted) {
+            existingSort = column.sorted;
+            this._columnSortStateMapping.set(column.id!, existingSort);
         }
 
-        // Update sort indicator if column is sorted
-        if (column.sorted && column.sorted !== SortProperties.NONE) {
-            this.updateSortIndicator(args.node, column.sorted);
+        if (existingSort && existingSort !== SortProperties.NONE) {
+            this._currentSortColumn = column.id!;
+            this.updateSortIndicator(args.node, existingSort);
         }
     }
 
@@ -424,6 +430,57 @@ export class HeaderMenu<T extends Slick.SlickData> {
         }
         // Skip focus reset to keep the active cell in place
         await this.applySort(column, nextSort, true);
+    }
+
+    public updateSortStateFromExternal(columnId: string, sort: SortProperties): void {
+        if (!this._grid) {
+            return;
+        }
+
+        const previousSortColumn = this._currentSortColumn;
+        const updatingCurrentColumn = previousSortColumn === columnId;
+        const columns = this._grid.getColumns() as FilterableColumn<T>[];
+
+        if (previousSortColumn && previousSortColumn !== columnId) {
+            this._columnSortStateMapping.set(previousSortColumn, SortProperties.NONE);
+            const previousHeader = this.getHeaderNode(previousSortColumn);
+            if (previousHeader) {
+                this.updateSortIndicator(previousHeader, SortProperties.NONE);
+            }
+            const previousColumn = columns.find((col) => col.id === previousSortColumn);
+            if (previousColumn) {
+                previousColumn.sorted = undefined;
+            }
+        }
+
+        const targetColumn = columns.find((col) => col.id === columnId);
+        if (targetColumn) {
+            targetColumn.sorted = sort === SortProperties.NONE ? undefined : sort;
+        }
+
+        this._columnSortStateMapping.set(columnId, sort);
+
+        if (sort === SortProperties.NONE) {
+            if (updatingCurrentColumn) {
+                this._currentSortColumn = "";
+                this._grid.setSortColumn("", false);
+            }
+        } else {
+            this._currentSortColumn = columnId;
+            this._grid.setSortColumn(columnId, sort === SortProperties.ASC);
+        }
+
+        const headerNode = this.getHeaderNode(columnId);
+        if (headerNode) {
+            this.updateSortIndicator(headerNode, sort);
+        }
+    }
+
+    public clearSortState(): void {
+        if (!this._currentSortColumn) {
+            return;
+        }
+        this.updateSortStateFromExternal(this._currentSortColumn, SortProperties.NONE);
     }
 
     private async buildFilterItems(): Promise<FilterListItem[]> {
