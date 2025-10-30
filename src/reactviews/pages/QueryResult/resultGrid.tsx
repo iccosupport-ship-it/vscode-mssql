@@ -47,6 +47,8 @@ export interface ResultGridHandle {
     focusGrid: () => void;
 }
 
+export const GRID_BOTTOM_PADDING = 5;
+
 const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultGridProps, ref) => {
     const tableRef = useRef<Table<any> | null>(null);
 
@@ -73,11 +75,6 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         (a, b) => deepEqual(a, b), // Deep equality check to avoid unnecessary re-renders
     );
 
-    const latestRowCountRef = useRef<number>(resultSetSummary?.rowCount ?? 0);
-    useEffect(() => {
-        latestRowCountRef.current = resultSetSummary?.rowCount ?? 0;
-    }, [resultSetSummary?.rowCount]);
-
     const gridContainerRef = useRef<HTMLDivElement>(null);
     const isTableCreated = useRef<boolean>(false);
     if (!props.gridParentRef) {
@@ -96,21 +93,6 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
     }));
 
     const fetchRows = async (offset: number, count: number) => {
-        // Making sure we don't fetch more rows than available
-        const currentRowCount = latestRowCountRef.current;
-        if (offset < 0 || count <= 0 || currentRowCount === undefined) {
-            return []; // Invalid requests
-        }
-
-        // Adjust count if it exceeds available rows
-        if (offset + count > currentRowCount) {
-            count = currentRowCount - offset;
-        }
-
-        // After adjustment, check if count is still valid
-        if (count <= 0 || offset >= currentRowCount) {
-            return []; // No rows to fetch
-        }
         const response = await context.extensionRpc.sendRequest(qr.GetRowsRequest.type, {
             uri: uri,
             batchId: props.batchId,
@@ -150,7 +132,7 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
                 tableRef.current.layout(
                     new DOM.Dimension(
                         props.gridParentRef.current.clientWidth,
-                        props.gridParentRef.current.clientHeight,
+                        props.gridParentRef.current.clientHeight - GRID_BOTTOM_PADDING,
                     ),
                 );
             }
@@ -285,7 +267,6 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
             }
 
             isTableCreated.current = true;
-
             async function restoreGridState() {
                 if (!tableRef.current) return;
                 await tableRef.current.setupFilterState();
@@ -300,7 +281,7 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         };
 
         function updateTableRowCount() {
-            const rowCount = latestRowCountRef.current;
+            const rowCount = resultSetSummary?.rowCount;
             if (tableRef.current && rowCount !== undefined && rowCount > 0) {
                 // Update the data provider with new row count
                 const dataProvider = tableRef.current.getData() as HybridDataProvider<any>;
