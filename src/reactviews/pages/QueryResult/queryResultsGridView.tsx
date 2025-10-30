@@ -162,10 +162,9 @@ export const QueryResultsGridView = () => {
                             fontSize: `${fontSettings.fontSize ?? 12}px`,
                             display: shouldHide ? "none" : undefined,
                             height: getGridHeight(),
+                            minHeight: `min(300px, 100%)`,
                         }}>
-                        <div
-                            style={{ flex: 1, minWidth: 0, overflow: "auto", width: "100%" }}
-                            ref={containerRef}>
+                        <div style={{ flex: 1, minWidth: 0, overflow: "auto" }} ref={containerRef}>
                             <ResultGrid
                                 gridId={gridKey}
                                 key={gridKey}
