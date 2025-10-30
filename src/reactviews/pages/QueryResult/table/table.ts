@@ -274,24 +274,37 @@ export class Table<T extends Slick.SlickData> implements IThemable {
             return false;
         }
 
+        let hasFilters = false;
+
         for (const column of this.columns) {
             const filterState = filterMap[column.id!];
+            const filterableColumn = column as FilterableColumn<T>;
+
             if (!filterState) {
+                filterableColumn.filterValues = undefined;
+                filterableColumn.sorted = undefined;
                 continue;
             }
-            (column as FilterableColumn<T>).filterValues = filterState.filterValues;
-            let columnSortDirection = filterState.sorted;
+
+            filterableColumn.filterValues = filterState.filterValues;
+            hasFilters = hasFilters || (filterState.filterValues?.length ?? 0) > 0;
+
+            const columnSortDirection = filterState.sorted;
             if (
                 (columnSortDirection === "ASC" || columnSortDirection === "DESC") &&
                 !sortDirection
             ) {
                 sortColumn = column;
-                (column as FilterableColumn<T>).sorted = columnSortDirection;
+                filterableColumn.sorted = columnSortDirection;
                 sortDirection = columnSortDirection === "ASC" ? true : false;
+            } else if (!columnSortDirection) {
+                filterableColumn.sorted = undefined;
             }
         }
 
-        await this._data.filter(this.columns);
+        if (hasFilters) {
+            await this._data.filter(this.columns);
+        }
         if (sortDirection !== undefined && sortColumn) {
             let sortArgs = {
                 grid: this._grid,
@@ -416,12 +429,12 @@ export class Table<T extends Slick.SlickData> implements IThemable {
     public updateRowCount() {
         this.withRenderPreservingSelection(() => {
             this._grid.updateRowCount();
-            this._grid.render();
             if (this._autoscroll) {
                 this._grid.scrollRowIntoView(this._data.getLength() - 1, false);
             }
             this.ariaRowCount = this.grid.getDataLength();
             this.ariaColumnCount = this.grid.getColumns().length;
+            this.rerenderGrid();
         });
     }
 
