@@ -47,10 +47,15 @@ const useStyles = makeStyles({
     queryResultPaneTabs: {
         flex: 1,
     },
-    tabContent: {
+    tabContentContainer: {
+        position: "relative",
         flex: 1,
         width: "100%",
         height: "100%",
+    },
+    tabContent: {
+        position: "absolute",
+        inset: 0,
         overflow: "auto",
     },
     noResultMessage: {
@@ -303,37 +308,54 @@ export const QueryResultPane = () => {
                 )}
             </div>
 
-            <div
-                className={classes.tabContent}
-                style={{
-                    visibility:
-                        tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Results
-                            ? "visible"
-                            : "hidden",
-                }}>
-                <QueryResultsTab />
-            </div>
+            <div className={classes.tabContentContainer}>
+                <div
+                    className={classes.tabContent}
+                    style={{
+                        visibility:
+                            tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Results
+                                ? "visible"
+                                : "hidden",
+                        pointerEvents:
+                            tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Results
+                                ? "auto"
+                                : "none",
+                    }}
+                    aria-hidden={tabStates!.resultPaneTab !== qr.QueryResultPaneTabs.Results}>
+                    <QueryResultsTab />
+                </div>
 
-            <div
-                className={classes.tabContent}
-                style={{
-                    visibility:
-                        tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Messages
-                            ? "visible"
-                            : "hidden",
-                }}>
-                <QueryMessageTab />
-            </div>
+                <div
+                    className={classes.tabContent}
+                    style={{
+                        visibility:
+                            tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Messages
+                                ? "visible"
+                                : "hidden",
+                        pointerEvents:
+                            tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Messages
+                                ? "auto"
+                                : "none",
+                    }}
+                    aria-hidden={tabStates!.resultPaneTab !== qr.QueryResultPaneTabs.Messages}>
+                    <QueryMessageTab />
+                </div>
 
-            <div
-                className={classes.tabContent}
-                style={{
-                    visibility:
-                        tabStates!.resultPaneTab === qr.QueryResultPaneTabs.ExecutionPlan
-                            ? "visible"
-                            : "hidden",
-                }}>
-                <QueryExecutionPlanTab />
+                <div
+                    className={classes.tabContent}
+                    style={{
+                        visibility:
+                            tabStates!.resultPaneTab === qr.QueryResultPaneTabs.ExecutionPlan
+                                ? "visible"
+                                : "hidden",
+                        pointerEvents:
+                            tabStates!.resultPaneTab === qr.QueryResultPaneTabs.ExecutionPlan
+                                ? "auto"
+                                : "none",
+                    }}
+                    aria-hidden={tabStates!.resultPaneTab !== qr.QueryResultPaneTabs.ExecutionPlan}>
+                    <QueryExecutionPlanTab />
+                </div>
             </div>
         </div>
     );

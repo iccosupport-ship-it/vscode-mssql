@@ -239,11 +239,6 @@ export function registerCommonRequestHandlers(
     });
 
     webviewController.onNotification(qr.SetGridScrollPositionNotification.type, async (message) => {
-        if (message.scrollLeft === 0 && message.scrollTop === 0) {
-            // If both scrollLeft and scrollTop are 0, we don't need to store this position
-            return;
-        }
-
         store.gridScrollPositions.set(
             QueryResultSingletonStore.generateGridKey(message.uri, message.resultId),
             {

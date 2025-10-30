@@ -62,6 +62,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
     private _autoColumnSizePlugin: AutoColumnSize<T>;
     private copyKeybindPlugin: CopyKeybind<T>;
     private _lastScrollAt: number = 0;
+    private _isScrollStateRestored: boolean = false;
 
     constructor(
         parent: HTMLElement,
@@ -219,6 +220,14 @@ export class Table<T extends Slick.SlickData> implements IThemable {
                 return;
             }
 
+            // We want to avoid sending scroll position updates before the initial
+            // scroll position has been restored from the saved state. As restoring
+            // takes time, we will always reset the position to 0 before restoring
+            // and lose the stored position.
+            if (!this._isScrollStateRestored) {
+                return;
+            }
+
             const viewport = this._grid.getViewport();
             this._lastScrollAt = Date.now();
             await this.context.extensionRpc.sendNotification(
@@ -341,7 +350,8 @@ export class Table<T extends Slick.SlickData> implements IThemable {
             },
         );
         if (scrollPosition) {
-            setTimeout(() => {
+            this._isScrollStateRestored = true;
+            requestAnimationFrame(() => {
                 this._grid.scrollRowToTop(scrollPosition.scrollTop);
                 const containerNode = this._grid.getContainerNode();
                 const viewport = containerNode
@@ -350,7 +360,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
                 if (viewport) {
                     viewport.scrollLeft = scrollPosition.scrollLeft;
                 }
-            }, 0);
+            });
         }
     }
 
@@ -367,7 +377,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
 
         if (hadFocus) {
             // Let SlickGrid finish its render tick before restoring focus/selection
-            setTimeout(() => {
+            requestAnimationFrame(() => {
                 this.focus();
                 const recentlyScrolled = Date.now() - this._lastScrollAt < 250;
                 // Restore selection always – this does not force scroll
@@ -383,7 +393,7 @@ export class Table<T extends Slick.SlickData> implements IThemable {
                     }
                     // If not in view or user recently scrolled, skip restoring active cell to avoid snapping viewport
                 }
-            }, 0);
+            });
         }
     }
 
