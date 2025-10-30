@@ -156,6 +156,17 @@ export const QueryResultPane = () => {
             ) {
                 context.setResultTab(qr.QueryResultPaneTabs.Messages);
                 handled = true;
+            } else if (
+                eventMatchesShortcut(
+                    event,
+                    keyboardShortcuts[WebviewAction.QQueryResultSwitchToQueryPlanTab]
+                        ?.keyCombination,
+                )
+            ) {
+                if (isExecutionPlan) {
+                    context.setResultTab(qr.QueryResultPaneTabs.ExecutionPlan);
+                    handled = true;
+                }
             }
             if (handled) {
                 event.preventDefault();
