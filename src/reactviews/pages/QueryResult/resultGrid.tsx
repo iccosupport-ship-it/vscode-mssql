@@ -96,7 +96,6 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
     }));
 
     const fetchRows = async (offset: number, count: number) => {
-        console.log(`Fetching rows from ${offset} count ${count}`);
         // Making sure we don't fetch more rows than available
         const currentRowCount = latestRowCountRef.current;
         if (offset < 0 || count <= 0 || currentRowCount === undefined) {
@@ -112,7 +111,6 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
         if (count <= 0 || offset >= currentRowCount) {
             return []; // No rows to fetch
         }
-
         const response = await context.extensionRpc.sendRequest(qr.GetRowsRequest.type, {
             uri: uri,
             batchId: props.batchId,
@@ -120,9 +118,6 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
             rowStart: offset,
             numberOfRows: count,
         });
-
-        console.log(response.rows.length, "rows fetched.");
-
         if (!response) {
             return [];
         }
@@ -189,7 +184,6 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
             }
             const columnInfo = resultSetSummary?.columnInfo;
             const rowCount = resultSetSummary?.rowCount;
-            console.log("Creating table with columns: ", columnInfo, "initial rowCount:", rowCount);
 
             // Setting up dimensions based on font settings
             const DEFAULT_FONT_SIZE = 12;
@@ -273,16 +267,6 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
                 themeKind,
             );
 
-            await tableRef.current.setupFilterState();
-            await tableRef.current.restoreColumnWidths();
-            await tableRef.current.setupScrollPosition();
-            tableRef.current.headerFilter.enabled =
-                tableRef.current.grid.getDataLength() < inMemoryDataProcessingThreshold!;
-
-            tableRef.current.rerenderGrid();
-
-            tableRef.current.updateRowCount();
-
             collection.setCollectionChangedCallback((startIndex, count) => {
                 let refreshedRows = range(startIndex, startIndex + count);
                 tableRef.current?.invalidateRows(refreshedRows, true);
@@ -301,11 +285,22 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
             }
 
             isTableCreated.current = true;
+
+            async function restoreGridState() {
+                if (!tableRef.current) return;
+                await tableRef.current.setupFilterState();
+                await tableRef.current.restoreColumnWidths();
+                await tableRef.current.setupScrollPosition();
+                tableRef.current.headerFilter.enabled =
+                    tableRef.current.grid.getDataLength() < inMemoryDataProcessingThreshold!;
+
+                tableRef.current.rerenderGrid();
+            }
+            void restoreGridState();
         };
 
         function updateTableRowCount() {
             const rowCount = latestRowCountRef.current;
-            console.log("Updating table row count to ", rowCount);
             if (tableRef.current && rowCount !== undefined && rowCount > 0) {
                 // Update the data provider with new row count
                 const dataProvider = tableRef.current.getData() as HybridDataProvider<any>;

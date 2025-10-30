@@ -219,6 +219,10 @@ export function registerCommonRequestHandlers(
             QueryResultSingletonStore.generateGridKey(message.uri, message.resultId),
             message.filters,
         );
+        // Clear scroll position when filters change
+        store.gridScrollPositions.delete(
+            QueryResultSingletonStore.generateGridKey(message.uri, message.resultId),
+        );
     });
 
     webviewController.onRequest(qr.SetColumnWidthsRequest.type, async (message) => {

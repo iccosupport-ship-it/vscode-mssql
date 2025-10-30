@@ -61,6 +61,7 @@ class WebviewRpcMessageWriter extends AbstractMessageWriter implements MessageWr
  */
 export class WebviewRpc<Reducers> {
     public connection: MessageConnection;
+    private _sendRequestChains: Map<string, Promise<void>> = new Map();
 
     /**
      * Singleton instance of the WebviewRpc class.
@@ -132,12 +133,47 @@ export class WebviewRpc<Reducers> {
         this.connection.onRequest(type, handler);
     }
 
-    public sendRequest<P, R, E>(
+    public async sendRequest<P, R, E>(
         type: RequestType<P, R, E>,
         params?: P,
         token?: CancellationToken,
     ): Promise<R> {
-        return this.connection.sendRequest(type, params, token);
+        const executeRequest = async () => {
+            try {
+                const response = await this.connection.sendRequest(type, params, token);
+                return response;
+            } catch (error) {
+                throw error;
+            }
+        };
+
+        let methodKey = type.method;
+        if (methodKey === ReducerRequest.type.name) {
+            methodKey = (params as any).type;
+        }
+        const previous = this._sendRequestChains.get(methodKey) ?? Promise.resolve();
+        const resultPromise = previous.then(executeRequest);
+        const cleanupPromise = resultPromise.then(
+            () => undefined,
+            () => undefined,
+        );
+
+        this._sendRequestChains.set(methodKey, cleanupPromise);
+
+        void cleanupPromise.then(
+            () => {
+                if (this._sendRequestChains.get(methodKey) === cleanupPromise) {
+                    this._sendRequestChains.delete(methodKey);
+                }
+            },
+            () => {
+                if (this._sendRequestChains.get(methodKey) === cleanupPromise) {
+                    this._sendRequestChains.delete(methodKey);
+                }
+            },
+        );
+
+        return resultPromise;
     }
 
     public async sendNotification<P>(type: NotificationType<P>, params?: P): Promise<void> {
