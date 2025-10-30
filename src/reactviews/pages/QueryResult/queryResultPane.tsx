@@ -127,13 +127,9 @@ export const QueryResultPane = () => {
         (s) => s.executionPlanState?.executionPlanGraphs,
     );
     const { keyboardShortcuts } = useVscodeWebview2();
-    const isProgrammaticScroll = useRef(true);
-    isProgrammaticScroll.current = true;
 
     const resultPaneParentRef = useRef<HTMLDivElement>(null);
     const ribbonRef = useRef<HTMLDivElement>(null);
-    const scrollablePanelRef = useRef<HTMLDivElement>(null);
-    //const [messageGridHeight, setMessageGridHeight] = useState(0);
 
     useEffect(() => {
         const handler = (event: KeyboardEvent) => {
@@ -194,35 +190,6 @@ export const QueryResultPane = () => {
             setWebviewLocation("panel");
         });
     }, []);
-
-    useEffect(() => {
-        async function loadScrollPosition() {
-            if (uri) {
-                isProgrammaticScroll.current = true;
-                const position = await context?.extensionRpc.sendRequest(
-                    qr.GetGridPaneScrollPositionRequest.type,
-                    { uri: uri },
-                );
-                const el = scrollablePanelRef.current;
-                if (!el) return;
-
-                requestAnimationFrame(() => {
-                    el.scrollTo({
-                        top: position?.scrollTop ?? 0,
-                        behavior: "instant",
-                    });
-
-                    setTimeout(() => {
-                        isProgrammaticScroll.current = false;
-                    }, 100);
-                });
-            }
-        }
-
-        setTimeout(() => {
-            void loadScrollPosition();
-        }, 10);
-    }, [uri]);
 
     if (initilizationError) {
         return (
@@ -335,23 +302,38 @@ export const QueryResultPane = () => {
                     </Button>
                 )}
             </div>
+
             <div
                 className={classes.tabContent}
-                ref={scrollablePanelRef}
-                onScroll={(e) => {
-                    if (isProgrammaticScroll.current) return;
-                    const scrollTop = e.currentTarget.scrollTop;
-                    void context.extensionRpc.sendNotification(
-                        qr.SetGridPaneScrollPositionNotification.type,
-                        { uri: uri, scrollTop },
-                    );
+                style={{
+                    visibility:
+                        tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Results
+                            ? "visible"
+                            : "hidden",
                 }}>
-                {tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Results && <QueryResultsTab />}
-                {tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Messages && (
-                    <QueryMessageTab />
-                )}
-                {tabStates!.resultPaneTab === qr.QueryResultPaneTabs.ExecutionPlan &&
-                    isExecutionPlan && <QueryExecutionPlanTab />}
+                <QueryResultsTab />
+            </div>
+
+            <div
+                className={classes.tabContent}
+                style={{
+                    visibility:
+                        tabStates!.resultPaneTab === qr.QueryResultPaneTabs.Messages
+                            ? "visible"
+                            : "hidden",
+                }}>
+                <QueryMessageTab />
+            </div>
+
+            <div
+                className={classes.tabContent}
+                style={{
+                    visibility:
+                        tabStates!.resultPaneTab === qr.QueryResultPaneTabs.ExecutionPlan
+                            ? "visible"
+                            : "hidden",
+                }}>
+                <QueryExecutionPlanTab />
             </div>
         </div>
     );
