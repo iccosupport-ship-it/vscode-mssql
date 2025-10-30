@@ -438,7 +438,7 @@ export class SqlOutputContentProvider {
                     if (countResultSets(resultWebviewState.resultSetSummaries) === 1) {
                         resultWebviewState.tabStates.resultPaneTab = QueryResultPaneTabs.Results;
                     }
-                    this.updateWebviewState(queryRunner.uri, resultWebviewState);
+                    this.scheduleThrottledUpdate(queryRunner.uri);
                 },
             );
 
@@ -452,7 +452,7 @@ export class SqlOutputContentProvider {
                         resultWebviewState.resultSetSummaries[batchId] = {};
                     }
                     resultWebviewState.resultSetSummaries[batchId][resultId] = resultSet;
-                    this.updateWebviewState(queryRunner.uri, resultWebviewState);
+                    this.scheduleThrottledUpdate(queryRunner.uri);
                 },
             );
 
