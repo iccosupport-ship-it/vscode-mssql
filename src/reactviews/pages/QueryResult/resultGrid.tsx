@@ -232,12 +232,7 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
                 div,
                 defaultTableStyles,
                 uri,
-                {
-                    batchId: props.batchId,
-                    id: props.resultId,
-                    columnInfo: columnInfo,
-                    rowCount: rowCount ?? 0,
-                },
+                resultSetSummary,
                 context,
                 context.openFileThroughLink,
                 props.gridId,
