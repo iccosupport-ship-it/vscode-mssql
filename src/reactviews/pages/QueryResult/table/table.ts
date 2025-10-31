@@ -459,7 +459,6 @@ export class Table<T extends Slick.SlickData> implements IThemable {
             }
             this.ariaRowCount = this.grid.getDataLength();
             this.ariaColumnCount = this.grid.getColumns().length;
-            this.rerenderGrid();
         });
     }
 

@@ -294,7 +294,6 @@ const ResultGrid = forwardRef<ResultGridHandle, ResultGridProps>((props: ResultG
                     }
                 }
                 tableRef.current.updateRowCount();
-                tableRef.current.rerenderGrid();
             }
         }
 
