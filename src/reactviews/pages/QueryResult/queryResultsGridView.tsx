@@ -123,8 +123,8 @@ export const QueryResultsGridView = () => {
         });
     };
 
-    // Calculate height for each grid based on total count
-    const getGridHeight = () => {
+    // Calculate height for each grid based on row count
+    const getGridHeight = (gridItem: GridItem) => {
         const totalGrids = gridList.length;
         const percentage = 100 / totalGrids;
         // Ensure a minimum height
@@ -175,7 +175,7 @@ export const QueryResultsGridView = () => {
                                 ? fontSettings.fontFamily
                                 : "var(--vscode-font-family)",
                             fontSize: `${fontSettings.fontSize ?? 12}px`,
-                            height: isMaximized ? "100%" : getGridHeight(),
+                            height: isMaximized ? "100%" : getGridHeight(item),
                         }}>
                         <div style={{ flex: 1, minWidth: 0, overflow: "auto" }} ref={containerRef}>
                             <ResultGrid
