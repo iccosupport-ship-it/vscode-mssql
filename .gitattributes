@@ -1,2 +1,5 @@
 # Enforce LF line endings for all text files by default
 * text=auto eol=lf
+
+# Use CRLF for xlf files to match loc team format
+*.xlf text eol=crlf

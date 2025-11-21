@@ -130,7 +130,7 @@ async function extractLocalizationForExtension(extensionDir, xliffName) {
             xliffPath,
             stringXLIFF,
             false, // We don't want to run prettier on XLIFF files
-            "lf", // Use LF line endings to match .gitattributes
+            "crlf", // Use CRLF line endings to match loc team format
         );
         if (formatted2) {
             logger.success(`Created ${xliffPath}`);
