@@ -72,6 +72,13 @@ export function registerCommonRequestHandlers(
             ? webviewController
             : webviewController.getQueryResultWebviewViewController();
 
+    const getStoredState = (uri?: string) => {
+        if (!uri) {
+            return undefined;
+        }
+        return webviewViewController.getQueryResultState(uri);
+    };
+
     webviewController.onRequest(qr.GetRowsRequest.type, async (message) => {
         const result = await webviewViewController
             .getSqlOutputContentProvider()
@@ -83,6 +90,10 @@ export function registerCommonRequestHandlers(
                 message.numberOfRows,
             );
         return result;
+    });
+
+    webviewController.onRequest(qr.LoadQueryResultStateRequest.type, async (message) => {
+        return store.getQueryState(message.uri);
     });
 
     webviewController.onRequest(qr.SetEditorSelectionRequest.type, async (message) => {
@@ -301,29 +312,53 @@ export function registerCommonRequestHandlers(
     });
 
     webviewController.registerReducer("setResultTab", async (state, payload) => {
-        state.tabStates.resultPaneTab = payload.tabId;
+        if (!state?.uri) {
+            return state;
+        }
+        const storedState = getStoredState(state.uri);
+        if (!storedState) {
+            return state;
+        }
+        if (!storedState.tabStates) {
+            storedState.tabStates = {
+                resultPaneTab: payload.tabId,
+            };
+        } else {
+            storedState.tabStates.resultPaneTab = payload.tabId;
+        }
+        webviewViewController.notifyStoredState(state.uri, storedState);
         return state;
     });
     webviewController.registerReducer("setResultViewMode", async (state, payload) => {
-        if (!state.tabStates) {
-            state.tabStates = {
+        if (!state?.uri) {
+            return state;
+        }
+        const storedState = getStoredState(state.uri);
+        if (!storedState) {
+            return state;
+        }
+        if (!storedState.tabStates) {
+            storedState.tabStates = {
                 resultPaneTab: qr.QueryResultPaneTabs.Results,
                 resultViewMode: payload.viewMode,
             };
         } else {
-            state.tabStates.resultViewMode = payload.viewMode;
+            storedState.tabStates.resultViewMode = payload.viewMode;
         }
+        webviewViewController.notifyStoredState(state.uri, storedState);
         return state;
     });
     webviewController.registerReducer("openFileThroughLink", async (state, payload) => {
+        const storedState = getStoredState(state?.uri);
         // If the content is an execution plan XML, open it in the execution plan tab
         let formattedText = payload.content;
         if (
             payload.type === Constants.xml &&
             payload.content.startsWith(Constants.queryPlanXmlStart)
         ) {
-            if (state.isExecutionPlan) {
-                state.tabStates.resultPaneTab = qr.QueryResultPaneTabs.ExecutionPlan;
+            if (storedState?.isExecutionPlan && storedState.tabStates && state?.uri) {
+                storedState.tabStates.resultPaneTab = qr.QueryResultPaneTabs.ExecutionPlan;
+                webviewViewController.notifyStoredState(state.uri, storedState);
                 return state;
             }
             openExecutionPlanWebview(
@@ -359,21 +394,52 @@ export function registerCommonRequestHandlers(
         return state;
     });
     webviewController.registerReducer("saveExecutionPlan", async (state, payload) => {
-        return (await saveExecutionPlan(state, payload)) as qr.QueryResultWebviewState;
+        if (!state?.uri) {
+            return state;
+        }
+        const storedState = getStoredState(state.uri);
+        if (!storedState) {
+            return state;
+        }
+        await saveExecutionPlan(storedState, payload);
+        webviewViewController.notifyStoredState(state.uri, storedState);
+        return state;
     });
     webviewController.registerReducer("showPlanXml", async (state, payload) => {
-        return (await showPlanXml(state, payload)) as qr.QueryResultWebviewState;
+        if (!state?.uri) {
+            return state;
+        }
+        const storedState = getStoredState(state.uri);
+        if (!storedState) {
+            return state;
+        }
+        await showPlanXml(storedState, payload);
+        webviewViewController.notifyStoredState(state.uri, storedState);
+        return state;
     });
     webviewController.registerReducer("showQuery", async (state, payload) => {
-        return (await showQuery(
-            state,
-            payload,
-            webviewViewController.sqlDocumentService,
-            state.uri,
-        )) as qr.QueryResultWebviewState;
+        if (!state?.uri) {
+            return state;
+        }
+        const storedState = getStoredState(state.uri);
+        if (!storedState) {
+            return state;
+        }
+        await showQuery(storedState, payload, webviewViewController.sqlDocumentService, state.uri);
+        webviewViewController.notifyStoredState(state.uri, storedState);
+        return state;
     });
     webviewController.registerReducer("updateTotalCost", async (state, payload) => {
-        return (await updateTotalCost(state, payload)) as qr.QueryResultWebviewState;
+        if (!state?.uri) {
+            return state;
+        }
+        const storedState = getStoredState(state.uri);
+        if (!storedState) {
+            return state;
+        }
+        await updateTotalCost(storedState, payload);
+        webviewViewController.notifyStoredState(state.uri, storedState);
+        return state;
     });
     webviewController.onRequest(qr.ShowFilterDisabledMessageRequest.type, async () => {
         vscode.window.showInformationMessage(

@@ -12,7 +12,7 @@ import { QueryResultWebviewController } from "./queryResultWebViewController";
 import { registerCommonRequestHandlers } from "./utils";
 
 export class QueryResultWebviewPanelController extends ReactWebviewPanelController<
-    qr.QueryResultWebviewState,
+    qr.QueryResultViewState,
     qr.QueryResultReducers
 > {
     private _correlationId: string = randomUUID();
@@ -31,13 +31,8 @@ export class QueryResultWebviewPanelController extends ReactWebviewPanelControll
             "queryResult",
             "queryResult",
             {
-                resultSetSummaries: {},
-                messages: [],
-                tabStates: {
-                    resultPaneTab: qr.QueryResultPaneTabs.Messages,
-                },
-                executionPlanState: {},
-                fontSettings: {},
+                uri: undefined,
+                title: undefined,
             },
             {
                 title: title,

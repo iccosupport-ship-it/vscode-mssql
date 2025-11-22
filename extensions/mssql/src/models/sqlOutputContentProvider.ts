@@ -21,7 +21,7 @@ import { TelemetryActions, TelemetryViews } from "../sharedInterfaces/telemetry"
 import * as qr from "../sharedInterfaces/queryResult";
 import { ExecutionPlanService } from "../services/executionPlanService";
 import { countResultSets, isOpenQueryResultsInTabByDefaultEnabled } from "../queryResult/utils";
-import { ApiStatus, StateChangeNotification } from "../sharedInterfaces/webview";
+import { ApiStatus } from "../sharedInterfaces/webview";
 import { getErrorMessage } from "../utils/utils";
 // tslint:disable-next-line:no-require-imports
 const pd = require("pretty-data").pd;
@@ -239,7 +239,10 @@ export class SqlOutputContentProvider {
     }
 
     public editorSelectionRequestHandler(uri: string, selection: ISelectionData): void {
-        void this._queryResultsMap.get(uri).queryRunner.setEditorSelection(selection);
+        if (!this._queryResultsMap.get(uri)?.queryRunner) {
+            return;
+        }
+        void this._queryResultsMap.get(uri)?.queryRunner?.setEditorSelection(selection);
     }
 
     public showErrorRequestHandler(message: string): void {
@@ -426,6 +429,7 @@ export class SqlOutputContentProvider {
 
             const resultSetAvailableListener = queryRunner.onResultSetAvailable(
                 async (resultSet: ResultSetSummary) => {
+                    //console.log("Result set available", uri, resultSet.batchId, resultSet.id);
                     const resultWebviewState =
                         this._queryResultWebviewController.getQueryResultState(queryRunner.uri);
                     const batchId = resultSet.batchId;
@@ -444,6 +448,7 @@ export class SqlOutputContentProvider {
 
             const resultSetUpdatedListener = queryRunner.onResultSetUpdated(
                 async (resultSet: ResultSetSummary) => {
+                    //console.log("Result set updated", uri, resultSet.batchId, resultSet.id);
                     const resultWebviewState =
                         this._queryResultWebviewController.getQueryResultState(queryRunner.uri);
                     const batchId = resultSet.batchId;
@@ -458,6 +463,7 @@ export class SqlOutputContentProvider {
 
             const resultSetCompleteListener = queryRunner.onResultSetComplete(
                 async (resultSet: ResultSetSummary) => {
+                    //console.log("Result set complete", uri, resultSet.batchId, resultSet.id);
                     const resultWebviewState =
                         this._queryResultWebviewController.getQueryResultState(queryRunner.uri);
                     const batchId = resultSet.batchId;
@@ -694,17 +700,13 @@ export class SqlOutputContentProvider {
         let state = this._queryResultWebviewController.getQueryResultState(oldUri);
         if (state) {
             state.uri = newUri;
-            /**
-             * TODO: aaskhan
-             * Remove adhoc state updates.
-             */
-            await this._queryResultWebviewController.sendNotification(
-                StateChangeNotification.type<qr.QueryResultWebviewState>(),
-                state,
-            );
-            //Update the URI in the query result webview state
             this._queryResultWebviewController.setQueryResultState(newUri, state);
             this._queryResultWebviewController.deleteQueryResultState(oldUri);
+            this._queryResultWebviewController.notifyStoredState(newUri, state);
+            this._queryResultWebviewController.state = {
+                uri: newUri,
+                title: state.title,
+            };
         }
     }
 
@@ -932,18 +934,16 @@ export class SqlOutputContentProvider {
 
     private updateWebviewState(uri: string, state: qr.QueryResultWebviewState): void {
         const activeEditorUri: string = vscode.window.activeTextEditor?.document.uri.toString(true);
-        // Update the state in cache first.
         this._queryResultWebviewController.setQueryResultState(uri, state);
-        // Set the state to the right webview.
+        this._queryResultWebviewController.notifyStoredState(uri, state);
         if (this._queryResultWebviewController.hasPanel(uri)) {
             this._queryResultWebviewController.updatePanelState(uri);
         } else {
-            /**
-             * If the user is working on some other editor, do not display the results
-             * in the webview view.
-             */
             if (activeEditorUri === uri) {
-                this._queryResultWebviewController.state = state;
+                this._queryResultWebviewController.state = {
+                    uri: state.uri,
+                    title: state.title,
+                };
             }
         }
     }

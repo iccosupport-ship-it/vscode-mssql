@@ -3,7 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ColumnFilterMap, GetGridScrollPositionResponse } from "../sharedInterfaces/queryResult";
+import {
+    ColumnFilterMap,
+    GetGridScrollPositionResponse,
+    QueryResultStoredState,
+} from "../sharedInterfaces/queryResult";
 
 export class QueryResultSingletonStore {
     private static _instance: QueryResultSingletonStore;
@@ -20,6 +24,8 @@ export class QueryResultSingletonStore {
         gridColumnWidths: new Map<string, number[]>(),
         gridScrollPositions: new Map<string, GetGridScrollPositionResponse>(),
     };
+
+    private _queryStates: Map<string, QueryResultStoredState> = new Map();
 
     /**
      * Private constructor to prevent instantiation from outside.
@@ -41,6 +47,32 @@ export class QueryResultSingletonStore {
         return `${uri}::${gridId}`;
     }
 
+    public setQueryState(uri: string, state: QueryResultStoredState): void {
+        this._queryStates.set(uri, state);
+    }
+
+    public getQueryState(uri: string): QueryResultStoredState | undefined {
+        return this._queryStates.get(uri);
+    }
+
+    public ensureQueryState(uri: string): QueryResultStoredState {
+        const state = this._queryStates.get(uri);
+        if (!state) {
+            throw new Error(`No query result state cached for ${uri}`);
+        }
+        return state;
+    }
+
+    public renameQueryState(oldUri: string, newUri: string): void {
+        const state = this.ensureQueryState(oldUri);
+        this._queryStates.set(newUri, state);
+        this._queryStates.delete(oldUri);
+    }
+
+    public deleteQueryState(uri: string): void {
+        this._queryStates.delete(uri);
+    }
+
     /**
      * Deletes all data associated with a given URI.
      * @param uri The URI whose associated data is to be deleted.
@@ -57,6 +89,7 @@ export class QueryResultSingletonStore {
                 }
             }
         });
+        this.deleteQueryState(uri);
     }
 }
 

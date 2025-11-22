@@ -70,6 +70,33 @@ export interface QueryResultWebviewState extends ExecutionPlanWebviewState {
     selectionSummary?: SelectionSummary;
 }
 
+export interface QueryResultViewState {
+    uri?: string;
+    title?: string;
+}
+
+export type QueryResultStoredState = Omit<QueryResultWebviewState, "uri" | "title">;
+
+export interface QueryResultStatePayload {
+    uri: string;
+    state: Partial<QueryResultStoredState>;
+}
+
+export namespace QueryResultStateNotification {
+    export const type = new NotificationType<QueryResultStatePayload>("queryResultState");
+}
+
+export interface LoadQueryResultStateParams {
+    uri: string;
+}
+export namespace LoadQueryResultStateRequest {
+    export const type = new RequestType<
+        LoadQueryResultStateParams,
+        QueryResultStoredState | undefined,
+        void
+    >("loadQueryResultState");
+}
+
 export interface SelectionSummary {
     text: string;
     command: {

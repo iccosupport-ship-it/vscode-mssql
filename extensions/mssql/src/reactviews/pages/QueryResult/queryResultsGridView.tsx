@@ -79,6 +79,10 @@ export const QueryResultsGridView = () => {
         return items;
     }, [resultSetSummaries]);
 
+    useEffect(() => {
+        console.log("WEBVIEW: Result set summaries changed", uri, resultSetSummaries);
+    }, [resultSetSummaries]);
+
     function naturalHeight(rowCount: number): number {
         let visibleRows = rowCount === 0 ? 1 : rowCount;
         if (visibleRows > DEFAULT_INITIAL_MIN_NUMBER_OF_VISIBLE_ROWS) {

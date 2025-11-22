@@ -3,17 +3,23 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ReactNode, createContext, useCallback, useEffect, useMemo, useState } from "react";
+import { ReactNode, createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCoreRPCs2 } from "../../common/utils";
 import { useVscodeWebview2 } from "../../common/vscodeWebviewProvider2";
+import { useVscodeSelector } from "../../common/useVscodeSelector";
 import { ExecutionPlanProvider } from "../../../sharedInterfaces/executionPlan";
+import * as qr from "../../../sharedInterfaces/queryResult";
 import { CoreRPCs } from "../../../sharedInterfaces/webview";
 import {
     GridContextMenuAction,
     QueryResultPaneTabs,
     QueryResultReducers,
+    QueryResultStateNotification,
+    QueryResultStatePayload,
+    QueryResultStoredState,
     QueryResultViewMode,
-    QueryResultWebviewState,
+    QueryResultViewState,
+    LoadQueryResultStateRequest,
     SortProperties,
 } from "../../../sharedInterfaces/queryResult";
 import { WebviewRpc } from "../../common/rpc";
@@ -43,6 +49,64 @@ export interface ColumnFilterPopupOptions {
 /**
  * Options for opening the resize column dialog
  */
+const createEmptyStoredState = (): QueryResultStoredState => ({
+    resultSetSummaries: {},
+    messages: [],
+    tabStates: {
+        resultPaneTab: QueryResultPaneTabs.Messages,
+    },
+    isExecutionPlan: false,
+    selection: undefined,
+    executionPlanState: {
+        executionPlanGraphs: [],
+        totalCost: 0,
+        loadState: undefined,
+        xmlPlans: {},
+    },
+    fontSettings: {},
+    autoSizeColumns: undefined,
+    inMemoryDataProcessingThreshold: undefined,
+    initializationError: undefined,
+    selectionSummary: undefined,
+});
+
+const mergeResultSetSummaries = (
+    current: Record<number, Record<number, qr.ResultSetSummary>>,
+    patch?: Record<number, Record<number, qr.ResultSetSummary>>,
+) => {
+    if (!patch) {
+        return current;
+    }
+    const next = { ...current };
+    for (const batchId of Object.keys(patch)) {
+        next[Number(batchId)] = {
+            ...(current[Number(batchId)] ?? {}),
+            ...patch[Number(batchId)],
+        };
+    }
+    return next;
+};
+
+const mergeStoredState = (
+    current: QueryResultStoredState,
+    patch: Partial<QueryResultStoredState>,
+): QueryResultStoredState => ({
+    ...current,
+    ...patch,
+    resultSetSummaries: mergeResultSetSummaries(
+        current.resultSetSummaries,
+        patch.resultSetSummaries,
+    ),
+    messages: patch.messages ?? current.messages,
+    tabStates: patch.tabStates ? { ...current.tabStates, ...patch.tabStates } : current.tabStates,
+    executionPlanState: patch.executionPlanState
+        ? { ...current.executionPlanState, ...patch.executionPlanState }
+        : current.executionPlanState,
+    fontSettings: patch.fontSettings
+        ? { ...current.fontSettings, ...patch.fontSettings }
+        : current.fontSettings,
+});
+
 type ResizeColumnDialogState = {
     open: boolean;
     columnId: string;
@@ -88,6 +152,10 @@ export interface QueryResultReactProvider
     openResizeDialog: (options: Partial<ResizeColumnDialogState>) => void;
 }
 
+export const QueryResultStateContext = createContext<qr.QueryResultWebviewState | undefined>(
+    undefined,
+);
+
 export const QueryResultCommandsContext = createContext<QueryResultReactProvider | undefined>(
     undefined,
 );
@@ -97,7 +165,20 @@ interface QueryResultProviderProps {
 }
 
 const QueryResultStateProvider: React.FC<QueryResultProviderProps> = ({ children }) => {
-    const { extensionRpc } = useVscodeWebview2<QueryResultWebviewState, QueryResultReducers>();
+    const { extensionRpc } = useVscodeWebview2<QueryResultViewState, QueryResultReducers>();
+    const viewState = useVscodeSelector<
+        qr.QueryResultViewState,
+        qr.QueryResultReducers,
+        qr.QueryResultViewState
+    >(
+        (s) => s,
+        (a, b) => a?.uri === b?.uri && a?.title === b?.title,
+    );
+
+    const [storedState, setStoredState] =
+        useState<QueryResultStoredState>(createEmptyStoredState());
+    const currentUriRef = useRef<string | undefined>();
+
     // Grid context menu state
     const [menuState, setMenuState] = useState<{
         open: boolean;
@@ -119,6 +200,49 @@ const QueryResultStateProvider: React.FC<QueryResultProviderProps> = ({ children
         onDismiss: () => {},
         onSubmit: () => {},
     });
+
+    useEffect(() => {
+        let disposed = false;
+        async function loadState() {
+            if (!viewState?.uri) {
+                if (!disposed) {
+                    setStoredState(createEmptyStoredState());
+                }
+                return;
+            }
+            try {
+                const response = await extensionRpc.sendRequest(LoadQueryResultStateRequest.type, {
+                    uri: viewState.uri,
+                });
+                if (!disposed) {
+                    setStoredState(response ?? createEmptyStoredState());
+                }
+            } catch (error) {
+                console.error("Failed to load query result state", error);
+                if (!disposed) {
+                    setStoredState(createEmptyStoredState());
+                }
+            }
+        }
+        void loadState();
+        return () => {
+            disposed = true;
+        };
+    }, [extensionRpc, viewState?.uri]);
+
+    useEffect(() => {
+        currentUriRef.current = viewState?.uri;
+    }, [viewState?.uri]);
+
+    useEffect(() => {
+        const handler = (payload: QueryResultStatePayload) => {
+            if (!currentUriRef.current || payload.uri !== currentUriRef.current) {
+                return;
+            }
+            setStoredState((prev) => mergeStoredState(prev, payload.state));
+        };
+        extensionRpc.onNotification(QueryResultStateNotification.type, handler);
+    }, [extensionRpc]);
 
     const hideFilterPopup = useCallback(() => {
         setFilterPopupState((state) => {
@@ -213,6 +337,15 @@ const QueryResultStateProvider: React.FC<QueryResultProviderProps> = ({ children
         [extensionRpc, hideFilterPopup],
     );
 
+    const combinedState = useMemo<qr.QueryResultWebviewState>(
+        () => ({
+            ...storedState,
+            uri: viewState?.uri,
+            title: viewState?.title,
+        }),
+        [storedState, viewState],
+    );
+
     // Close context menu when focus leaves the webview or it becomes hidden
     useEffect(() => {
         const closeOverlays = () => {
@@ -233,60 +366,62 @@ const QueryResultStateProvider: React.FC<QueryResultProviderProps> = ({ children
     }, [hideFilterPopup]);
     return (
         <QueryResultCommandsContext.Provider value={commands}>
-            {children}
-            {menuState.open && (
-                <GridContextMenu
-                    x={menuState.x}
-                    y={menuState.y}
-                    open={menuState.open}
-                    onAction={async (action) => {
-                        await menuState.onAction?.(action);
-                        setMenuState((s) => ({ ...s, open: false }));
-                    }}
-                    onClose={() => setMenuState((s) => ({ ...s, open: false }))}
-                />
-            )}
-            {filterPopupState && (
-                <ColumnMenuPopup
-                    anchorRect={filterPopupState.anchorRect}
-                    items={filterPopupState.items}
-                    initialSelected={filterPopupState.initialSelected}
-                    onApply={async (selected) => {
-                        await filterPopupState.onApply(selected);
-                        hideFilterPopup();
-                    }}
-                    onClear={async () => {
-                        await filterPopupState.onClear();
-                        hideFilterPopup();
-                    }}
-                    onDismiss={() => {
-                        hideFilterPopup();
-                    }}
-                    onClearSort={filterPopupState.onClearSort}
-                    onSortAscending={filterPopupState.onSortAscending}
-                    onSortDescending={filterPopupState.onSortDescending}
-                    onResize={() => {
-                        hideFilterPopup();
-                        filterPopupState.onResize();
-                    }}
-                    currentSort={filterPopupState.currentSort}
-                />
-            )}
-            {resizeDialogState.open && (
-                <TableColumnResizeDialog
-                    open={resizeDialogState.open}
-                    columnName={resizeDialogState.columnName}
-                    initialWidth={resizeDialogState.initialWidth}
-                    onSubmit={async (newWidth: number) => {
-                        await resizeDialogState.onSubmit(newWidth);
-                        setResizeDialogState((state) => ({ ...state, open: false }));
-                    }}
-                    onDismiss={() => {
-                        resizeDialogState.onDismiss();
-                        setResizeDialogState((state) => ({ ...state, open: false }));
-                    }}
-                />
-            )}
+            <QueryResultStateContext.Provider value={combinedState}>
+                {children}
+                {menuState.open && (
+                    <GridContextMenu
+                        x={menuState.x}
+                        y={menuState.y}
+                        open={menuState.open}
+                        onAction={async (action) => {
+                            await menuState.onAction?.(action);
+                            setMenuState((s) => ({ ...s, open: false }));
+                        }}
+                        onClose={() => setMenuState((s) => ({ ...s, open: false }))}
+                    />
+                )}
+                {filterPopupState && (
+                    <ColumnMenuPopup
+                        anchorRect={filterPopupState.anchorRect}
+                        items={filterPopupState.items}
+                        initialSelected={filterPopupState.initialSelected}
+                        onApply={async (selected) => {
+                            await filterPopupState.onApply(selected);
+                            hideFilterPopup();
+                        }}
+                        onClear={async () => {
+                            await filterPopupState.onClear();
+                            hideFilterPopup();
+                        }}
+                        onDismiss={() => {
+                            hideFilterPopup();
+                        }}
+                        onClearSort={filterPopupState.onClearSort}
+                        onSortAscending={filterPopupState.onSortAscending}
+                        onSortDescending={filterPopupState.onSortDescending}
+                        onResize={() => {
+                            hideFilterPopup();
+                            filterPopupState.onResize();
+                        }}
+                        currentSort={filterPopupState.currentSort}
+                    />
+                )}
+                {resizeDialogState.open && (
+                    <TableColumnResizeDialog
+                        open={resizeDialogState.open}
+                        columnName={resizeDialogState.columnName}
+                        initialWidth={resizeDialogState.initialWidth}
+                        onSubmit={async (newWidth: number) => {
+                            await resizeDialogState.onSubmit(newWidth);
+                            setResizeDialogState((state) => ({ ...state, open: false }));
+                        }}
+                        onDismiss={() => {
+                            resizeDialogState.onDismiss();
+                            setResizeDialogState((state) => ({ ...state, open: false }));
+                        }}
+                    />
+                )}
+            </QueryResultStateContext.Provider>
         </QueryResultCommandsContext.Provider>
     );
 };

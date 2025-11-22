@@ -17,6 +17,7 @@ import SqlDocumentService from "../controllers/sqlDocumentService";
 import { ExecutionPlanService } from "../services/executionPlanService";
 import VscodeWrapper from "../controllers/vscodeWrapper";
 import { QueryResultWebviewPanelController } from "./queryResultWebviewPanelController";
+import store from "./singletonStore";
 import {
     getNewResultPaneViewColumn,
     getInMemoryGridDataProcessingThreshold,
@@ -27,7 +28,7 @@ import {
 import { Deferred } from "../protocol";
 
 export class QueryResultWebviewController extends ReactWebviewViewController<
-    qr.QueryResultWebviewState,
+    qr.QueryResultViewState,
     qr.QueryResultReducers
 > {
     private _queryResultStateMap: Map<string, qr.QueryResultWebviewState> = new Map<
@@ -49,13 +50,8 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         private _sqlOutputContentProvider: SqlOutputContentProvider,
     ) {
         super(context, vscodeWrapper, "queryResult", "queryResult", {
-            resultSetSummaries: {},
-            messages: [],
-            tabStates: {
-                resultPaneTab: qr.QueryResultPaneTabs.Messages,
-            },
-            executionPlanState: {},
-            fontSettings: {},
+            uri: undefined,
+            title: undefined,
         });
 
         void this.initialize();
@@ -68,7 +64,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
                 const hasWebviewViewState = uri && this._queryResultStateMap.has(uri);
 
                 if (hasWebviewViewState && !hasPanel) {
-                    this.state = this.getQueryResultState(uri);
+                    this.state = this.getQueryResultViewState(uri);
                 } else if (hasPanel) {
                     const editorViewColumn = editor?.viewColumn;
                     const panelViewColumn =
@@ -93,6 +89,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
                 const uri = document.uri.toString(true);
                 if (this._queryResultStateMap.has(uri)) {
                     this._queryResultStateMap.delete(uri);
+                    store.deleteQueryState(uri);
                 }
             }),
         );
@@ -174,6 +171,14 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         );
     }
 
+    private getQueryResultViewState(uri: string): qr.QueryResultViewState {
+        const state = this._queryResultStateMap.get(uri);
+        if (!state) {
+            return { uri: uri, title: undefined };
+        }
+        return { uri: state.uri, title: state.title };
+    }
+
     private registerRpcHandlers() {
         this.onRequest(qr.OpenInNewTabRequest.type, async (message) => {
             void this.createPanelController(message.uri);
@@ -231,19 +236,8 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
 
     private showSplashScreen() {
         this.state = {
-            resultSetSummaries: {},
-            messages: [],
-            tabStates: undefined,
-            isExecutionPlan: false,
-            executionPlanState: {},
-            fontSettings: {
-                fontSize: this.getFontSizeConfig(),
-
-                fontFamily: this.getFontFamilyConfig(),
-            },
-            autoSizeColumns: this.getAutoSizeColumnsConfig(),
-            inMemoryDataProcessingThreshold: getInMemoryGridDataProcessingThreshold(),
-            initializationError: undefined,
+            uri: undefined,
+            title: undefined,
         };
     }
 
@@ -262,7 +256,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
             this._queryResultStateMap.get(uri).title,
             this,
         );
-        controller.state = this.getQueryResultState(uri);
+        controller.state = this.getQueryResultViewState(uri);
         controller.revealToForeground();
         this._queryResultWebviewPanelControllerMap.set(uri, controller);
         this.showSplashScreen();
@@ -296,6 +290,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
             inMemoryDataProcessingThreshold: getInMemoryGridDataProcessingThreshold(),
         } as qr.QueryResultWebviewState;
         this._queryResultStateMap.set(uri, currentState);
+        store.setQueryState(uri, currentState);
     }
 
     public getAutoSizeColumnsConfig(): boolean {
@@ -329,17 +324,19 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
 
     public setQueryResultState(uri: string, state: qr.QueryResultWebviewState) {
         this._queryResultStateMap.set(uri, state);
+        store.setQueryState(uri, state);
     }
 
     public deleteQueryResultState(uri: string): void {
         this._queryResultStateMap.delete(uri);
+        store.deleteQueryState(uri);
     }
 
     public updatePanelState(uri: string): void {
         if (this._queryResultWebviewPanelControllerMap.has(uri)) {
             this._queryResultWebviewPanelControllerMap
                 .get(uri)
-                .updateState(this.getQueryResultState(uri));
+                .updateState(this.getQueryResultViewState(uri));
         }
     }
 
@@ -383,6 +380,24 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         return res;
     }
 
+    public notifyStoredState(uri: string, state?: qr.QueryResultWebviewState) {
+        const sourceState = state ?? this._queryResultStateMap.get(uri);
+        if (!sourceState) {
+            return;
+        }
+        const { uri: _uri, title: _title, ...storedState } = sourceState;
+        const payload = {
+            uri: uri,
+            state: storedState as qr.QueryResultStoredState,
+        };
+        void this.sendNotification(qr.QueryResultStateNotification.type, payload);
+        for (const [panelUri, controller] of this._queryResultWebviewPanelControllerMap) {
+            if (panelUri === uri) {
+                void controller.sendNotification(qr.QueryResultStateNotification.type, payload);
+            }
+        }
+    }
+
     public getSqlOutputContentProvider(): SqlOutputContentProvider {
         return this._sqlOutputContentProvider;
     }
@@ -407,10 +422,14 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         return this._sqlDocumentService;
     }
 
-    public async copyAllMessagesToClipboard(uri: string): Promise<void> {
-        const messages = uri
-            ? this.getQueryResultState(uri)?.messages?.map((message) => messageToString(message))
-            : this.state?.messages?.map((message) => messageToString(message));
+    public async copyAllMessagesToClipboard(uri?: string): Promise<void> {
+        const targetUri = uri ?? this.state?.uri;
+        if (!targetUri) {
+            return;
+        }
+        const messages = this._queryResultStateMap
+            .get(targetUri)
+            ?.messages?.map((message) => messageToString(message));
 
         if (!messages) {
             return;

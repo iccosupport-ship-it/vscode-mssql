@@ -12,16 +12,28 @@ import { getCoreRPCs2 } from "../../common/utils";
 export interface ExecutionPlanContextProps extends ep.ExecutionPlanProvider {}
 
 const ExecutionPlanContext = createContext<ExecutionPlanContextProps | undefined>(undefined);
+const ExecutionPlanStateOverrideContext = createContext<ep.ExecutionPlanWebviewState | undefined>(
+    undefined,
+);
 
 interface ExecutionPlanProviderProps {
     children: ReactNode;
+    stateOverride?: ep.ExecutionPlanWebviewState;
+    commandsOverride?: ExecutionPlanContextProps;
 }
 
-const ExecutionPlanStateProvider: React.FC<ExecutionPlanProviderProps> = ({ children }) => {
+const ExecutionPlanStateProvider: React.FC<ExecutionPlanProviderProps> = ({
+    children,
+    stateOverride,
+    commandsOverride,
+}) => {
     const { extensionRpc } = useVscodeWebview2<ep.ExecutionPlanState, ep.ExecutionPlanReducers>();
 
-    const commands = useMemo<ExecutionPlanContextProps>(
-        () => ({
+    const commands = useMemo<ExecutionPlanContextProps>(() => {
+        if (commandsOverride) {
+            return commandsOverride;
+        }
+        return {
             ...getCoreRPCs2(extensionRpc),
             getExecutionPlan: function (): void {
                 extensionRpc.action("getExecutionPlan", {});
@@ -46,13 +58,16 @@ const ExecutionPlanStateProvider: React.FC<ExecutionPlanProviderProps> = ({ chil
                     addedCost: addedCost,
                 });
             },
-        }),
-        [extensionRpc],
-    );
+        };
+    }, [commandsOverride, extensionRpc]);
 
     return (
-        <ExecutionPlanContext.Provider value={commands}>{children}</ExecutionPlanContext.Provider>
+        <ExecutionPlanContext.Provider value={commands}>
+            <ExecutionPlanStateOverrideContext.Provider value={stateOverride}>
+                {children}
+            </ExecutionPlanStateOverrideContext.Provider>
+        </ExecutionPlanContext.Provider>
     );
 };
 
-export { ExecutionPlanContext, ExecutionPlanStateProvider };
+export { ExecutionPlanContext, ExecutionPlanStateOverrideContext, ExecutionPlanStateProvider };
