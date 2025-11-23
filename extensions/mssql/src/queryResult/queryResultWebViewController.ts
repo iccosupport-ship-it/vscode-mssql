@@ -380,15 +380,21 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         return res;
     }
 
-    public notifyStoredState(uri: string, state?: qr.QueryResultWebviewState) {
-        const sourceState = state ?? this._queryResultStateMap.get(uri);
+    public notifyStoredState(uri: string, patch?: qr.QueryResultStatePatch) {
+        const sourceState = this._queryResultStateMap.get(uri);
         if (!sourceState) {
             return;
         }
-        const { uri: _uri, title: _title, ...storedState } = sourceState;
+        let payloadState: qr.QueryResultStatePatch;
+        if (patch) {
+            payloadState = patch;
+        } else {
+            const { uri: _uri, title: _title, ...storedState } = sourceState;
+            payloadState = storedState as qr.QueryResultStoredState;
+        }
         const payload = {
             uri: uri,
-            state: storedState as qr.QueryResultStoredState,
+            state: payloadState,
         };
         void this.sendNotification(qr.QueryResultStateNotification.type, payload);
         for (const [panelUri, controller] of this._queryResultWebviewPanelControllerMap) {

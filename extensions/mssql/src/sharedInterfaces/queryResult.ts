@@ -77,9 +77,24 @@ export interface QueryResultViewState {
 
 export type QueryResultStoredState = Omit<QueryResultWebviewState, "uri" | "title">;
 
+export interface QueryResultStatePatch extends Partial<QueryResultStoredState> {
+    /**
+     * Append-only payload for messages so we don't have to resend the entire array.
+     */
+    appendMessages?: IMessage[];
+    /**
+     * Indicates the webview should clear the existing messages before applying other changes.
+     */
+    clearMessages?: boolean;
+    /**
+     * When true, the provided resultSetSummaries replaces the entire map instead of merging.
+     */
+    replaceResultSetSummaries?: boolean;
+}
+
 export interface QueryResultStatePayload {
     uri: string;
-    state: Partial<QueryResultStoredState>;
+    state: QueryResultStatePatch;
 }
 
 export namespace QueryResultStateNotification {

@@ -15,6 +15,7 @@ import {
     QueryResultPaneTabs,
     QueryResultReducers,
     QueryResultStateNotification,
+    QueryResultStatePatch,
     QueryResultStatePayload,
     QueryResultStoredState,
     QueryResultViewMode,
@@ -89,23 +90,54 @@ const mergeResultSetSummaries = (
 
 const mergeStoredState = (
     current: QueryResultStoredState,
-    patch: Partial<QueryResultStoredState>,
-): QueryResultStoredState => ({
-    ...current,
-    ...patch,
-    resultSetSummaries: mergeResultSetSummaries(
-        current.resultSetSummaries,
-        patch.resultSetSummaries,
-    ),
-    messages: patch.messages ?? current.messages,
-    tabStates: patch.tabStates ? { ...current.tabStates, ...patch.tabStates } : current.tabStates,
-    executionPlanState: patch.executionPlanState
-        ? { ...current.executionPlanState, ...patch.executionPlanState }
-        : current.executionPlanState,
-    fontSettings: patch.fontSettings
-        ? { ...current.fontSettings, ...patch.fontSettings }
-        : current.fontSettings,
-});
+    patch?: QueryResultStatePatch,
+): QueryResultStoredState => {
+    if (!patch) {
+        return current;
+    }
+
+    const {
+        appendMessages,
+        clearMessages,
+        replaceResultSetSummaries,
+        ...rest
+    } = patch;
+
+    const next: QueryResultStoredState = {
+        ...current,
+        ...rest,
+        tabStates: rest.tabStates ? { ...current.tabStates, ...rest.tabStates } : current.tabStates,
+        executionPlanState: rest.executionPlanState
+            ? { ...current.executionPlanState, ...rest.executionPlanState }
+            : current.executionPlanState,
+        fontSettings: rest.fontSettings
+            ? { ...current.fontSettings, ...rest.fontSettings }
+            : current.fontSettings,
+    };
+
+    if (replaceResultSetSummaries) {
+        next.resultSetSummaries = rest.resultSetSummaries ?? {};
+    } else if (rest.resultSetSummaries) {
+        next.resultSetSummaries = mergeResultSetSummaries(
+            current.resultSetSummaries,
+            rest.resultSetSummaries,
+        );
+    } else {
+        next.resultSetSummaries = current.resultSetSummaries;
+    }
+
+    if (clearMessages) {
+        next.messages = appendMessages?.length ? [...appendMessages] : [];
+    } else if (rest.messages) {
+        next.messages = rest.messages;
+    } else if (appendMessages?.length) {
+        next.messages = [...current.messages, ...appendMessages];
+    } else {
+        next.messages = current.messages;
+    }
+
+    return next;
+};
 
 type ResizeColumnDialogState = {
     open: boolean;

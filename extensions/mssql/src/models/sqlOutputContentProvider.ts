@@ -47,6 +47,10 @@ export class SqlOutputContentProvider {
     private _actualPlanStatuses: string[] = [];
     // Throttle timers for state updates per result URI (messages, results, etc.)
     private _stateUpdateTimers: Map<string, NodeJS.Timeout> = new Map();
+    // Aggregated state patches queued for the throttled updates.
+    private _pendingStatePatches: Map<string, qr.QueryResultStatePatch> = new Map();
+    // Stores the last completed query results per URI so we can restore them on cancel.
+    private _lastCompletedResults: Map<string, qr.QueryResultStoredState> = new Map();
 
     constructor(
         private _context: vscode.ExtensionContext,
@@ -355,8 +359,8 @@ export class SqlOutputContentProvider {
             uri,
             title,
             executionPlanOptions?.includeEstimatedExecutionPlanXml ||
-                this._actualPlanStatuses.includes(uri) ||
-                executionPlanOptions?.includeActualExecutionPlanXml,
+            this._actualPlanStatuses.includes(uri) ||
+            executionPlanOptions?.includeActualExecutionPlanXml,
         );
         if (isOpenQueryResultsInTabByDefaultEnabled()) {
             await this._queryResultWebviewController.createPanelController(queryRunner.uri);
@@ -417,10 +421,14 @@ export class SqlOutputContentProvider {
                 const resultWebviewState = this._queryResultWebviewController.getQueryResultState(
                     queryRunner.uri,
                 );
-                resultWebviewState.tabStates.resultPaneTab = QueryResultPaneTabs.Messages;
-                resultWebviewState.isExecutionPlan = false;
+                this.cacheLastCompletedState(queryRunner.uri);
                 resultWebviewState.initializationError = undefined;
-                this.updateWebviewState(queryRunner.uri, resultWebviewState);
+                const resetPatch = this.createResetPatch(resultWebviewState);
+                this.cancelPendingUpdate(queryRunner.uri);
+                this.updateWebviewState(queryRunner.uri, resultWebviewState, {
+                    ...resetPatch,
+                    initializationError: undefined,
+                });
                 this.revealQueryResult(queryRunner.uri);
                 sendActionEvent(TelemetryViews.QueryResult, TelemetryActions.OpenQueryResult, {
                     defaultLocation: isOpenQueryResultsInTabByDefaultEnabled() ? "tab" : "pane",
@@ -442,7 +450,17 @@ export class SqlOutputContentProvider {
                     if (countResultSets(resultWebviewState.resultSetSummaries) === 1) {
                         resultWebviewState.tabStates.resultPaneTab = QueryResultPaneTabs.Results;
                     }
-                    this.updateWebviewState(queryRunner.uri, resultWebviewState);
+                    const patch: qr.QueryResultStatePatch = {
+                        resultSetSummaries: {
+                            [batchId]: {
+                                [resultId]: resultSet,
+                            },
+                        } as Record<number, Record<number, qr.ResultSetSummary>>,
+                    };
+                    if (resultWebviewState.tabStates.resultPaneTab === QueryResultPaneTabs.Results) {
+                        patch.tabStates = { ...resultWebviewState.tabStates };
+                    }
+                    this.scheduleThrottledUpdate(queryRunner.uri, patch);
                 },
             );
 
@@ -457,7 +475,13 @@ export class SqlOutputContentProvider {
                         resultWebviewState.resultSetSummaries[batchId] = {};
                     }
                     resultWebviewState.resultSetSummaries[batchId][resultId] = resultSet;
-                    this.scheduleThrottledUpdate(queryRunner.uri);
+                    this.scheduleThrottledUpdate(queryRunner.uri, {
+                        resultSetSummaries: {
+                            [batchId]: {
+                                [resultId]: resultSet,
+                            },
+                        } as Record<number, Record<number, qr.ResultSetSummary>>,
+                    });
                 },
             );
 
@@ -472,8 +496,13 @@ export class SqlOutputContentProvider {
                         resultWebviewState.resultSetSummaries[batchId] = {};
                     }
                     resultWebviewState.resultSetSummaries[batchId][resultId] = resultSet;
-
-                    this.updateWebviewState(queryRunner.uri, resultWebviewState);
+                    this.scheduleThrottledUpdate(queryRunner.uri, {
+                        resultSetSummaries: {
+                            [batchId]: {
+                                [resultId]: resultSet,
+                            },
+                        } as Record<number, Record<number, qr.ResultSetSummary>>,
+                    });
                 },
             );
 
@@ -502,7 +531,9 @@ export class SqlOutputContentProvider {
                     queryRunner.uri,
                 );
                 resultWebviewState.messages.push(message);
-                this.scheduleThrottledUpdate(queryRunner.uri);
+                this.scheduleThrottledUpdate(queryRunner.uri, {
+                    appendMessages: [message],
+                });
             });
 
             const onMessageListener = queryRunner.onMessage(async (message) => {
@@ -512,7 +543,9 @@ export class SqlOutputContentProvider {
 
                 resultWebviewState.messages.push(message);
 
-                this.scheduleThrottledUpdate(queryRunner.uri);
+                this.scheduleThrottledUpdate(queryRunner.uri, {
+                    appendMessages: [message],
+                });
             });
 
             const onCompleteListener = queryRunner.onComplete(async (e) => {
@@ -529,10 +562,11 @@ export class SqlOutputContentProvider {
                 const resultWebviewState = this._queryResultWebviewController.getQueryResultState(
                     queryRunner.uri,
                 );
-                resultWebviewState.messages.push({
+                const elapsedMessage: IMessage = {
                     message: LocalizedConstants.elapsedTimeLabel(totalMilliseconds),
                     isError: false, // Elapsed time messages are never displayed as errors
-                });
+                };
+                resultWebviewState.messages.push(elapsedMessage);
                 // if there is an error, show the error message and set the tab to the messages tab
                 let tabState: QueryResultPaneTabs;
                 if (hasError) {
@@ -549,7 +583,11 @@ export class SqlOutputContentProvider {
                     }
                 }
                 resultWebviewState.tabStates.resultPaneTab = tabState;
-                this.updateWebviewState(queryRunner.uri, resultWebviewState);
+                this.scheduleThrottledUpdate(queryRunner.uri, {
+                    appendMessages: [elapsedMessage],
+                    tabStates: { ...resultWebviewState.tabStates },
+                });
+                this.cacheLastCompletedState(queryRunner.uri);
             });
 
             const onExecutionPlanListener = queryRunner.onExecutionPlan(async (e) => {
@@ -653,19 +691,214 @@ export class SqlOutputContentProvider {
      * Schedule a throttled state update for a given URI.
      * Coalesces rapid updates (messages/results) into a single update.
      */
-    private scheduleThrottledUpdate(uri: string, delayMs: number = 100): void {
+    private scheduleThrottledUpdate(
+        uri: string,
+        patch?: qr.QueryResultStatePatch,
+        delayMs: number = 100,
+    ): void {
+        if (patch) {
+            const aggregatedPatch = this.mergePendingPatch(
+                this._pendingStatePatches.get(uri),
+                patch,
+            );
+            this._pendingStatePatches.set(uri, aggregatedPatch);
+        }
+
         if (this._stateUpdateTimers.has(uri)) {
             return; // already scheduled
         }
         const timer = setTimeout(() => {
             try {
                 const state = this._queryResultWebviewController.getQueryResultState(uri);
-                this.updateWebviewState(uri, state);
+                const patchToSend = this._pendingStatePatches.get(uri);
+                this.updateWebviewState(uri, state, patchToSend);
             } finally {
                 this._stateUpdateTimers.delete(uri);
+                this._pendingStatePatches.delete(uri);
             }
         }, delayMs);
         this._stateUpdateTimers.set(uri, timer);
+    }
+
+    private cancelPendingUpdate(uri: string): void {
+        const pendingTimer = this._stateUpdateTimers.get(uri);
+        if (pendingTimer) {
+            clearTimeout(pendingTimer);
+            this._stateUpdateTimers.delete(uri);
+        }
+        this._pendingStatePatches.delete(uri);
+    }
+
+    private cacheLastCompletedState(uri: string): void {
+        let state: qr.QueryResultWebviewState;
+        try {
+            state = this._queryResultWebviewController.getQueryResultState(uri);
+        } catch {
+            return;
+        }
+
+        const hasResultsOrMessages =
+            Object.keys(state?.resultSetSummaries ?? {}).length > 0 ||
+            (state?.messages?.length ?? 0) > 0 ||
+            (state?.executionPlanState?.executionPlanGraphs?.length ?? 0) > 0;
+        if (!hasResultsOrMessages) {
+            return;
+        }
+
+        this._lastCompletedResults.set(uri, this.cloneStoredStateFromWebviewState(state));
+    }
+
+    private restoreLastCompletedState(uri: string): boolean {
+        const cached = this._lastCompletedResults.get(uri);
+        if (!cached) {
+            return false;
+        }
+        const restored = this.cloneStoredState(cached);
+        const state = this._queryResultWebviewController.getQueryResultState(uri);
+        state.resultSetSummaries = restored.resultSetSummaries ?? {};
+        state.messages = restored.messages ?? [];
+        state.tabStates = restored.tabStates ?? state.tabStates;
+        state.isExecutionPlan = restored.isExecutionPlan;
+        state.selection = restored.selection;
+        state.executionPlanState = restored.executionPlanState ?? state.executionPlanState;
+        state.fontSettings = restored.fontSettings ?? state.fontSettings;
+        state.autoSizeColumns = restored.autoSizeColumns;
+        state.inMemoryDataProcessingThreshold = restored.inMemoryDataProcessingThreshold;
+        state.selectionSummary = restored.selectionSummary;
+        state.initializationError = restored.initializationError;
+
+        this.updateWebviewState(uri, state, {
+            ...restored,
+            replaceResultSetSummaries: true,
+        });
+        return true;
+    }
+
+    private cloneStoredStateFromWebviewState(
+        state: qr.QueryResultWebviewState,
+    ): qr.QueryResultStoredState {
+        const { uri: _uri, title: _title, ...rest } = state;
+        return JSON.parse(JSON.stringify(rest));
+    }
+
+    private cloneStoredState(state: qr.QueryResultStoredState): qr.QueryResultStoredState {
+        return JSON.parse(JSON.stringify(state));
+    }
+
+    private mergePendingPatch(
+        existing: qr.QueryResultStatePatch | undefined,
+        patch: qr.QueryResultStatePatch,
+    ): qr.QueryResultStatePatch {
+        if (!existing) {
+            return {
+                ...patch,
+                appendMessages: patch.appendMessages ? [...patch.appendMessages] : undefined,
+                resultSetSummaries: this.cloneResultSetSummaries(patch.resultSetSummaries),
+            };
+        }
+
+        const merged: qr.QueryResultStatePatch = {
+            ...existing,
+            ...patch,
+        };
+
+        merged.clearMessages = Boolean(existing.clearMessages || patch.clearMessages);
+        merged.replaceResultSetSummaries = Boolean(
+            existing.replaceResultSetSummaries || patch.replaceResultSetSummaries,
+        );
+
+        if (patch.messages) {
+            merged.messages = patch.messages;
+            merged.appendMessages = patch.appendMessages?.length
+                ? [...patch.appendMessages]
+                : undefined;
+            merged.clearMessages = Boolean(patch.clearMessages);
+        } else if (patch.clearMessages) {
+            delete merged.messages;
+            merged.appendMessages = patch.appendMessages?.length
+                ? [...patch.appendMessages]
+                : undefined;
+        } else if (patch.appendMessages?.length) {
+            merged.appendMessages = [
+                ...(existing.appendMessages ?? []),
+                ...patch.appendMessages,
+            ];
+        }
+
+        if (patch.replaceResultSetSummaries) {
+            merged.resultSetSummaries = this.cloneResultSetSummaries(
+                patch.resultSetSummaries ?? {},
+            );
+        } else if (patch.resultSetSummaries) {
+            merged.resultSetSummaries = this.mergeResultSetSummaryPatch(
+                existing.resultSetSummaries,
+                patch.resultSetSummaries,
+            );
+        }
+
+        return merged;
+    }
+
+    private cloneResultSetSummaries(
+        summaries?: Record<number, Record<number, qr.ResultSetSummary>>,
+    ): Record<number, Record<number, qr.ResultSetSummary>> | undefined {
+        if (!summaries) {
+            return undefined;
+        }
+        const clone: Record<number, Record<number, qr.ResultSetSummary>> = {};
+        for (const [batchId, resultSets] of Object.entries(summaries)) {
+            clone[Number(batchId)] = { ...resultSets };
+        }
+        return clone;
+    }
+
+    private mergeResultSetSummaryPatch(
+        base: Record<number, Record<number, qr.ResultSetSummary>> | undefined,
+        patch?: Record<number, Record<number, qr.ResultSetSummary>>,
+    ): Record<number, Record<number, qr.ResultSetSummary>> | undefined {
+        if (!patch) {
+            return base;
+        }
+        const target: Record<number, Record<number, qr.ResultSetSummary>> = base
+            ? this.cloneResultSetSummaries(base)
+            : {};
+        for (const [batchKey, resultSets] of Object.entries(patch)) {
+            const batchId = Number(batchKey);
+            target[batchId] = {
+                ...(target[batchId] ?? {}),
+                ...resultSets,
+            };
+        }
+        return target;
+    }
+
+    private createResetPatch(
+        state: qr.QueryResultWebviewState,
+    ): qr.QueryResultStatePatch {
+        state.resultSetSummaries = {};
+        state.messages = [];
+        state.selection = undefined;
+        state.selectionSummary = undefined;
+        state.tabStates = state.tabStates ?? { resultPaneTab: QueryResultPaneTabs.Messages };
+        state.tabStates.resultPaneTab = QueryResultPaneTabs.Messages;
+        state.isExecutionPlan = false;
+        state.executionPlanState = {
+            executionPlanGraphs: [],
+            totalCost: 0,
+            loadState: undefined,
+            xmlPlans: {},
+        };
+
+        return {
+            replaceResultSetSummaries: true,
+            resultSetSummaries: {},
+            clearMessages: true,
+            tabStates: state.tabStates,
+            selection: undefined,
+            selectionSummary: undefined,
+            isExecutionPlan: state.isExecutionPlan,
+            executionPlanState: state.executionPlanState,
+        };
     }
 
     /**
@@ -702,7 +935,7 @@ export class SqlOutputContentProvider {
             state.uri = newUri;
             this._queryResultWebviewController.setQueryResultState(newUri, state);
             this._queryResultWebviewController.deleteQueryResultState(oldUri);
-            this._queryResultWebviewController.notifyStoredState(newUri, state);
+            this._queryResultWebviewController.notifyStoredState(newUri);
             this._queryResultWebviewController.state = {
                 uri: newUri,
                 title: state.title,
@@ -759,6 +992,7 @@ export class SqlOutputContentProvider {
                 clearTimeout(timer);
                 this._stateUpdateTimers.delete(uri);
             }
+            this._pendingStatePatches.delete(uri);
             if (queryRunnerState.queryRunner.isExecutingQuery) {
                 // We need to cancel it, which will dispose it
                 await this.cancelQuery(queryRunnerState.queryRunner);
@@ -768,6 +1002,7 @@ export class SqlOutputContentProvider {
                 queryRunnerState.listeners?.forEach((listener) => listener.dispose());
             }
             this._queryResultsMap.delete(uri);
+            this._lastCompletedResults.delete(uri);
         }
     }
 
@@ -932,10 +1167,14 @@ export class SqlOutputContentProvider {
         this._queryResultsMap = setMap;
     }
 
-    private updateWebviewState(uri: string, state: qr.QueryResultWebviewState): void {
+    private updateWebviewState(
+        uri: string,
+        state: qr.QueryResultWebviewState,
+        patch?: qr.QueryResultStatePatch,
+    ): void {
         const activeEditorUri: string = vscode.window.activeTextEditor?.document.uri.toString(true);
         this._queryResultWebviewController.setQueryResultState(uri, state);
-        this._queryResultWebviewController.notifyStoredState(uri, state);
+        this._queryResultWebviewController.notifyStoredState(uri, patch);
         if (this._queryResultWebviewController.hasPanel(uri)) {
             this._queryResultWebviewController.updatePanelState(uri);
         } else {
