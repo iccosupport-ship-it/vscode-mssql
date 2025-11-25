@@ -236,10 +236,17 @@ export default class QueryRunner {
         let cancelParams: QueryCancelParams = { ownerUri: this._ownerUri };
         let queryCancelResult: QueryCancelResult;
         try {
-            queryCancelResult = await this._client.sendRequest(
+            const cancelPromise = this._client.sendRequest(
                 QueryCancelRequest.type,
                 cancelParams,
             );
+
+            queryCancelResult = await Promise.race([
+                cancelPromise,
+                new Promise<QueryCancelResult>((_, reject) =>
+                    setTimeout(() => reject(new Error("Cancellation timed out")), 5000),
+                ),
+            ]);
         } catch (error) {
             this._handleQueryCleanup(
                 LocalizedConstants.QueryEditor.queryCancelFailed(error),
@@ -527,6 +534,7 @@ export default class QueryRunner {
         this._isExecuting = false;
         this._hasCompleted = true;
         this.removeRunningQuery();
+        this._statusView.executedQuery(this.uri);
 
         const promise = this._uriToQueryPromiseMap.get(this._ownerUri);
         if (promise) {

@@ -32,25 +32,46 @@ import {
 
 class WebviewRpcMessageReader extends AbstractMessageReader implements MessageReader {
     private _onData: Emitter<Message>;
+    private _messageHandler: (event: MessageEvent) => void;
+
     constructor() {
         super();
         this._onData = new Emitter<Message>();
-        window.addEventListener("message", (event) => {
+        this._messageHandler = (event) => {
             this._onData.fire(event.data as Message);
-        });
+        };
+        window.addEventListener("message", this._messageHandler);
     }
     listen(callback: DataCallback): Disposable {
         return this._onData.event(callback);
     }
+    dispose() {
+        window.removeEventListener("message", this._messageHandler);
+        this._onData.dispose();
+    }
 }
 
 class WebviewRpcMessageWriter extends AbstractMessageWriter implements MessageWriter {
+    private _writeQueue: Promise<void> = Promise.resolve();
     constructor(private _vscodeApi: WebviewApi<unknown>) {
         super();
     }
     write(msg: Message): Promise<void> {
-        this._vscodeApi.postMessage(msg);
-        return Promise.resolve();
+        this._writeQueue = this._writeQueue
+            .catch(() => undefined)
+            .then(() => {
+                try {
+                    const result = this._vscodeApi.postMessage(msg);
+                    if (result === false) {
+                        throw new Error("postMessage returned false");
+                    }
+                } catch (error) {
+                    console.error("Failed to post message to extension", error);
+                    throw error;
+                }
+            });
+
+        return this._writeQueue;
     }
     end(): void {}
 }

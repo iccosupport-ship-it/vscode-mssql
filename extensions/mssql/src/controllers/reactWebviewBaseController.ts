@@ -91,10 +91,17 @@ class WebviewControllerMessageReader extends AbstractMessageReader implements Me
     listen(callback: DataCallback): Disposable {
         return this._onData.event(callback);
     }
+
+    dispose() {
+        this._disposables.forEach((d) => d.dispose());
+        this._disposables = [];
+        this._onData.dispose();
+    }
 }
 
 class WebviewControllerMessageWriter extends AbstractMessageWriter implements MessageWriter {
     private _webview: vscode.Webview;
+    private _writeQueue: Promise<void> = Promise.resolve();
     constructor(private logger: Logger) {
         super();
     }
@@ -102,21 +109,61 @@ class WebviewControllerMessageWriter extends AbstractMessageWriter implements Me
         this._webview = webview;
     }
     write(msg: Message): Promise<void> {
-        if (this._webview) {
-            const { method, error } = msg as any;
-            this.logger.verbose(`Sending message to webview: ${method}`);
-            this._webview.postMessage(msg);
-            sendActionEvent(TelemetryViews.WebviewController, TelemetryActions.SentToWebview, {
-                messageType: method ? "request" : "response",
-                type: method,
-                isError: error ? "true" : "false",
-            });
-        } else {
-            this.logger.warn("Attempted to write message but webview is not set");
+        if (!this._webview) {
+            return Promise.resolve();
         }
-        return Promise.resolve();
+
+        const { method, error } = msg as any;
+        this.logger.verbose(`Sending message to webview: ${method}`);
+        sendActionEvent(TelemetryViews.WebviewController, TelemetryActions.SentToWebview, {
+            messageType: method ? "request" : "response",
+            type: method,
+            isError: error ? "true" : "false",
+        });
+
+        this._writeQueue = this._writeQueue
+            .catch(() => undefined)
+            .then(() => this.postMessageWithTimeout(msg, method));
+
+        return this._writeQueue;
+    }
+
+    private async postMessageWithTimeout(msg: Message, method?: string): Promise<void> {
+        const label = method ?? "response";
+        if (!this._webview) {
+            return;
+        }
+
+        const sendPromise = Promise.resolve(this._webview.postMessage(msg));
+        try {
+            const result = await withPostMessageTimeout(sendPromise, label);
+            if (result === false) {
+                throw new Error(`postMessage returned false for '${label}'`);
+            }
+        } catch (err) {
+            throw err;
+        }
     }
     end(): void {}
+}
+
+function withPostMessageTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => {
+            reject(new Error(`Timed out sending '${label}' to webview`));
+        }, 30000);
+
+        promise.then(
+            (value) => {
+                clearTimeout(timer);
+                resolve(value);
+            },
+            (error) => {
+                clearTimeout(timer);
+                reject(error);
+            },
+        );
+    });
 }
 
 /**
@@ -136,6 +183,7 @@ export abstract class ReactWebviewBaseController<State, Reducers> implements vsc
      * A one-time promise that resolves when the webview is ready to receive messages.
      */
     private _webviewReady: Deferred<void> = new Deferred<void>();
+    private _webviewReadyResolved: boolean = false;
 
     private _state: State;
     private _isFirstLoad: boolean = true;
@@ -152,6 +200,7 @@ export abstract class ReactWebviewBaseController<State, Reducers> implements vsc
         keyof Reducers,
         (state: State, payload: Reducers[keyof Reducers]) => ReducerResponse<State>
     >();
+    private _currentWebview: vscode.Webview | undefined;
 
     protected logger: Logger;
 
@@ -195,6 +244,11 @@ export abstract class ReactWebviewBaseController<State, Reducers> implements vsc
      * @param webview
      */
     protected updateConnectionWebview(webview: vscode.Webview) {
+        if (webview && this._currentWebview !== webview) {
+            this._currentWebview = webview;
+            this.resetWebviewReadyState();
+        }
+
         if (webview) {
             this._connectionReader.updateWebview(webview);
             this._connectionWriter.updateWebview(webview);
@@ -279,6 +333,21 @@ export abstract class ReactWebviewBaseController<State, Reducers> implements vsc
         );
     }
 
+    private resolveWebviewReady() {
+        if (this._webviewReadyResolved) {
+            return;
+        }
+
+        this._webviewReadyResolved = true;
+        this._webviewReady.resolve();
+    }
+
+    private resetWebviewReadyState() {
+        this._webviewReady = new Deferred<void>();
+        this._webviewReadyResolved = false;
+        this._loadStartTime = Date.now();
+    }
+
     private _registerDefaultRequestHandlers() {
         this.onNotification(
             SendActionEventNotification.type,
@@ -315,13 +384,14 @@ export abstract class ReactWebviewBaseController<State, Reducers> implements vsc
         this.onNotification(LoadStatsNotification.type, (message) => {
             const timeStamp = message.loadCompleteTimeStamp;
             const timeToLoad = timeStamp - this._loadStartTime;
-            if (this._isFirstLoad) {
-                /**
-                 * This notification is sent from the webview when it has finished loading. We use
-                 * this to track when the webview is ready to receive messages.
-                 */
-                this._webviewReady.resolve();
 
+            /**
+             * This notification is sent from the webview when it has finished loading. We use
+             * this to track when the webview is ready to receive messages.
+             */
+            this.resolveWebviewReady();
+
+            if (this._isFirstLoad) {
                 console.log(
                     `Load stats for ${this._sourceFile}` + "\n" + `Total time: ${timeToLoad} ms`,
                 );
@@ -428,24 +498,49 @@ export abstract class ReactWebviewBaseController<State, Reducers> implements vsc
         if (this._isDisposed) {
             throw new Error("Cannot register request handler on disposed controller");
         }
-        this.connection.onRequest(type, handler);
+        this.connection.onRequest(type, (params, token) => {
+            try {
+                const result = handler(params, token);
+                if (result instanceof Promise) {
+                    return result.then(
+                        (value) => {
+                            return value;
+                        },
+                        (error) => {
+                            throw error;
+                        },
+                    );
+                }
+
+                return result;
+            } catch (error) {
+                throw error;
+            }
+        });
     }
 
     /**
      * Registers a reducer that can be called from the webview.
      */
-    public sendRequest<TParam, TResult, TError>(
+    public async sendRequest<TParam, TResult, TError>(
         type: RequestType<TParam, TResult, TError>,
         params: TParam,
         token?: CancellationToken,
-    ): Thenable<TResult> {
+    ): Promise<TResult> {
         if (!this.connection) {
-            return;
+            return Promise.reject(new Error("Cannot send request without a live connection"));
         }
         if (this._isDisposed) {
             return Promise.reject(new Error("Cannot send request on disposed controller"));
         }
-        return this.connection.sendRequest(type, params, token);
+
+        await this.whenWebviewReady();
+        try {
+            const result = await this.connection.sendRequest(type, params, token);
+            return result;
+        } catch (error) {
+            throw error;
+        }
     }
 
     /**
@@ -453,7 +548,7 @@ export abstract class ReactWebviewBaseController<State, Reducers> implements vsc
      * @param type The notification type that the webview will handle
      * @param params The parameters that will be passed to the notification handler
      */
-    public sendNotification<TParams>(
+    public async sendNotification<TParams>(
         type: NotificationType<TParams>,
         params: TParams,
     ): Promise<void> {
@@ -463,7 +558,12 @@ export abstract class ReactWebviewBaseController<State, Reducers> implements vsc
         if (this._isDisposed) {
             throw new Error("Cannot send notification on disposed controller");
         }
-        return this.connection.sendNotification(type, params);
+        await this.whenWebviewReady();
+        try {
+            await this.connection.sendNotification(type, params);
+        } catch (error) {
+            throw error;
+        }
     }
 
     /**
@@ -548,6 +648,9 @@ export abstract class ReactWebviewBaseController<State, Reducers> implements vsc
      * @returns
      */
     public whenWebviewReady(): Promise<void> {
+        if (this._webviewReadyResolved) {
+            return Promise.resolve();
+        }
         return this._webviewReady.promise;
     }
 

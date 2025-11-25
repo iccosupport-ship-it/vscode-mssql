@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { resolveEventListenerOptions } from "../../../common/domEventUtils";
+
 export interface IDimension {
     readonly width: number;
     readonly height: number;
@@ -32,7 +34,7 @@ class DomListener {
         this._node = node;
         this._type = type;
         this._handler = handler;
-        this._options = options || false;
+        this._options = resolveEventListenerOptions(type, options);
         this._node.addEventListener(this._type, this._handler, this._options);
     }
 

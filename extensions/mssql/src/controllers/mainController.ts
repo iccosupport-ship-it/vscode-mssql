@@ -1995,7 +1995,11 @@ export default class MainController implements vscode.Disposable {
         }
         try {
             let uri = this._vscodeWrapper.activeTextEditorUri;
-            await this._outputContentProvider.cancelQuery(uri);
+            if (this._connectionMgr.isConnecting(uri)) {
+                await this._connectionMgr.cancelConnect();
+            } else {
+                await this._outputContentProvider.cancelQuery(uri);
+            }
         } catch (err) {
             console.warn(`Unexpected error cancelling query : ${getErrorMessage(err)}`);
         }

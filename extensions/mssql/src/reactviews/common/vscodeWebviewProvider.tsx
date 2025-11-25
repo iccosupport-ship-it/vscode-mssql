@@ -136,10 +136,10 @@ export function VscodeWebviewProvider<State, Reducers>({ children }: VscodeWebvi
             setEOL(eol);
         }
 
+        void loadStats();
         void getTheme();
         void getKeyBindings();
         void getState();
-        void loadStats();
         void getLocalization();
         void getEOL();
     }, []);

@@ -1162,6 +1162,7 @@ export default class ConnectionManager {
         let connectionInfo: ConnectionInfo = new ConnectionInfo();
         connectionInfo.credentials = credentials;
         connectionInfo.connecting = true;
+        this._connections[fileUri] = connectionInfo;
 
         // Note: must call flavor changed before connecting, or the timer showing an animation doesn't occur
         if (this.statusView) {
@@ -1194,6 +1195,7 @@ export default class ConnectionManager {
                 connectParams,
             );
         } catch (error) {
+            delete this._connections[fileUri];
             /**
              * If the initial connection attempt fails, log the error and return false.
              * We don’t invoke error callbacks here because the failure happens before
@@ -1223,6 +1225,7 @@ export default class ConnectionManager {
          * retry or recover from.
          */
         if (!initRequest) {
+            delete this._connections[fileUri];
             sendErrorEvent(
                 TelemetryViews.ConnectionManager,
                 TelemetryActions.Connect,
@@ -1246,7 +1249,13 @@ export default class ConnectionManager {
             connectionSource: connectionSource,
         });
 
-        const result = await connectionCompletePromise.promise;
+        let result: ConnectionContracts.ConnectionCompleteParams;
+        try {
+            result = await connectionCompletePromise.promise;
+        } catch (error) {
+            delete this._connections[fileUri];
+            return false;
+        }
 
         connectionInfo.connecting = false;
 
@@ -1587,6 +1596,11 @@ export default class ConnectionManager {
         );
         if (result) {
             this.statusView.setNotConnected(fileUri);
+            const completionPromise = this._uriToConnectionCompleteParamsMap.get(fileUri);
+            if (completionPromise) {
+                completionPromise.reject(new Error("Connection cancelled"));
+                this._uriToConnectionCompleteParamsMap.delete(fileUri);
+            }
         }
     }
 

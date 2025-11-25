@@ -25,6 +25,36 @@ import { deepEqual } from "../../common/utils";
 import { MARGIN_BOTTOM } from "./queryResultsGridView";
 
 window.jQuery = $ as any;
+
+// Patch addEventListener to make scroll-blocking events passive by default
+// This prevents console warnings from SlickGrid and improves scrolling performance
+(function () {
+    const originalAddEventListener = EventTarget.prototype.addEventListener;
+    const scrollBlockingEvents = new Set(["wheel", "touchstart", "touchmove", "mousewheel"]);
+
+    EventTarget.prototype.addEventListener = function (
+        type: string,
+        listener: any,
+        options?: boolean | AddEventListenerOptions,
+    ) {
+        const normalizedType = type?.toLowerCase?.() ?? "";
+
+        if (scrollBlockingEvents.has(normalizedType)) {
+            if (typeof options === "boolean") {
+                options = options ? { capture: true, passive: true } : { passive: true };
+            } else if (options) {
+                if (options.passive === undefined) {
+                    options = { ...options, passive: true };
+                }
+            } else {
+                options = { passive: true };
+            }
+        }
+
+        return originalAddEventListener.call(this, type, listener, options);
+    };
+})();
+
 require("slickgrid/lib/jquery.event.drag-2.3.0.js");
 require("slickgrid/lib/jquery-1.11.2.min.js");
 require("slickgrid/slick.core.js");

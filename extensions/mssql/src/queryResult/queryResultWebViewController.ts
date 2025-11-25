@@ -249,7 +249,7 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
 
     public async createPanelController(uri: string) {
         const viewColumn = getNewResultPaneViewColumn(uri, this.vscodeWrapper);
-        if (this._queryResultWebviewPanelControllerMap.has(uri)) {
+        if (this.hasPanel(uri)) {
             this._queryResultWebviewPanelControllerMap.get(uri).revealToForeground();
             return;
         }
@@ -265,7 +265,9 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         controller.state = this.getQueryResultState(uri);
         controller.revealToForeground();
         this._queryResultWebviewPanelControllerMap.set(uri, controller);
-        this.showSplashScreen();
+        if (!this.hasPanel(uri)) {
+            this.showSplashScreen();
+        }
         await controller.whenWebviewReady();
     }
 
