@@ -77,6 +77,7 @@
     "Move Up": "Move Up",
     "Move Down": "Move Down",
     "Delete": "Delete",
+    "No rows to display": "No rows to display",
     "Expand": "Expand",
     "Collapse": "Collapse",
     "Filter Settings": "Filter Settings",
@@ -112,6 +113,7 @@
     "Get Started": "Get Started",
     "Back": "Back",
     "Warning": "Warning",
+    "Search...": "Search...",
     "Clear All": "Clear All",
     "OK": "OK",
     "And": "And",
@@ -418,7 +420,6 @@
     "Copy as INSERT INTO": "Copy as INSERT INTO",
     "NULL": "NULL",
     "Blanks": "Blanks",
-    "Search...": "Search...",
     "Maximize ({0})/{0} is the keyboard shortcut for maximizing the grid": {
         "message": "Maximize ({0})",
         "comment": ["{0} is the keyboard shortcut for maximizing the grid"]

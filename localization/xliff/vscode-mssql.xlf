@@ -2606,6 +2606,9 @@
     <trans-unit id="++CODE++ac4f3a6af42834b4d2a24a75250eee26cde1f70bb4bf0359acd6523cafd78d67">
       <source xml:lang="en">No results to display</source>
     </trans-unit>
+    <trans-unit id="++CODE++a56d0c458bfac839076ec182ac8cbbd1fb2517c9302673ddd4d668307281b615">
+      <source xml:lang="en">No rows to display</source>
+    </trans-unit>
     <trans-unit id="++CODE++e32e1aa390f5243f880caab46155befbe51dd11233564502e4699d1cd79e56ab">
       <source xml:lang="en">No saved connection profiles found.</source>
     </trans-unit>
