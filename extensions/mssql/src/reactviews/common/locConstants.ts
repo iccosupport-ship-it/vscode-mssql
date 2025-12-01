@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from "@vscode/l10n";
-import { search } from "../pages/ExecutionPlan/queryPlanSetup";
 
 export class LocConstants {
     private static _instance = new LocConstants();
@@ -164,6 +163,10 @@ export class LocConstants {
                     args: [objectType],
                     comment: ["{0} is the object type"],
                 }),
+            columns: l10n.t("Columns"),
+            noItems: l10n.t("No items defined."),
+            selectItem: l10n.t("Select an item to view details."),
+            searchProperties: l10n.t("Search properties"),
             expandPropertiesPane: l10n.t("Expand properties pane"),
             restorePropertiesPane: l10n.t("Restore properties pane"),
             closePropertiesPane: l10n.t("Close properties pane"),

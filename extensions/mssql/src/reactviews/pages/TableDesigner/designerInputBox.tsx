@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CSSProperties, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { TableDesignerContext } from "./tableDesignerStateProvider";
 import {
     DesignerDataPropertyInfo,
@@ -124,15 +124,15 @@ export const DesignerInputBox = ({
         return inputControl;
     }
 
+    const labelContent = showLabel ? (
+        <InfoLabel size="small" info={component.description} aria-hidden="true">
+            {component.componentProperties.title ?? component.propertyName}
+        </InfoLabel>
+    ) : undefined;
+
     return (
         <Field
-            label={{
-                children: (
-                    <InfoLabel size="small" info={component.description} aria-hidden="true">
-                        {component.componentProperties.title}
-                    </InfoLabel>
-                ),
-            }}
+            label={labelContent ? { children: labelContent } : undefined}
             validationState={context.getErrorMessage(componentPath) ? "error" : undefined}
             validationMessage={showError ? context.getErrorMessage(componentPath) : undefined}
             validationMessageIcon={

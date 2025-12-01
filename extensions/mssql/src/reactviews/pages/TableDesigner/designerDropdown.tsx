@@ -97,15 +97,15 @@ export const DesignerDropdown = ({
         return dropdownControl;
     }
 
+    const labelContent = showLabel ? (
+        <InfoLabel size="small" info={component.description} aria-hidden="true">
+            {component.componentProperties.title ?? component.propertyName}
+        </InfoLabel>
+    ) : undefined;
+
     return (
         <Field
-            label={{
-                children: (
-                    <InfoLabel size="small" info={component.description} aria-hidden="true">
-                        {component.componentProperties.title}
-                    </InfoLabel>
-                ),
-            }}
+            label={labelContent ? { children: labelContent } : undefined}
             validationState={
                 showError && context.getErrorMessage(componentPath) ? "error" : undefined
             }

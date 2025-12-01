@@ -9,7 +9,6 @@ import {
     AccordionItem,
     AccordionPanel,
     Button,
-    Divider,
     SearchBox,
     Text,
     makeStyles,

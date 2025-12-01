@@ -11,11 +11,15 @@ import {
     DesignerTableProperties,
     DropDownProperties,
     InputBoxProperties,
+    DesignerMainPaneTabs,
+    TableProperty,
 } from "../../../sharedInterfaces/tableDesigner";
 import { DesignerCheckbox } from "./designerCheckbox";
 import { DesignerInputBox } from "./designerInputBox";
 import { DesignerDropdown } from "./designerDropdown";
 import { DesignerTable } from "./designerTable";
+import { DesignerColumnsTab } from "./designerColumnsTab";
+import { DesignerCollectionTab } from "./designerCollectionTab";
 
 export interface DesignerMainPaneTabProps {
     tabId: string;
@@ -39,6 +43,32 @@ export const DesignerMainPaneTab = ({ tabId }: DesignerMainPaneTabProps) => {
         return null;
     }
     const components = state.view?.tabs.find((tab) => tab.id === tabId)?.components;
+    if (tabId === DesignerMainPaneTabs.Columns) {
+        const columnsComponent = components?.find(
+            (component) => component.componentType === "table" && component.propertyName === TableProperty.Columns,
+        );
+        if (columnsComponent) {
+            const modelTableProps =
+                state.model![columnsComponent.propertyName] as DesignerTableProperties;
+            return (
+                <div className={classes.root}>
+                    <DesignerColumnsTab component={columnsComponent} model={modelTableProps} />
+                </div>
+            );
+        }
+    }
+    if (
+        (tabId === DesignerMainPaneTabs.Indexes ||
+            tabId === DesignerMainPaneTabs.ForeignKeys ||
+            tabId === DesignerMainPaneTabs.CheckConstraints) &&
+        components
+    ) {
+        return (
+            <div className={classes.root}>
+                <DesignerCollectionTab components={components} />
+            </div>
+        );
+    }
     return (
         <div className={classes.root}>
             {components

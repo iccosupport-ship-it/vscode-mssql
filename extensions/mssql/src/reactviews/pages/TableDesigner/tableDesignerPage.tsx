@@ -120,6 +120,16 @@ export const TableDesigner = () => {
         return null;
     }
 
+    const activeMainTab = context.state.tabStates?.mainPaneTab;
+    const shouldShowPropertiesPane =
+        !!context.state.propertiesPaneData &&
+        ![
+            designer.DesignerMainPaneTabs.Columns,
+            designer.DesignerMainPaneTabs.Indexes,
+            designer.DesignerMainPaneTabs.ForeignKeys,
+            designer.DesignerMainPaneTabs.CheckConstraints,
+        ].includes(activeMainTab ?? designer.DesignerMainPaneTabs.Columns);
+
     useEffect(() => {
         if (!context || !context.state.propertiesPaneData) {
             return;
@@ -173,7 +183,7 @@ export const TableDesigner = () => {
                                         <PanelResizeHandle
                                             className={classes.verticalResizeHandle}
                                         />
-                                        {context.state.propertiesPaneData && (
+                                        {shouldShowPropertiesPane && (
                                             <Panel
                                                 defaultSize={0}
                                                 minSize={10}
