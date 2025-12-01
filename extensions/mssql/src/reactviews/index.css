@@ -60,6 +60,10 @@ button[role="combobox"].dropdown-open {
     border: 1px solid var(--vscode-focusBorder) !important;
     border-radius: var(--borderRadiusSmall, 2px) !important;
 }
+button[role="combobox"]:focus {
+    border: 1px solid var(--vscode-focusBorder) !important;
+    border-radius: var(--borderRadiusSmall, 2px) !important;
+}
 
 /* Removing focus styling on actual elements as we have already added focus styles to the container */
 input[type="search"]:focus,
@@ -69,4 +73,28 @@ input:not([type="search"]):focus,
 textarea:focus {
     outline: none !important;
     border: none !important;
+}
+.designer-table .fui-Input,
+.designer-table .fui-Textarea,
+.designer-table .fui-Input:hover,
+.designer-table .fui-Textarea:hover {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--vscode-foreground) !important;
+}
+.designer-table .fui-Input:focus-within,
+.designer-table .fui-Textarea:focus-within {
+    border: 1px solid var(--vscode-focusBorder) !important;
+    border-radius: 0 !important;
+}
+.designer-table button[role="combobox"] {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--vscode-foreground) !important;
+}
+.designer-table button[role="combobox"]:focus {
+    border: 1px solid var(--vscode-focusBorder) !important;
+    border-radius: 0 !important;
 }

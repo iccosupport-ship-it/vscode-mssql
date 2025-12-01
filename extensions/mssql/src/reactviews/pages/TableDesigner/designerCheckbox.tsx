@@ -11,7 +11,7 @@ import {
     DesignerEditType,
     DesignerUIArea,
 } from "../../../sharedInterfaces/tableDesigner";
-import { Checkbox, Field, Label } from "@fluentui/react-components";
+import { Checkbox, Field, Label, Switch } from "@fluentui/react-components";
 
 export type DesignerCheckboxProps = {
     component: DesignerDataPropertyInfo;
@@ -36,44 +36,95 @@ export const DesignerCheckbox = ({
     useEffect(() => {
         setValue(model.checked);
     }, [model]);
+    const isPropertiesView = UiArea === "PropertiesView";
+    const shouldUseSwitch = isPropertiesView;
+    const controlDisabled = model.enabled === undefined ? false : !model.enabled;
+    const renderLabel = () => (
+        <Label
+            size="small"
+            style={{
+                display: "flex",
+                alignItems: "center",
+                height: "100%",
+            }}>
+            {component.componentProperties.title!}
+        </Label>
+    );
+    const fieldWidth = isPropertiesView
+        ? "100%"
+        : component.componentProperties.width
+          ? `${component.componentProperties.width}px`
+          : "400px";
+    const control = shouldUseSwitch ? (
+        <Switch
+            ref={(el) => context.addElementRef(componentPath, el, UiArea)}
+            checked={value}
+            onChange={async (_event, data) => {
+                if (controlDisabled) {
+                    return;
+                }
+                await context.processTableEdit({
+                    path: componentPath,
+                    value: data.checked,
+                    type: DesignerEditType.Update,
+                    source: UiArea,
+                });
+            }}
+            disabled={controlDisabled}
+        />
+    ) : (
+        <Checkbox
+            ref={(el) => context.addElementRef(componentPath, el, UiArea)}
+            checked={value}
+            onChange={async (_event, data) => {
+                if (controlDisabled) {
+                    return;
+                }
+                await context.processTableEdit({
+                    path: componentPath,
+                    value: data.checked,
+                    type: DesignerEditType.Update,
+                    source: UiArea,
+                });
+            }}
+            size="medium"
+            disabled={controlDisabled}
+        />
+    );
+    const fieldStyle = isPropertiesView
+        ? { width: fieldWidth, paddingLeft: 0, paddingRight: 0 }
+        : { width: fieldWidth };
     return (
         <Field
             size="small"
-            label={
-                showLabel ? (
-                    <Label
-                        size="small"
+            label={!isPropertiesView && showLabel ? renderLabel() : undefined}
+            orientation={isPropertiesView ? "vertical" : "horizontal"}
+            style={fieldStyle}>
+            {isPropertiesView && showLabel ? (
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        width: "100%",
+                        gap: "8px",
+                        minHeight: "28px",
+                    }}>
+                    <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
+                        {renderLabel()}
+                    </div>
+                    <div
                         style={{
-                            lineHeight: "16px", // Used to align the label with the checkbox
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            alignItems: "center",
                         }}>
-                        {component.componentProperties.title!}
-                    </Label>
-                ) : undefined
-            }
-            orientation="horizontal"
-            style={{
-                width:
-                    (component.componentProperties.width ?? UiArea === "PropertiesView")
-                        ? "100%"
-                        : "400px",
-            }}>
-            <Checkbox
-                ref={(el) => context.addElementRef(componentPath, el, UiArea)}
-                checked={value}
-                onChange={async (_event, data) => {
-                    if (model.enabled === false) {
-                        return;
-                    }
-                    await context.processTableEdit({
-                        path: componentPath,
-                        value: data.checked,
-                        type: DesignerEditType.Update,
-                        source: UiArea,
-                    });
-                }}
-                size="medium"
-                disabled={model.enabled === undefined ? false : !model.enabled}
-            />
+                        {control}
+                    </div>
+                </div>
+            ) : (
+                control
+            )}
         </Field>
     );
 };

@@ -38,9 +38,17 @@ const useStyles = fluentui.makeStyles({
     tableCell: {
         display: "flex",
         flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "100%",
+        height: "100%",
     },
     tableCellContent: {
         width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         "& > *": {
             width: "100% !important",
         },
@@ -60,6 +68,12 @@ const useStyles = fluentui.makeStyles({
     },
     tableCellButton: {
         height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "100%",
+        padding: 0,
+        minWidth: 0,
     },
     table: {
         border: "1px solid var(--vscode-panel-border)",
@@ -371,7 +385,9 @@ export const DesignerTable = ({ component, model, componentPath, UiArea }: Desig
                 switch (colProps?.componentType) {
                     case "input":
                         return (
-                            <div className={classes.tableCell} style={{ width: "100%" }}>
+                            <div
+                                className={classes.tableCell}
+                                style={{ width: "100%", height: "100%" }}>
                                 <div className={classes.tableCellContent}>
                                     <DesignerInputBox
                                         component={colProps}
@@ -380,13 +396,16 @@ export const DesignerTable = ({ component, model, componentPath, UiArea }: Desig
                                         UiArea={UiArea}
                                         showLabel={false}
                                         showError={false}
+                                        renderInTable={true}
                                     />
                                 </div>
                             </div>
                         );
                     case "dropdown":
                         return (
-                            <div className={classes.tableCell} style={{ width: "100%" }}>
+                            <div
+                                className={classes.tableCell}
+                                style={{ width: "100%", height: "100%" }}>
                                 <div className={classes.tableCellContent}>
                                     <DesignerDropdown
                                         component={colProps}
@@ -395,13 +414,16 @@ export const DesignerTable = ({ component, model, componentPath, UiArea }: Desig
                                         UiArea={"TabsView"}
                                         showLabel={false}
                                         showError={false}
+                                        renderInTable={true}
                                     />
                                 </div>
                             </div>
                         );
                     case "checkbox": {
                         return (
-                            <div className={classes.tableCell} style={{ width: "100%" }}>
+                            <div
+                                className={classes.tableCell}
+                                style={{ width: "100%", height: "100%" }}>
                                 <div className={classes.tableCellContent}>
                                     <DesignerCheckbox
                                         component={colProps}
@@ -426,7 +448,7 @@ export const DesignerTable = ({ component, model, componentPath, UiArea }: Desig
     const [focusedRowId, setFocusedRowId] = useState<number | undefined>(undefined);
 
     return (
-        <div>
+        <div className="designer-table">
             <fluentui.Toolbar size="small">
                 {tableProps.canAddRows && (
                     <fluentui.Button
@@ -505,6 +527,20 @@ export const DesignerTable = ({ component, model, componentPath, UiArea }: Desig
                         </fluentui.TableRow>
                     </fluentui.TableHeader>
                     <fluentui.TableBody>
+                        {rows.length === 0 && (
+                            <fluentui.TableRow>
+                                <fluentui.TableCell
+                                    colSpan={columnsDef.length}
+                                    className={classes.tableCellWithBorder}
+                                    style={{
+                                        textAlign: "center",
+                                        padding: "12px",
+                                        color: "var(--vscode-descriptionForeground)",
+                                    }}>
+                                    {l10n.t("No rows to display")}
+                                </fluentui.TableCell>
+                            </fluentui.TableRow>
+                        )}
                         {rows.map((row, index) => {
                             const rowError = getRowError(index);
                             let backgroundColor =

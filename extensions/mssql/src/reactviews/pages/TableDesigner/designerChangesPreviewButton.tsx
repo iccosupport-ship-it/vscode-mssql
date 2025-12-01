@@ -304,7 +304,7 @@ export const DesignerChangesPreviewButton = () => {
             <DialogTrigger disableButtonEnhancement>
                 <Button
                     size="small"
-                    appearance="subtle"
+                    appearance="primary"
                     aria-label={locConstants.tableDesigner.publish}
                     title={locConstants.tableDesigner.publish}
                     icon={<DatabaseArrowUp16Regular />}

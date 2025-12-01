@@ -4,29 +4,21 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Tab, TabList } from "@fluentui/react-tabs";
-import { CounterBadge, Field, Input, Text, makeStyles } from "@fluentui/react-components";
+import { CounterBadge, Text, makeStyles } from "@fluentui/react-components";
 import { TableDesignerContext } from "./tableDesignerStateProvider";
-import { useContext, useEffect, useState } from "react";
-import {
-    DesignerEditType,
-    DesignerMainPaneTabs,
-    DropDownProperties,
-    InputBoxProperties,
-} from "../../../sharedInterfaces/tableDesigner";
+import { useContext } from "react";
+import { DesignerMainPaneTabs } from "../../../sharedInterfaces/tableDesigner";
 import { DesignerMainPaneTab } from "./designerMainPaneTab";
 import * as l10n from "@vscode/l10n";
-import { locConstants } from "../../common/locConstants";
-import { SearchableDropdown } from "../../common/searchableDropdown.component";
 
 const useStyles = makeStyles({
     root: {
         width: "100%",
         height: "100%",
-        paddingTop: "10px",
-        paddingLeft: "10px",
-        paddingRight: "10px",
         boxSizing: "border-box",
-        overflow: "auto",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
     },
     content: {
         display: "flex",
@@ -34,6 +26,14 @@ const useStyles = makeStyles({
         overflow: "auto",
         flex: 1,
         gap: "10px",
+        padding: "10px",
+    },
+    stickyTabs: {
+        position: "sticky",
+        top: 0,
+        zIndex: 1,
+        backgroundColor: "var(--vscode-editor-background)",
+        paddingBottom: "4px",
     },
     title: {
         width: "400px",
@@ -55,13 +55,6 @@ export const DesignerMainPane = () => {
     if (!state) {
         return null;
     }
-    const [tableName, setTableName] = useState((state.model!["name"] as InputBoxProperties).value);
-    const [schema, setSchema] = useState((state.model!["schema"] as InputBoxProperties).value);
-
-    useEffect(() => {
-        setTableName((state.model!["name"] as InputBoxProperties).value);
-        setSchema((state.model!["schema"] as InputBoxProperties).value);
-    }, [state.model]);
 
     const getCurrentTabIssuesCount = (tabId: string) => {
         const tabComponents = state.view?.tabs.find((tab) => tab.id === tabId)?.components;
@@ -119,89 +112,9 @@ export const DesignerMainPane = () => {
         }
     }
 
-    function getSortedSchemaValues() {
-        const schemas = (state?.model?.["schema"] as DropDownProperties).values;
-        const systemSchemas = new Set([
-            "db_accessadmin",
-            "db_backupoperator",
-            "db_datareader",
-            "db_datawriter",
-            "db_ddladmin",
-            "db_denydatareader",
-            "db_denydatawriter",
-            "db_owner",
-            "db_securityadmin",
-        ]);
-
-        // Separate system schemas and user-defined schemas
-        const userSchemas: string[] = [];
-        const sysSchemas: string[] = [];
-
-        for (const schema of schemas) {
-            if (systemSchemas.has(schema)) {
-                sysSchemas.push(schema);
-            } else {
-                userSchemas.push(schema);
-            }
-        }
-
-        // Sort both arrays alphabetically
-        userSchemas.sort((a, b) => a.localeCompare(b));
-        sysSchemas.sort((a, b) => a.localeCompare(b));
-
-        // Concatenate user-defined schemas with system schemas at the end
-        return [...userSchemas, ...sysSchemas];
-    }
-
     return (
         <div className={classes.root}>
-            <div className={classes.content}>
-                <Field
-                    size="small"
-                    label={locConstants.tableDesigner.tableName}
-                    orientation="horizontal"
-                    style={{ width: "300px" }}>
-                    <Input
-                        size="small"
-                        value={tableName}
-                        onChange={(_event, data) => {
-                            setTableName(data.value);
-                        }}
-                        autoFocus // initial focus
-                        onBlur={(_event) => {
-                            context.processTableEdit({
-                                source: "TabsView",
-                                type: DesignerEditType.Update,
-                                path: ["name"],
-                                value: tableName,
-                            });
-                        }}
-                    />
-                </Field>
-                <Field
-                    size="small"
-                    label={locConstants.tableDesigner.schema}
-                    orientation="horizontal"
-                    style={{ width: "300px" }}>
-                    <SearchableDropdown
-                        size="small"
-                        options={getSortedSchemaValues().map((option) => ({
-                            value: option,
-                        }))}
-                        onSelect={(option) => {
-                            context.processTableEdit({
-                                source: "TabsView",
-                                type: DesignerEditType.Update,
-                                path: ["schema"],
-                                value: option.value,
-                            });
-                        }}
-                        selectedOption={{
-                            value: schema,
-                        }}
-                        ariaLabel={locConstants.tableDesigner.schema}
-                    />
-                </Field>
+            <div className={classes.stickyTabs}>
                 <TabList
                     size="small"
                     selectedValue={state.tabStates?.mainPaneTab}
@@ -229,7 +142,8 @@ export const DesignerMainPane = () => {
                         );
                     })}
                 </TabList>
-
+            </div>
+            <div className={classes.content}>
                 {state.view?.tabs.map((tab) => {
                     return (
                         <div

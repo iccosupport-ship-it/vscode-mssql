@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from "@vscode/l10n";
+import { search } from "../pages/ExecutionPlan/queryPlanSetup";
 
 export class LocConstants {
     private static _instance = new LocConstants();
@@ -62,6 +63,7 @@ export class LocConstants {
             getStarted: l10n.t("Get Started"),
             back: l10n.t("Back"),
             warning: l10n.t("Warning"),
+            search: l10n.t("Search..."),
         };
     }
 

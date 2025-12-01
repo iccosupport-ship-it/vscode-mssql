@@ -22,6 +22,7 @@ export type DesignerDropdownProps = {
     showLabel?: boolean;
     showError?: boolean;
     horizontal?: boolean;
+    renderInTable?: boolean;
 };
 
 export const DesignerDropdown = ({
@@ -32,6 +33,7 @@ export const DesignerDropdown = ({
     showLabel = true,
     showError = true,
     horizontal = false,
+    renderInTable = false,
 }: DesignerDropdownProps) => {
     const [value, setValue] = useState<string[]>([]);
     const context = useContext(TableDesignerContext);
@@ -46,22 +48,64 @@ export const DesignerDropdown = ({
         setValue([model.value]);
     }, [model]);
 
+    const isTableCell = renderInTable;
+    const dropdownHeight = isTableCell ? "22px" : "auto";
+
+    const dropdownControl = (
+        <SearchableDropdown
+            style={{
+                width: isTableCell ? "100%" : width,
+                minWidth: isTableCell ? undefined : width,
+                maxWidth: isTableCell ? undefined : width,
+                height: dropdownHeight,
+                minHeight: dropdownHeight,
+                border: context.getErrorMessage(componentPath)
+                    ? "1px solid var(--vscode-errorForeground)"
+                    : undefined,
+                fontSize: isTableCell ? "11px" : undefined,
+                borderRadius: isTableCell ? 0 : undefined,
+                backgroundColor: isTableCell ? "transparent" : undefined,
+                boxShadow: isTableCell ? "none" : undefined,
+                borderColor: isTableCell ? "transparent" : undefined,
+            }}
+            options={model.values
+                .sort((a, b) => a.localeCompare(b))
+                .map((option) => ({
+                    text: option,
+                    value: option,
+                }))}
+            onSelect={(option) => {
+                if (model.enabled === false) {
+                    return;
+                }
+                context.processTableEdit({
+                    path: componentPath,
+                    value: option.value.toString(),
+                    type: DesignerEditType.Update,
+                    source: UiArea,
+                });
+            }}
+            size="small"
+            selectedOption={{
+                value: value[0],
+            }}
+            ariaLabel={component.componentProperties.title}
+        />
+    );
+
+    if (isTableCell) {
+        return dropdownControl;
+    }
+
     return (
         <Field
-            label={
-                showLabel
-                    ? {
-                          children: (
-                              <InfoLabel
-                                  size="small"
-                                  info={component.description}
-                                  aria-hidden="true">
-                                  {component.componentProperties.title}
-                              </InfoLabel>
-                          ),
-                      }
-                    : undefined
-            }
+            label={{
+                children: (
+                    <InfoLabel size="small" info={component.description} aria-hidden="true">
+                        {component.componentProperties.title}
+                    </InfoLabel>
+                ),
+            }}
             validationState={
                 showError && context.getErrorMessage(componentPath) ? "error" : undefined
             }
@@ -69,39 +113,7 @@ export const DesignerDropdown = ({
             style={{ width: width }}
             size="small"
             orientation={horizontal ? "horizontal" : "vertical"}>
-            <SearchableDropdown
-                style={{
-                    width: width,
-                    minWidth: width,
-                    maxWidth: width,
-                    height: "100%",
-                    border: context.getErrorMessage(componentPath)
-                        ? "1px solid var(--vscode-errorForeground)"
-                        : undefined,
-                }}
-                options={model.values
-                    .sort((a, b) => a.localeCompare(b))
-                    .map((option) => ({
-                        text: option,
-                        value: option,
-                    }))}
-                onSelect={(option) => {
-                    if (model.enabled === false) {
-                        return;
-                    }
-                    context.processTableEdit({
-                        path: componentPath,
-                        value: option.value.toString(),
-                        type: DesignerEditType.Update,
-                        source: UiArea,
-                    });
-                }}
-                size="small"
-                selectedOption={{
-                    value: value[0],
-                }}
-                ariaLabel={component.componentProperties.title}
-            />
+            {dropdownControl}
         </Field>
     );
 };

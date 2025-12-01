@@ -9,11 +9,13 @@ import {
     AccordionItem,
     AccordionPanel,
     Button,
+    Divider,
+    SearchBox,
     Text,
     makeStyles,
     shorthands,
 } from "@fluentui/react-components";
-import { useContext } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { TableDesignerContext } from "./tableDesignerStateProvider";
 import { DesignerCheckbox } from "./designerCheckbox";
 import { DesignerInputBox } from "./designerInputBox";
@@ -39,17 +41,14 @@ const useStyles = makeStyles({
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        overflowX: "hidden",
-        ...shorthands.overflow("hidden"),
+        overflow: "hidden",
     },
     title: {
         display: "flex",
         alignItems: "center",
         gap: "8px",
-        padding: "6px 8px",
-        borderBottom: "1px solid var(--vscode-editorWidget-border)",
+        padding: "6px 0px",
         backgroundColor: "var(--vscode-editorWidget-background)",
-        boxShadow: "0 1px 0 var(--vscode-editorWidget-border), 0 2px 6px rgba(0, 0, 0, 0.2)",
         position: "relative",
         zIndex: 1,
     },
@@ -70,6 +69,11 @@ const useStyles = makeStyles({
         "> *": {
             marginBottom: "10px",
         },
+    },
+    searchContainer: {
+        padding: "0 12px 12px",
+        backgroundColor: "var(--vscode-editor-background)",
+        borderBottom: "1px solid var(--vscode-editorWidget-border)",
     },
 });
 
@@ -96,9 +100,8 @@ export const DesignerPropertiesPane = () => {
     );
     groups?.unshift("General");
 
-    if (!data) {
-        return undefined;
-    }
+    const [searchText, setSearchText] = useState("");
+    const normalizedSearchText = searchText.trim().toLowerCase();
 
     const renderAccordionItem = (
         group: string | undefined,
@@ -109,7 +112,7 @@ export const DesignerPropertiesPane = () => {
         }
         return (
             <AccordionItem value={group} className={accordionStyles.accordionItem} key={group}>
-                <AccordionHeader>{group}</AccordionHeader>
+                <AccordionHeader expandIconPosition="end">{group}</AccordionHeader>
                 <AccordionPanel>
                     <div className={classes.group}>
                         {groupItem.map((item) => {
@@ -141,7 +144,6 @@ export const DesignerPropertiesPane = () => {
                                                 ...propertiesPaneData!.componentPath,
                                                 item.propertyName,
                                             ]}
-                                            horizontal
                                             key={`${group}-${item.propertyName}`}
                                         />
                                     );
@@ -155,7 +157,6 @@ export const DesignerPropertiesPane = () => {
                                                 ...propertiesPaneData!.componentPath,
                                                 item.propertyName,
                                             ]}
-                                            horizontal
                                             key={`${group}-${item.propertyName}`}
                                         />
                                     );
@@ -180,72 +181,140 @@ export const DesignerPropertiesPane = () => {
         );
     };
 
-    const getAccordionGroups = () => {
-        return groups
-            ?.sort((a, b) => {
-                if (!a || !b) {
-                    return 0;
-                }
-                // Move all expanded groups to the top
-                if (
-                    parentTableProperties.expandedGroups?.includes(a) &&
-                    !parentTableProperties.expandedGroups?.includes(b)
-                ) {
-                    return -1;
-                }
-                if (
-                    parentTableProperties.expandedGroups?.includes(b) &&
-                    !parentTableProperties.expandedGroups?.includes(a)
-                ) {
-                    return 1;
-                }
+    const sortedGroups = useMemo(() => {
+        if (!groups) {
+            return [] as (string | undefined)[];
+        }
+        return [...groups].sort((a, b) => {
+            if (!a || !b) {
                 return 0;
-            })
-            .map((group) => {
-                const groupItems = parentTableProperties
-                    .itemProperties!.filter(
-                        (i) => (group === "General" && !i.group) || group === i.group,
-                    )
-                    .filter((item) => {
-                        if (item.showInPropertiesView === false) {
-                            return false;
-                        }
-                        const modelValue = data![item.propertyName];
-                        if (!modelValue) {
-                            return false;
-                        }
-                        if (
-                            (
-                                modelValue as
-                                    | InputBoxProperties
-                                    | CheckBoxProperties
-                                    | DropDownProperties
-                            )?.enabled === false
-                        ) {
-                            return false;
-                        }
-                        return true;
-                    });
-                if (groupItems.length === 0) {
-                    return undefined;
-                }
-                return renderAccordionItem(group, groupItems);
-            });
+            }
+            if (
+                parentTableProperties.expandedGroups?.includes(a) &&
+                !parentTableProperties.expandedGroups?.includes(b)
+            ) {
+                return -1;
+            }
+            if (
+                parentTableProperties.expandedGroups?.includes(b) &&
+                !parentTableProperties.expandedGroups?.includes(a)
+            ) {
+                return 1;
+            }
+            return 0;
+        });
+    }, [groups, parentTableProperties.expandedGroups]);
+
+    const baseGroupItems = useMemo(() => {
+        if (!data) {
+            return [] as { group: string; items: DesignerDataPropertyInfo[] }[];
+        }
+        return (
+            sortedGroups
+                ?.map((group) => {
+                    if (!group) {
+                        return undefined;
+                    }
+                    const groupItems = parentTableProperties
+                        .itemProperties!.filter(
+                            (i) => (group === "General" && !i.group) || group === i.group,
+                        )
+                        .filter((item) => {
+                            if (item.showInPropertiesView === false) {
+                                return false;
+                            }
+                            const modelValue = data[item.propertyName];
+                            if (!modelValue) {
+                                return false;
+                            }
+                            if (
+                                (
+                                    modelValue as
+                                        | InputBoxProperties
+                                        | CheckBoxProperties
+                                        | DropDownProperties
+                                )?.enabled === false
+                            ) {
+                                return false;
+                            }
+                            return true;
+                        });
+                    if (groupItems.length === 0) {
+                        return undefined;
+                    }
+                    return { group, items: groupItems };
+                })
+                .filter(
+                    (entry): entry is { group: string; items: DesignerDataPropertyInfo[] } =>
+                        !!entry,
+                ) ?? []
+        );
+    }, [sortedGroups, parentTableProperties.itemProperties, data]);
+
+    const availableGroupNames = useMemo(
+        () => baseGroupItems.map((entry) => entry.group),
+        [baseGroupItems],
+    );
+
+    const doesItemMatchSearch = (item: DesignerDataPropertyInfo, query: string) => {
+        if (!query) {
+            return true;
+        }
+        const componentTitle = (item.componentProperties as { title?: string }).title ?? "";
+        const searchableText =
+            `${componentTitle} ${item.propertyName} ${item.description ?? ""}`.toLowerCase();
+        return searchableText.includes(query);
     };
 
-    const getExpandedGroups = () => {
-        // If expanded groups are set, return them
-        if (parentTableProperties.expandedGroups) {
-            return parentTableProperties.expandedGroups;
-        } else {
-            // If expanded groups are not set, expand the first group
-            if (getAccordionGroups().length > 0) {
-                return [groups[0]];
-            }
-            // If there are no groups, return empty array
-            return [];
+    const { accordionItems, matchingGroups } = useMemo(() => {
+        if (!data) {
+            return { accordionItems: [] as JSX.Element[], matchingGroups: [] as string[] };
         }
-    };
+        const matchedGroups = new Set<string>();
+        const items = baseGroupItems
+            .map((entry) => {
+                const filteredItems = normalizedSearchText
+                    ? entry.items.filter((item) => doesItemMatchSearch(item, normalizedSearchText))
+                    : entry.items;
+                if (filteredItems.length === 0) {
+                    return undefined;
+                }
+                if (normalizedSearchText) {
+                    matchedGroups.add(entry.group);
+                }
+                return renderAccordionItem(entry.group, filteredItems);
+            })
+            .filter((item): item is JSX.Element => !!item);
+        return { accordionItems: items, matchingGroups: Array.from(matchedGroups) };
+    }, [baseGroupItems, normalizedSearchText, data]);
+
+    const defaultOpenGroups = useMemo(() => {
+        if (
+            parentTableProperties.expandedGroups &&
+            parentTableProperties.expandedGroups.length > 0
+        ) {
+            return parentTableProperties.expandedGroups;
+        }
+        if (availableGroupNames.length > 0) {
+            return [availableGroupNames[0]];
+        }
+        return [];
+    }, [parentTableProperties.expandedGroups, availableGroupNames]);
+
+    const componentPathKey = propertiesPaneData.componentPath?.join("/") ?? "";
+    const [openGroups, setOpenGroups] = useState<string[]>(defaultOpenGroups);
+
+    useEffect(() => {
+        setOpenGroups(defaultOpenGroups);
+    }, [componentPathKey, defaultOpenGroups]);
+
+    const computedOpenItems = normalizedSearchText
+        ? Array.from(new Set([...openGroups, ...matchingGroups]))
+        : openGroups;
+
+    if (!data) {
+        return null;
+    }
     return (
         <div className={classes.root}>
             <div className={classes.title}>
@@ -297,10 +366,29 @@ export const DesignerPropertiesPane = () => {
                     icon={<Dismiss16Regular />}
                 />
             </div>
+            <div className={classes.searchContainer}>
+                <SearchBox
+                    size="small"
+                    placeholder={locConstants.common.search}
+                    value={searchText}
+                    onChange={(_e, data) => setSearchText(data.value ?? "")}
+                    style={{ width: "100%" }}
+                />
+            </div>
             <div className={classes.stack}>
-                <Accordion multiple collapsible defaultOpenItems={getExpandedGroups()}>
-                    {data && getAccordionGroups()}
-                </Accordion>
+                {accordionItems.length > 0 ? (
+                    <Accordion
+                        multiple
+                        collapsible
+                        openItems={computedOpenItems}
+                        onToggle={(_e, data) => {
+                            setOpenGroups((data.openItems as string[]) ?? []);
+                        }}>
+                        {accordionItems}
+                    </Accordion>
+                ) : (
+                    <Text style={{ padding: "12px" }}>{locConstants.common.noResults}</Text>
+                )}
             </div>
         </div>
     );

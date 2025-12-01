@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useContext, useEffect, useState } from "react";
+import { CSSProperties, useContext, useEffect, useState } from "react";
 import { TableDesignerContext } from "./tableDesignerStateProvider";
 import {
     DesignerDataPropertyInfo,
@@ -25,6 +25,7 @@ export type DesignerInputBoxProps = {
     showError?: boolean;
     id?: string;
     horizontal?: boolean;
+    renderInTable?: boolean;
 };
 
 export const DesignerInputBox = ({
@@ -36,6 +37,7 @@ export const DesignerInputBox = ({
     showLabel = true,
     showError = true,
     horizontal = false,
+    renderInTable = false,
 }: DesignerInputBoxProps) => {
     const [value, setValue] = useState(model.value);
     const context = useContext(TableDesignerContext);
@@ -50,22 +52,87 @@ export const DesignerInputBox = ({
         setValue(model.value);
     }, [model]);
 
+    const isTableCell = renderInTable;
+
+    const compactInputStyle = isTableCell
+        ? ({
+              backgroundColor: "transparent",
+              border: "none",
+              boxShadow: "none",
+              height: "22px",
+              padding: "0 6px",
+              borderRadius: 0,
+              "--fui-Input-borderColor": "transparent",
+              "--fui-Input-borderColorFocused": "var(--vscode-focusBorder)",
+              "--fui-Input-borderColorHovered": "transparent",
+              "--fui-Input-background": "transparent",
+              "--fui-Input-backgroundHovered": "transparent",
+              "--fui-Input-backgroundFocused": "transparent",
+          } as React.CSSProperties)
+        : undefined;
+
+    const inputControl = !multiline ? (
+        <Input
+            aria-labelledby={dropdownId}
+            ref={(el) => context.addElementRef(componentPath, el, UiArea)}
+            value={value ?? ""}
+            onChange={(_event, newValue) => {
+                setValue(newValue.value ?? "");
+            }}
+            onBlur={async () => {
+                if (value === model.value) {
+                    return;
+                }
+                await context.processTableEdit({
+                    path: componentPath,
+                    value: value,
+                    type: DesignerEditType.Update,
+                    source: UiArea,
+                });
+            }}
+            disabled={model.enabled === undefined ? false : !model.enabled}
+            type={model.inputType}
+            size="small"
+            style={compactInputStyle}
+        />
+    ) : (
+        <Textarea
+            aria-labelledby={dropdownId}
+            ref={(el) => context.addElementRef(componentPath, el, UiArea)}
+            value={value ?? ""}
+            onChange={(_event, newValue) => {
+                setValue(newValue.value ?? "");
+            }}
+            onBlur={async () => {
+                if (value === model.value) {
+                    return;
+                }
+                await context?.processTableEdit({
+                    path: componentPath,
+                    value: value,
+                    type: DesignerEditType.Update,
+                    source: UiArea,
+                });
+            }}
+            disabled={model.enabled === undefined ? false : !model.enabled}
+            size="small"
+            style={compactInputStyle}
+        />
+    );
+
+    if (isTableCell) {
+        return inputControl;
+    }
+
     return (
         <Field
-            label={
-                showLabel
-                    ? {
-                          children: (
-                              <InfoLabel
-                                  size="small"
-                                  info={component.description}
-                                  aria-hidden="true">
-                                  {component.componentProperties.title}
-                              </InfoLabel>
-                          ),
-                      }
-                    : undefined
-            }
+            label={{
+                children: (
+                    <InfoLabel size="small" info={component.description} aria-hidden="true">
+                        {component.componentProperties.title}
+                    </InfoLabel>
+                ),
+            }}
             validationState={context.getErrorMessage(componentPath) ? "error" : undefined}
             validationMessage={showError ? context.getErrorMessage(componentPath) : undefined}
             validationMessageIcon={
@@ -76,52 +143,7 @@ export const DesignerInputBox = ({
             style={{ width: width }}
             size="small"
             orientation={horizontal ? "horizontal" : "vertical"}>
-            {!multiline ? (
-                <Input
-                    aria-labelledby={dropdownId}
-                    ref={(el) => context.addElementRef(componentPath, el, UiArea)}
-                    value={value ?? ""}
-                    onChange={(_event, newValue) => {
-                        setValue(newValue.value ?? "");
-                    }}
-                    onBlur={async () => {
-                        if (value === model.value) {
-                            return;
-                        }
-                        await context.processTableEdit({
-                            path: componentPath,
-                            value: value,
-                            type: DesignerEditType.Update,
-                            source: UiArea,
-                        });
-                    }}
-                    disabled={model.enabled === undefined ? false : !model.enabled}
-                    type={model.inputType}
-                    size="small"
-                />
-            ) : (
-                <Textarea
-                    aria-labelledby={dropdownId}
-                    ref={(el) => context.addElementRef(componentPath, el, UiArea)}
-                    value={value ?? ""}
-                    onChange={(_event, newValue) => {
-                        setValue(newValue.value ?? "");
-                    }}
-                    onBlur={async () => {
-                        if (value === model.value) {
-                            return;
-                        }
-                        await context?.processTableEdit({
-                            path: componentPath,
-                            value: value,
-                            type: DesignerEditType.Update,
-                            source: UiArea,
-                        });
-                    }}
-                    disabled={model.enabled === undefined ? false : !model.enabled}
-                    size="small"
-                />
-            )}
+            {inputControl}
         </Field>
     );
 };

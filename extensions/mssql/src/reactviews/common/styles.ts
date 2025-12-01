@@ -7,9 +7,8 @@ import { makeStyles } from "@fluentui/react-components";
 
 export const useAccordionStyles = makeStyles({
     accordionItem: {
-        border: "0.5px solid var(--vscode-editorWidget-border)",
+        borderBottom: "0.5px solid var(--vscode-editorWidget-border)",
         borderRadius: "2px",
-        margin: "10px",
     },
 });
 
