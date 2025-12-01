@@ -2586,6 +2586,9 @@
     <trans-unit id="++CODE++6c351c116cc7feeaf5724426f891c890b4f7d9cb8baab5f2ec1d6c512cc016b6">
       <source xml:lang="en">No items</source>
     </trans-unit>
+    <trans-unit id="++CODE++3328fd13baff5476f782f632e7262aac5683cbbee2471656a9cfd315eecc1a14">
+      <source xml:lang="en">No items defined.</source>
+    </trans-unit>
     <trans-unit id="++CODE++1879af23a37978ff5873d50e56a20f354d53be9278d4075d63e9291b22924af8">
       <source xml:lang="en">No model found.</source>
     </trans-unit>
@@ -3349,6 +3352,9 @@
     <trans-unit id="++CODE++49ff54ad141b9f4b74b176a98807c6b9a1282dfe026c3f38015dd596c54c4a84">
       <source xml:lang="en">Search options...</source>
     </trans-unit>
+    <trans-unit id="++CODE++8ccb6303d68be1399d3a026773c1c1ad67f4a4a963c2691cae1a82fc3545aad5">
+      <source xml:lang="en">Search properties</source>
+    </trans-unit>
     <trans-unit id="++CODE++6801207d5994165123a10ab767fd9439130fae500f8c407877ae5070843b906d">
       <source xml:lang="en">Search settings...</source>
     </trans-unit>
@@ -3431,6 +3437,9 @@
     </trans-unit>
     <trans-unit id="++CODE++1032e1d25c0d5131be3195e1e53197385eb21d860f4f14f7bbc4cfcce4bfd109">
       <source xml:lang="en">Select an extension to manage connection sharing permissions</source>
+    </trans-unit>
+    <trans-unit id="++CODE++4b4b2160d7542be08685e269fcf8678902ed056f8bb7fc63e3ff8856df3b7b7d">
+      <source xml:lang="en">Select an item to view details.</source>
     </trans-unit>
     <trans-unit id="++CODE++cac9a015dc3356af3f386e840985bfc09d57c0b9cc01a88e26ec67f3501058d8">
       <source xml:lang="en">Select an object to view its definition ({0} results)</source>
