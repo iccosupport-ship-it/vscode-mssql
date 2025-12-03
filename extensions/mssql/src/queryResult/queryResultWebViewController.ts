@@ -248,6 +248,17 @@ export class QueryResultWebviewController extends ReactWebviewViewController<
         };
     }
 
+    public override set state(newState: qr.QueryResultWebviewState) {
+        /**
+         * If the user has enabled opening query results in tab by default, we should not set the state
+         * here on the webview view controller
+         */
+        if (this.isOpenQueryResultsInTabByDefaultEnabled) {
+            return;
+        }
+        super.state = newState;
+    }
+
     public async createPanelController(uri: string) {
         const viewColumn = getNewResultPaneViewColumn(uri, this.vscodeWrapper);
         if (this._queryResultWebviewPanelControllerMap.has(uri)) {
