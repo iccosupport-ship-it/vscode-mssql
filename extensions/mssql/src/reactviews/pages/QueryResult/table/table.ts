@@ -614,84 +614,23 @@ export class Table<T extends Slick.SlickData> implements IThemable {
             );
         }
 
-        if (styles.nullCellBackground) {
-            content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null { background-color: ${styles.nullCellBackground}; }`,
-            );
-        }
+        const nullCellSelector = `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null`;
+        const nonInteractiveNullSelector = `${nullCellSelector}:not(.selected):not(.active):not(:hover)`;
+        const rowHoverNonInteractiveSelector = `.monaco-table.${this.idPrefix} .slick-row:hover .slick-cell.cell-null:not(.selected):not(.active):not(:hover)`;
+        const baseNullBackground =
+            styles.nullCellBackground ??
+            styles.listInactiveSelectionBackground ??
+            styles.listActiveSelectionBackground ??
+            styles.listFocusBackground;
 
-        if (styles.nullCellForeground) {
+        if (baseNullBackground) {
             content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null { color: ${styles.nullCellForeground}; }`,
+                `${nonInteractiveNullSelector} { background-color: ${baseNullBackground}; }`,
             );
-        }
 
-        if (styles.nullCellHoverBackground) {
+            const hoverBackground = styles.listHoverBackground ?? "inherit";
             content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null:hover { background-color: ${styles.nullCellHoverBackground}; }`,
-            );
-        }
-
-        if (styles.nullCellHoverForeground) {
-            content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null:hover { color: ${styles.nullCellHoverForeground}; }`,
-            );
-        }
-
-        if (styles.nullCellSelectionBackground) {
-            content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null.selected { background-color: ${styles.nullCellSelectionBackground}; }`,
-            );
-        }
-
-        if (styles.nullCellSelectionForeground) {
-            content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null.selected { color: ${styles.nullCellSelectionForeground}; }`,
-            );
-        }
-
-        if (styles.nullCellHoverSelectionBackground) {
-            content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null.selected:hover { background-color: ${styles.nullCellHoverSelectionBackground}; }`,
-            );
-        }
-
-        if (styles.nullCellHoverSelectionForeground) {
-            content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null.selected:hover { color: ${styles.nullCellHoverSelectionForeground}; }`,
-            );
-        }
-
-        if (styles.nullCellSelectionActiveBackground) {
-            content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null.selected.active { background-color: ${styles.nullCellSelectionActiveBackground}; }`,
-            );
-        }
-
-        if (styles.nullCellSelectionActiveForeground) {
-            content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null.selected.active { color: ${styles.nullCellSelectionActiveForeground}; }`,
-            );
-            content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null.selected.active:hover { background-color: ${styles.nullCellSelectionActiveBackground}; }`,
-            );
-        }
-
-        if (styles.nullCellHoverForeground) {
-            content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null:hover { color: ${styles.nullCellHoverForeground}; }`,
-            );
-            content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null.selected.active:hover { color: ${styles.nullCellHoverForeground}; }`,
-            );
-        }
-
-        if (styles.nullCellHoverBackground) {
-            content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null:hover { background-color: ${styles.nullCellHoverBackground}; }`,
-            );
-            content.push(
-                `.monaco-table.${this.idPrefix} .slick-row .slick-cell.cell-null.selected.active:hover { background-color: ${styles.nullCellHoverBackground}; }`,
+                `${rowHoverNonInteractiveSelector} { background-color: ${hoverBackground}; }`,
             );
         }
 
