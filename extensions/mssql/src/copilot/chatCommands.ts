@@ -226,7 +226,6 @@ export const CHAT_COMMANDS: Record<string, CommandDefinition> = {
                     controller.context,
                     new VscodeWrapper(),
                     controller,
-                    controller.schemaDesignerService,
                     connCreds.database,
                     undefined,
                     connectionUri,

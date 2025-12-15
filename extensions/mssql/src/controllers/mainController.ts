@@ -62,7 +62,6 @@ import { getErrorMessage, isIConnectionInfo } from "../utils/utils";
 import { getStandardNPSQuestions, UserSurvey } from "../nps/userSurvey";
 import { ExecutionPlanOptions } from "../models/contracts/queryExecute";
 import { ObjectExplorerDragAndDropController } from "../objectExplorer/objectExplorerDragAndDropController";
-import { SchemaDesignerService } from "../services/schemaDesignerService";
 import store from "../queryResult/singletonStore";
 import { SchemaCompareWebViewController } from "../schemaCompare/schemaCompareWebViewController";
 import { SchemaCompare } from "../constants/locConstants";
@@ -135,7 +134,6 @@ export default class MainController implements vscode.Disposable {
     public configuration: vscode.WorkspaceConfiguration;
     public objectExplorerTree: vscode.TreeView<TreeNodeInfo>;
     public executionPlanService: ExecutionPlanService;
-    public schemaDesignerService: SchemaDesignerService;
     public connectionSharingService: ConnectionSharingService;
 
     /**
@@ -589,7 +587,6 @@ export default class MainController implements vscode.Disposable {
 
             this.tableDesignerService = new TableDesignerService(SqlToolsServerClient.instance);
             this.copilotService = new CopilotService(SqlToolsServerClient.instance);
-            this.schemaDesignerService = new SchemaDesignerService(SqlToolsServerClient.instance);
 
             this.connectionSharingService = new ConnectionSharingService(
                 this._context,
@@ -703,7 +700,6 @@ export default class MainController implements vscode.Disposable {
                                 this._context,
                                 this._vscodeWrapper,
                                 this,
-                                this.schemaDesignerService,
                                 database,
                                 undefined,
                                 connectionUri,
@@ -1545,7 +1541,6 @@ export default class MainController implements vscode.Disposable {
                                 this._context,
                                 this._vscodeWrapper,
                                 this,
-                                this.schemaDesignerService,
                                 node.metadata.name,
                                 node,
                             );

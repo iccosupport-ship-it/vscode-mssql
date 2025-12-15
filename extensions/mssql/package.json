@@ -1926,6 +1926,17 @@
                     "description": "%mssql.schemaDesigner.enableExpandCollapseButtons%",
                     "scope": "window"
                 },
+                "mssql.schemaDesigner.engine": {
+                    "type": "string",
+                    "default": "dacfx",
+                    "enum": ["dacfx", "inMemory"],
+                    "enumDescriptions": [
+                        "Use DacFx for schema diffing and deployment",
+                        "Use the in-memory engine for faster metadata queries. This engine has limited support for diffing and deployment."
+                    ],
+                    "description": "%mssql.schemaDesigner.engine%",
+                    "scope": "window"
+                },
                 "mssql.tracingLevel": {
                     "type": "string",
                     "description": "%mssql.tracingLevel%",

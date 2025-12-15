@@ -265,6 +265,7 @@ export const configAutoRevealResultsPanel = "mssql.autoRevealResultsPanel";
 export const configCustomEnvironment = "mssql.customEnvironment";
 export const configShortcuts = "mssql.shortcuts";
 export const configShowChangelogOnUpdate = "mssql.showChangelogOnUpdate";
+export const configSchemaDesignerEngine = "mssql.schemaDesigner.engine";
 
 // Built into VS Code
 export const sovereignCloudSectionName = "microsoft-sovereign-cloud";

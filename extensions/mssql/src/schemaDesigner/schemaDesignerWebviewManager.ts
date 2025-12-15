@@ -9,13 +9,21 @@ import { SchemaDesigner } from "../sharedInterfaces/schemaDesigner";
 import { SchemaDesignerWebviewController } from "./schemaDesignerWebviewController";
 import { TreeNodeInfo } from "../objectExplorer/nodes/treeNodeInfo";
 import MainController from "../controllers/mainController";
-import * as LocConstants from "../constants/locConstants";
 import { TelemetryViews, TelemetryActions } from "../sharedInterfaces/telemetry";
 import { sendActionEvent } from "../telemetry/telemetry";
 import { IConnectionProfile } from "../models/interfaces";
+import {
+    getSchemaDesignerEngineConfig,
+    SchemaDesignerEngine,
+    showSchemaDesignerExitWarning,
+} from "./schemaDesignerUtils";
+import { SchemaDesignerInMemoryService } from "./inMemoryEngine/schemaDesignerInMemoryService";
+import { SchemaDesignerService } from "../services/schemaDesignerService";
+import SqlToolsServiceClient from "../languageservice/serviceclient";
 
 export class SchemaDesignerWebviewManager {
     private static instance: SchemaDesignerWebviewManager;
+    private static schemaDesignerService: SchemaDesigner.ISchemaDesignerService;
     private schemaDesigners: Map<string, SchemaDesignerWebviewController> = new Map();
     private schemaDesignerCache: Map<string, SchemaDesigner.SchemaDesignerCacheItem> = new Map();
 
@@ -26,9 +34,7 @@ export class SchemaDesignerWebviewManager {
         return this.instance;
     }
 
-    private constructor() {
-        // Private constructor to prevent instantiation
-    }
+    private constructor() { }
 
     /**
      * Gets or creates a schema designer webview controller for the specified database connection.
@@ -50,11 +56,12 @@ export class SchemaDesignerWebviewManager {
         context: vscode.ExtensionContext,
         vscodeWrapper: VscodeWrapper,
         mainController: MainController,
-        schemaDesignerService: SchemaDesigner.ISchemaDesignerService,
         databaseName: string,
         treeNode?: TreeNodeInfo,
         connectionUri?: string,
     ): Promise<SchemaDesignerWebviewController> {
+        // Update the schema designer service based on current configuration
+        SchemaDesignerWebviewManager.updateSchemaDesignerService();
         let connectionString: string | undefined;
         let azureAccountToken: string | undefined;
         if (treeNode) {
@@ -91,7 +98,7 @@ export class SchemaDesignerWebviewManager {
                 context,
                 vscodeWrapper,
                 mainController,
-                schemaDesignerService,
+                SchemaDesignerWebviewManager.schemaDesignerService,
                 connectionString,
                 azureAccountToken,
                 databaseName,
@@ -102,16 +109,8 @@ export class SchemaDesignerWebviewManager {
             schemaDesigner.onDisposed(async () => {
                 this.schemaDesigners.delete(key);
                 if (this.schemaDesignerCache.get(key).isDirty) {
-                    // Ensure the user wants to exit without saving
-                    const choice = await vscode.window.showInformationMessage(
-                        LocConstants.Webview.webviewRestorePrompt(
-                            LocConstants.SchemaDesigner.SchemaDesigner,
-                        ),
-                        { modal: true },
-                        LocConstants.Webview.Restore,
-                    );
-
-                    if (choice === LocConstants.Webview.Restore) {
+                    const choice = await showSchemaDesignerExitWarning();
+                    if (choice === "restore") {
                         sendActionEvent(
                             TelemetryViews.WebviewController,
                             TelemetryActions.Restore,
@@ -119,20 +118,20 @@ export class SchemaDesignerWebviewManager {
                             {},
                         );
                         // Show the webview again
-                        return await this.getSchemaDesigner(
+                        await this.getSchemaDesigner(
                             context,
                             vscodeWrapper,
                             mainController,
-                            schemaDesignerService,
                             databaseName,
                             treeNode,
                             connectionUri,
                         );
+                        return;
                     }
                 }
                 // Ignoring errors here as we don't want to block the disposal process
                 try {
-                    schemaDesignerService.disposeSession({
+                    SchemaDesignerWebviewManager.schemaDesignerService.disposeSession({
                         sessionId:
                             this.schemaDesignerCache.get(key).schemaDesignerDetails.sessionId,
                     });
@@ -144,5 +143,20 @@ export class SchemaDesignerWebviewManager {
             this.schemaDesigners.set(key, schemaDesigner);
         }
         return this.schemaDesigners.get(key)!;
+    }
+
+    private static updateSchemaDesignerService() {
+        switch (getSchemaDesignerEngineConfig()) {
+            case SchemaDesignerEngine.InMemory:
+                SchemaDesignerWebviewManager.schemaDesignerService =
+                    new SchemaDesignerInMemoryService();
+                break;
+            case SchemaDesignerEngine.DacFx:
+            default:
+                SchemaDesignerWebviewManager.schemaDesignerService = new SchemaDesignerService(
+                    SqlToolsServiceClient.instance,
+                );
+                break;
+        }
     }
 }
