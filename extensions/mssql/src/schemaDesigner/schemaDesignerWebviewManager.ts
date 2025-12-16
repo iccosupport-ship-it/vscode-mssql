@@ -17,10 +17,10 @@ import {
     SchemaDesignerEngine,
     showSchemaDesignerExitWarning,
 } from "./schemaDesignerUtils";
-import { SchemaDesignerInMemoryService } from "./inMemoryEngine/schemaDesignerInMemoryService";
+import { SchemaDesignerInMemoryService } from "./inMemoryEngine/core/schemaDesignerInMemoryService";
 import { SchemaDesignerService } from "../services/schemaDesignerService";
 import SqlToolsServiceClient from "../languageservice/serviceclient";
-import { MssqlPlatform, VscodeMssqlExecutor } from "./inMemoryEngine/mssqlPlatform";
+import { MssqlPlatform, VscodeMssqlExecutor } from "./inMemoryEngine/platforms/mssql";
 
 export class SchemaDesignerWebviewManager {
     private static _instance: SchemaDesignerWebviewManager;

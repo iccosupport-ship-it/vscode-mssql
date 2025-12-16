@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { SchemaDesigner } from "../../../sharedInterfaces/schemaDesigner";
-import { CommandPhase } from "../commandGraph";
-import { ITableGenerator, ISyntaxProvider } from "../interfaces";
-import { SchemaCommandContext } from "../schemaCommandContext";
-import { ISchemaObjectHandler } from "../schemaObjectHandler";
+import { CommandPhase } from "../core/commandGraph";
+import { ITableGenerator, ISyntaxProvider } from "../core/interfaces";
+import { SchemaCommandContext } from "../core/schemaCommandContext";
+import { ISchemaObjectHandler } from "../core/schemaObjectHandler";
 
 export class TableHandler implements ISchemaObjectHandler {
     buildCommands(context: SchemaCommandContext): void {
@@ -78,7 +78,7 @@ export class TableHandler implements ISchemaObjectHandler {
         context.addCommand(
             dropTableId,
             CommandPhase.Drop,
-            [`DROP TABLE ${syntax.qualifyName(table.schema, table.name)};`],
+            [gen.dropTable(table)],
             dropDependencies,
             `Drop table ${syntax.qualifyName(table.schema, table.name)}`,
             true,
@@ -177,9 +177,7 @@ export class TableHandler implements ISchemaObjectHandler {
             const added = context.addCommand(
                 transferId,
                 CommandPhase.Alter,
-                [
-                    `ALTER SCHEMA ${syntax.quoteIdentifier(updatedTable.schema)} TRANSFER ${originalTableName};`,
-                ],
+                [gen.moveTableToSchema(originalTable, updatedTable.schema)],
                 [],
                 description,
             );
@@ -201,11 +199,7 @@ export class TableHandler implements ISchemaObjectHandler {
             const added = context.addCommand(
                 renameId,
                 CommandPhase.Alter,
-                [
-                    `EXEC sp_rename ${syntax.quoteString(
-                        syntax.qualifyName(renameSchema, originalTable.name),
-                    )}, ${syntax.quoteString(updatedTable.name)};`,
-                ],
+                [gen.renameTable(renameSchema, originalTable.name, updatedTable.name)],
                 renameDependencies,
                 description,
             );
@@ -231,11 +225,7 @@ export class TableHandler implements ISchemaObjectHandler {
                 context.addCommand(
                     renameId,
                     CommandPhase.Alter,
-                    [
-                        `EXEC sp_rename ${syntax.quoteString(
-                            `${syntax.quoteIdentifier(updatedTable.schema)}.${syntax.quoteIdentifier(originalFk.name)}`,
-                        )}, ${syntax.quoteString(updatedFk.name)}, 'OBJECT';`,
-                    ],
+                    [gen.renameForeignKey(updatedTable, originalFk.name, updatedFk.name)],
                     [...tableCommandDependencies],
                     description,
                 );
@@ -305,13 +295,7 @@ export class TableHandler implements ISchemaObjectHandler {
                     const renameAdded = context.addCommand(
                         renameId,
                         CommandPhase.Alter,
-                        [
-                            `EXEC sp_rename ${syntax.quoteString(
-                                syntax.qualifyName(updatedTable.schema, updatedTable.name) +
-                                    "." +
-                                    syntax.quoteIdentifier(originalColumn.name),
-                            )}, ${syntax.quoteString(updatedColumn.name)}, 'COLUMN';`,
-                        ],
+                        gen.rename(updatedTable, originalColumn, updatedColumn),
                         [...tableCommandDependencies],
                         description,
                     );
@@ -386,15 +370,13 @@ export class TableHandler implements ISchemaObjectHandler {
         let dropPkDependency: string | undefined;
         if (this.isPrimaryKeyDifferent(originalTable, updatedTable)) {
             const dropPkId = context.createId("drop_pk", originalTable.schema, originalTable.name);
-            const pkName = originalTable.primaryKeyName || `PK_${originalTable.name}`;
+            const dropSql = originalTable.columns.some((c) => c.isPrimaryKey)
+                ? [gen.dropPrimaryKey(originalTable)]
+                : [];
             const dropAdded = context.addCommand(
                 dropPkId,
                 CommandPhase.Drop,
-                originalTable.columns.some((c) => c.isPrimaryKey)
-                    ? [
-                          `ALTER TABLE ${originalTableName} DROP CONSTRAINT ${syntax.quoteIdentifier(pkName)};`,
-                      ]
-                    : [],
+                dropSql,
                 [],
                 `Drop primary key on ${syntax.qualifyName(originalTable.schema, originalTable.name)}`,
             );
@@ -409,15 +391,10 @@ export class TableHandler implements ISchemaObjectHandler {
                 if (dropPkDependency) {
                     dependencies.push(dropPkDependency);
                 }
-                const newPkName = updatedTable.primaryKeyName || `PK_${updatedTable.name}`;
                 context.addCommand(
                     addPkId,
                     CommandPhase.Create,
-                    [
-                        `ALTER TABLE ${tableName} ADD CONSTRAINT ${syntax.quoteIdentifier(newPkName)} PRIMARY KEY (${updatedPkColumns
-                            .map((c) => syntax.quoteIdentifier(c.name))
-                            .join(", ")});`,
-                    ],
+                    [gen.addPrimaryKey(updatedTable)],
                     dependencies,
                     `Create primary key on ${syntax.qualifyName(updatedTable.schema, updatedTable.name)}`,
                 );

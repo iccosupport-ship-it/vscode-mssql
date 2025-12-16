@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { SchemaDesigner } from "../../sharedInterfaces/schemaDesigner";
+import { SchemaDesigner } from "../../../sharedInterfaces/schemaDesigner";
 import { CommandGraph } from "./commandGraph";
 import { IDatabasePlatform, IQueryExecutor, ITableGenerator } from "./interfaces";
-import { TableHandler } from "./handlers/tableHandler";
 import { SchemaCommandContext } from "./schemaCommandContext";
-import { generateGuid } from "../../models/utils";
+import { generateGuid } from "../../../models/utils";
+import { ISchemaObjectHandler } from "./schemaObjectHandler";
 
 // Internal State Helper
 interface SessionState {
@@ -18,12 +18,11 @@ interface SessionState {
     originalSchema: SchemaDesigner.Schema;
     platform: IDatabasePlatform;
     executor: IQueryExecutor;
+    handlers: ISchemaObjectHandler[];
 }
 
 export class SchemaDesignerInMemoryService implements SchemaDesigner.ISchemaDesignerService {
     private readonly _sessions = new Map<string, SessionState>();
-    // We register the handlers once for this service
-    private readonly _handlers = [new TableHandler()];
 
     /**
      * Dependency Injection for the specific Platform.
@@ -42,6 +41,7 @@ export class SchemaDesignerInMemoryService implements SchemaDesigner.ISchemaDesi
 
         const sessionId = generateGuid();
         const executor = this._executorFactory(request.ownerUri);
+        const handlers = this._defaultPlatform.getHandlers();
 
         // 1. Load Schema using Modular Loaders
         const loaders = this._defaultPlatform.getObjectLoaders();
@@ -74,6 +74,7 @@ export class SchemaDesignerInMemoryService implements SchemaDesigner.ISchemaDesi
             originalSchema: originalClone,
             platform: this._defaultPlatform,
             executor: executor,
+            handlers,
         });
 
         return {
@@ -141,7 +142,7 @@ export class SchemaDesignerInMemoryService implements SchemaDesigner.ISchemaDesi
             session.platform.getGeneratorRegistry(),
         );
 
-        this._handlers.forEach((h) => h.buildCommands(ctx));
+        session.handlers.forEach((h) => h.buildCommands(ctx));
 
         const lines = graph.getReportLines();
 
@@ -179,7 +180,7 @@ export class SchemaDesignerInMemoryService implements SchemaDesigner.ISchemaDesi
         );
 
         // Run all registered handlers
-        for (const handler of this._handlers) {
+        for (const handler of session.handlers) {
             handler.buildCommands(ctx);
         }
 

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { SchemaDesigner } from "../../sharedInterfaces/schemaDesigner";
+import { SchemaDesigner } from "../../../../sharedInterfaces/schemaDesigner";
 import {
     IColumnGenerator,
     ISyntaxProvider,
@@ -11,7 +11,7 @@ import {
     ITableGenerator,
     ICodeObjectGenerator,
     IConstraintGenerator,
-} from "./interfaces";
+} from "../../core/interfaces";
 
 // 1. Column Generator
 export class MssqlColumnGenerator implements IColumnGenerator {
@@ -55,6 +55,14 @@ EXEC('ALTER TABLE ${tableName} DROP CONSTRAINT ' + @ConstraintName)`;
         }
 
         return statements;
+    }
+
+    rename(t: SchemaDesigner.Table, o: SchemaDesigner.Column, n: SchemaDesigner.Column): string[] {
+        return [
+            `EXEC sp_rename ${this.s.quoteString(
+                `${this.s.qualifyName(t.schema, t.name)}.${this.s.quoteIdentifier(o.name)}`,
+            )}, ${this.s.quoteString(n.name)}, 'COLUMN';`,
+        ];
     }
 
     private basePropsChanged(o: SchemaDesigner.Column, n: SchemaDesigner.Column): boolean {
@@ -110,6 +118,9 @@ export class MssqlTableLifecycleGenerator implements ITableLifecycleGenerator {
     renameTable(s: string, o: string, n: string): string {
         return `EXEC sp_rename '${this.s.qualifyName(s, o)}', '${n}'`;
     }
+    moveTableToSchema(t: SchemaDesigner.Table, targetSchema: string): string {
+        return `ALTER SCHEMA ${this.s.quoteIdentifier(targetSchema)} TRANSFER ${this.s.qualifyName(t.schema, t.name)}`;
+    }
 }
 
 // 3. Constraint Generator
@@ -139,6 +150,12 @@ export class MssqlConstraintGenerator implements IConstraintGenerator {
     dropForeignKey(t: SchemaDesigner.Table, fk: SchemaDesigner.ForeignKey): string {
         return `ALTER TABLE ${this.s.qualifyName(t.schema, t.name)} DROP CONSTRAINT ${this.s.quoteIdentifier(fk.name)}`;
     }
+
+    renameForeignKey(t: SchemaDesigner.Table, oldName: string, newName: string): string {
+        return `EXEC sp_rename ${this.s.quoteString(
+            `${this.s.quoteIdentifier(t.schema)}.${this.s.quoteIdentifier(oldName)}`,
+        )}, ${this.s.quoteString(newName)}, 'OBJECT'`;
+    }
 }
 
 // 4. Composite Table Generator
@@ -162,6 +179,9 @@ export class MssqlTableGenerator implements ITableGenerator {
     renameTable(s: string, o: string, n: string) {
         return this._lifecycle.renameTable(s, o, n);
     }
+    moveTableToSchema(t: SchemaDesigner.Table, targetSchema: string) {
+        return this._lifecycle.moveTableToSchema(t, targetSchema);
+    }
     add(t: SchemaDesigner.Table, c: SchemaDesigner.Column) {
         return this._columns.add(t, c);
     }
@@ -170,6 +190,9 @@ export class MssqlTableGenerator implements ITableGenerator {
     }
     alter(t: SchemaDesigner.Table, o: SchemaDesigner.Column, n: SchemaDesigner.Column) {
         return this._columns.alter(t, o, n);
+    }
+    rename(t: SchemaDesigner.Table, o: SchemaDesigner.Column, n: SchemaDesigner.Column) {
+        return this._columns.rename(t, o, n);
     }
     addPrimaryKey(t: SchemaDesigner.Table) {
         return this._constraints.addPrimaryKey(t);
@@ -182,6 +205,9 @@ export class MssqlTableGenerator implements ITableGenerator {
     }
     dropForeignKey(t: SchemaDesigner.Table, fk: SchemaDesigner.ForeignKey) {
         return this._constraints.dropForeignKey(t, fk);
+    }
+    renameForeignKey(t: SchemaDesigner.Table, oldName: string, newName: string) {
+        return this._constraints.renameForeignKey(t, oldName, newName);
     }
     generateFullTableScript(t: SchemaDesigner.Table) {
         const statements = [this.createTable(t)];
