@@ -6,6 +6,7 @@
 import ConnectionManager from "../../controllers/connectionManager";
 import SqlToolsServiceClient from "../../languageservice/serviceclient";
 import { IConnectionProfile } from "../../models/interfaces";
+import { generateGuid } from "../../models/utils";
 import { SchemaDesigner } from "../../sharedInterfaces/schemaDesigner";
 import {
     IDatabasePlatform,
@@ -17,15 +18,6 @@ import {
 } from "./interfaces";
 import { MssqlTableGenerator } from "./mssqlGenerators";
 import { RequestType } from "vscode-languageclient";
-
-function generateGuid() {
-    // RFC4122 version 4 compliant UUID
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = (Math.random() * 16) | 0,
-            v = c === 'x' ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-    });
-}
 
 class MssqlSyntaxProvider implements ISyntaxProvider {
     quoteIdentifier(n: string) {
@@ -51,7 +43,6 @@ class MssqlRegistry implements IGeneratorRegistry {
     private readonly _gens = new Map<string, IScriptGenerator>();
     constructor() {
         this._gens.set("tables", new MssqlTableGenerator(this._syntax));
-        //this._gens.set("views", new MssqlViewGenerator(this._syntax));
     }
     getSyntax() {
         return this._syntax;
@@ -233,7 +224,7 @@ class MssqlTableLoader implements ISchemaObjectLoader {
 //     readonly objectTypeKey = "views";
 //     async load(_uri: string, exec: IQueryExecutor) {
 //         const query = `
-//             SELECT 
+//             SELECT
 //                 v.object_id,
 //                 s.name,
 //                 v.name,
@@ -328,7 +319,7 @@ export class VscodeMssqlExecutor implements IQueryExecutor {
         private readonly _client: SqlToolsServiceClient,
         private readonly _connectionManager: ConnectionManager,
         private readonly _ownerUri: string,
-    ) { }
+    ) {}
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async execute(query: string): Promise<any[]> {

@@ -7,7 +7,6 @@ import { SchemaDesigner } from "../../sharedInterfaces/schemaDesigner";
 import { CommandGraph } from "./commandGraph";
 import { IDatabasePlatform, IQueryExecutor, ITableGenerator } from "./interfaces";
 import { TableHandler } from "./handlers/tableHandler";
-import { ViewHandler } from "./handlers/viewHandlers";
 import { SchemaCommandContext } from "./schemaCommandContext";
 import { generateGuid } from "../../models/utils";
 
@@ -24,7 +23,7 @@ interface SessionState {
 export class SchemaDesignerInMemoryService implements SchemaDesigner.ISchemaDesignerService {
     private readonly _sessions = new Map<string, SessionState>();
     // We register the handlers once for this service
-    private readonly _handlers = [new TableHandler(), new ViewHandler()];
+    private readonly _handlers = [new TableHandler()];
 
     /**
      * Dependency Injection for the specific Platform.
@@ -46,7 +45,7 @@ export class SchemaDesignerInMemoryService implements SchemaDesigner.ISchemaDesi
 
         // 1. Load Schema using Modular Loaders
         const loaders = this._defaultPlatform.getObjectLoaders();
-        const schema: SchemaDesigner.Schema = { tables: [], views: [] }; // Base schema
+        const schema: SchemaDesigner.Schema = { tables: [] }; // Base schema
 
         const [schemaNames, dataTypes] = await Promise.all([
             this._defaultPlatform.getSchemaNames(request.ownerUri, executor),

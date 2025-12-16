@@ -15,14 +15,6 @@ export namespace SchemaDesigner {
          * Tables in the schema
          */
         tables: Table[];
-        views?: View[];
-    }
-
-    export interface View {
-        id: string;
-        name: string;
-        schema: string;
-        definition: string;
     }
 
     export type Table = {
