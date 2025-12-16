@@ -18,6 +18,7 @@ export interface DesignerCommand {
     statements: string[];
     description?: string;
     dependencies: Set<string>;
+    possibleDataLoss?: boolean;
 }
 
 export class CommandGraph {
@@ -29,6 +30,15 @@ export class CommandGraph {
 
     getAllCommandIds(): IterableIterator<string> {
         return this._commands.keys();
+    }
+
+    hasDataLoss(): boolean {
+        for (const cmd of this._commands.values()) {
+            if (cmd.possibleDataLoss) {
+                return true;
+            }
+        }
+        return false;
     }
 
     toScript(platform: IDatabasePlatform): string {

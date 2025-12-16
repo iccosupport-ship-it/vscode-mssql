@@ -151,7 +151,7 @@ export class SchemaDesignerInMemoryService implements SchemaDesigner.ISchemaDesi
             dacReport: {
                 report: lines.join("\n"),
                 hasWarnings: false,
-                possibleDataLoss: false,
+                possibleDataLoss: graph.hasDataLoss(),
                 requireTableRecreation: false,
             },
         };

@@ -81,6 +81,7 @@ export class TableHandler implements ISchemaObjectHandler {
             [`DROP TABLE ${syntax.qualifyName(table.schema, table.name)};`],
             dropDependencies,
             `Drop table ${syntax.qualifyName(table.schema, table.name)}`,
+            true,
         );
     }
 
@@ -265,6 +266,7 @@ export class TableHandler implements ISchemaObjectHandler {
                     gen.drop(updatedTable, originalColumn),
                     buildColumnDependencies(columnId),
                     `Drop column ${syntax.qualifyName(originalTable.schema, originalTable.name)}.${syntax.quoteIdentifier(originalColumn.name)}`,
+                    true,
                 );
                 if (added) {
                     columnCommandIds.push(cmdId);
@@ -332,6 +334,7 @@ export class TableHandler implements ISchemaObjectHandler {
                         gen.drop(updatedTable, originalColumn),
                         buildColumnDependencies(columnId),
                         `Drop column ${syntax.qualifyName(updatedTable.schema, updatedTable.name)}.${syntax.quoteIdentifier(originalColumn.name)} for recreation`,
+                        true,
                     );
                     const addId = context.createId(
                         "recreate_add_column",
@@ -364,12 +367,14 @@ export class TableHandler implements ISchemaObjectHandler {
                         updatedColumn.name,
                     );
                     const statements = gen.alter(updatedTable, originalColumn, updatedColumn);
+                    const dataLoss = this.checkColumnDataLoss(originalColumn, updatedColumn);
                     const added = context.addCommand(
                         cmdId,
                         CommandPhase.Alter,
                         statements,
                         buildColumnDependencies(columnId),
                         `Alter column ${syntax.qualifyName(updatedTable.schema, updatedTable.name)}.${syntax.quoteIdentifier(updatedColumn.name)}`,
+                        dataLoss,
                     );
                     if (added) {
                         columnCommandIds.push(cmdId);
@@ -546,5 +551,26 @@ export class TableHandler implements ISchemaObjectHandler {
 
     private getForeignKeyIdentifier(fk: SchemaDesigner.ForeignKey): string {
         return fk.id ?? fk.name;
+    }
+
+    private checkColumnDataLoss(
+        original: SchemaDesigner.Column,
+        updated: SchemaDesigner.Column,
+    ): boolean {
+        if (original.dataType !== updated.dataType) return true;
+
+        // Check length reduction
+        const originalLen = parseInt(original.maxLength);
+        const updatedLen = parseInt(updated.maxLength);
+        if (!isNaN(originalLen) && !isNaN(updatedLen)) {
+            if (originalLen === -1 && updatedLen !== -1) return true; // MAX to specific
+            if (originalLen !== -1 && updatedLen !== -1 && originalLen > updatedLen) return true;
+        }
+
+        if (original.precision > updated.precision) return true;
+        if (original.scale > updated.scale) return true;
+        if (original.isNullable && !updated.isNullable) return true;
+
+        return false;
     }
 }

@@ -26,6 +26,7 @@ export class SchemaCommandContext {
         sql: string[],
         deps: string[] = [],
         desc?: string,
+        possibleDataLoss?: boolean,
     ): boolean {
         if (!sql || sql.length === 0) return false;
         // Filter empty strings
@@ -38,6 +39,7 @@ export class SchemaCommandContext {
             statements: validSql,
             description: desc,
             dependencies: new Set(deps),
+            possibleDataLoss,
         });
         return true;
     }
