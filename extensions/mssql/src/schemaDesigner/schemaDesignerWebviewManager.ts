@@ -20,21 +20,22 @@ import {
 import { SchemaDesignerInMemoryService } from "./inMemoryEngine/schemaDesignerInMemoryService";
 import { SchemaDesignerService } from "../services/schemaDesignerService";
 import SqlToolsServiceClient from "../languageservice/serviceclient";
+import { MssqlPlatform, VscodeMssqlExecutor } from "./inMemoryEngine/mssqlPlatform";
 
 export class SchemaDesignerWebviewManager {
-    private static instance: SchemaDesignerWebviewManager;
-    private static schemaDesignerService: SchemaDesigner.ISchemaDesignerService;
-    private schemaDesigners: Map<string, SchemaDesignerWebviewController> = new Map();
-    private schemaDesignerCache: Map<string, SchemaDesigner.SchemaDesignerCacheItem> = new Map();
+    private static _instance: SchemaDesignerWebviewManager;
+    private static _schemaDesignerService: SchemaDesigner.ISchemaDesignerService;
+    private _schemaDesigners: Map<string, SchemaDesignerWebviewController> = new Map();
+    private _schemaDesignerCache: Map<string, SchemaDesigner.SchemaDesignerCacheItem> = new Map();
 
     public static getInstance(): SchemaDesignerWebviewManager {
-        if (!this.instance) {
-            this.instance = new SchemaDesignerWebviewManager();
+        if (!this._instance) {
+            this._instance = new SchemaDesignerWebviewManager();
         }
-        return this.instance;
+        return this._instance;
     }
 
-    private constructor() { }
+    private constructor() {}
 
     /**
      * Gets or creates a schema designer webview controller for the specified database connection.
@@ -61,7 +62,7 @@ export class SchemaDesignerWebviewManager {
         connectionUri?: string,
     ): Promise<SchemaDesignerWebviewController> {
         // Update the schema designer service based on current configuration
-        SchemaDesignerWebviewManager.updateSchemaDesignerService();
+        SchemaDesignerWebviewManager.updateSchemaDesignerService(mainController);
         let connectionString: string | undefined;
         let azureAccountToken: string | undefined;
         if (treeNode) {
@@ -93,22 +94,22 @@ export class SchemaDesignerWebviewManager {
         }
 
         const key = `${connectionString}-${databaseName}`;
-        if (!this.schemaDesigners.has(key) || this.schemaDesigners.get(key)?.isDisposed) {
+        if (!this._schemaDesigners.has(key) || this._schemaDesigners.get(key)?.isDisposed) {
             const schemaDesigner = new SchemaDesignerWebviewController(
                 context,
                 vscodeWrapper,
                 mainController,
-                SchemaDesignerWebviewManager.schemaDesignerService,
+                SchemaDesignerWebviewManager._schemaDesignerService,
                 connectionString,
                 azureAccountToken,
                 databaseName,
-                this.schemaDesignerCache,
+                this._schemaDesignerCache,
                 treeNode,
                 connectionUri,
             );
             schemaDesigner.onDisposed(async () => {
-                this.schemaDesigners.delete(key);
-                if (this.schemaDesignerCache.get(key).isDirty) {
+                this._schemaDesigners.delete(key);
+                if (this._schemaDesignerCache.get(key).isDirty) {
                     const choice = await showSchemaDesignerExitWarning();
                     if (choice === "restore") {
                         sendActionEvent(
@@ -131,29 +132,40 @@ export class SchemaDesignerWebviewManager {
                 }
                 // Ignoring errors here as we don't want to block the disposal process
                 try {
-                    SchemaDesignerWebviewManager.schemaDesignerService.disposeSession({
+                    SchemaDesignerWebviewManager._schemaDesignerService.disposeSession({
                         sessionId:
-                            this.schemaDesignerCache.get(key).schemaDesignerDetails.sessionId,
+                            this._schemaDesignerCache.get(key).schemaDesignerDetails.sessionId,
                     });
                 } catch (error) {
                     console.error(`Error disposing schema designer session: ${error}`);
                 }
-                this.schemaDesignerCache.delete(key);
+                this._schemaDesignerCache.delete(key);
             });
-            this.schemaDesigners.set(key, schemaDesigner);
+            this._schemaDesigners.set(key, schemaDesigner);
         }
-        return this.schemaDesigners.get(key)!;
+        return this._schemaDesigners.get(key)!;
     }
 
-    private static updateSchemaDesignerService() {
+    private static updateSchemaDesignerService(mainController?: MainController) {
         switch (getSchemaDesignerEngineConfig()) {
             case SchemaDesignerEngine.InMemory:
-                SchemaDesignerWebviewManager.schemaDesignerService =
-                    new SchemaDesignerInMemoryService();
+                if (!mainController) {
+                    throw new Error("MainController is required for InMemory Schema Designer");
+                }
+                SchemaDesignerWebviewManager._schemaDesignerService =
+                    new SchemaDesignerInMemoryService(
+                        new MssqlPlatform(),
+                        (uri) =>
+                            new VscodeMssqlExecutor(
+                                SqlToolsServiceClient.instance,
+                                mainController.connectionManager,
+                                uri,
+                            ),
+                    );
                 break;
             case SchemaDesignerEngine.DacFx:
             default:
-                SchemaDesignerWebviewManager.schemaDesignerService = new SchemaDesignerService(
+                SchemaDesignerWebviewManager._schemaDesignerService = new SchemaDesignerService(
                     SqlToolsServiceClient.instance,
                 );
                 break;

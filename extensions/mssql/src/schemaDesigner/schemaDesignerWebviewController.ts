@@ -12,6 +12,7 @@ import { TreeNodeInfo } from "../objectExplorer/nodes/treeNodeInfo";
 import MainController from "../controllers/mainController";
 import { homedir } from "os";
 import { getErrorMessage, getUniqueFilePath } from "../utils/utils";
+import { generateGuid } from "../models/utils";
 import { sendActionEvent, startActivity } from "../telemetry/telemetry";
 import { ActivityStatus, TelemetryActions, TelemetryViews } from "../sharedInterfaces/telemetry";
 import { configSchemaDesignerEnableExpandCollapseButtons } from "../constants/constants";
@@ -93,10 +94,27 @@ export class SchemaDesignerWebviewController extends ReactWebviewPanelController
             try {
                 let sessionResponse: SchemaDesigner.CreateSessionResponse;
                 if (!this.schemaDesignerCache.has(this._key)) {
+                    let ownerUri = this.connectionUri;
+                    if (!ownerUri) {
+                        if (this.treeNode) {
+                            ownerUri = `schema-designer://${generateGuid()}`;
+                            await this.mainController.connectionManager.connect(
+                                ownerUri,
+                                this.treeNode.connectionProfile,
+                                {
+                                    connectionSource: "schemaDesigner",
+                                },
+                            );
+                        } else {
+                            throw new Error("No connection URI or TreeNode available");
+                        }
+                    }
+
                     sessionResponse = await this.schemaDesignerService.createSession({
                         connectionString: this.connectionString,
                         accessToken: this.accessToken,
                         databaseName: this.databaseName,
+                        ownerUri: ownerUri,
                     });
                     this.schemaDesignerCache.set(this._key, {
                         schemaDesignerDetails: sessionResponse,

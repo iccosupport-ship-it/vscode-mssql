@@ -15,9 +15,18 @@ export namespace SchemaDesigner {
          * Tables in the schema
          */
         tables: Table[];
+        views?: View[];
+    }
+
+    export interface View {
+        id: string;
+        name: string;
+        schema: string;
+        definition: string;
     }
 
     export type Table = {
+        primaryKeyName?: string;
         /**
          * Id of the table
          */
@@ -187,6 +196,7 @@ export namespace SchemaDesigner {
          * Database name to fetch the schema from
          */
         databaseName: string;
+        ownerUri?: string;
     }
 
     /**
