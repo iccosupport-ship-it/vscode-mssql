@@ -1342,6 +1342,7 @@
     "Insert": "Insert",
     "Update": "Update",
     "Alter": "Alter",
+    "Execute with parameters": "Execute with parameters",
     "Signing in to Azure...": "Signing in to Azure...",
     "Are you sure you want to delete {0}?  You can delete its connections as well, or move them to the root folder./{0} is the group name": {
         "message": "Are you sure you want to delete {0}?  You can delete its connections as well, or move them to the root folder.",

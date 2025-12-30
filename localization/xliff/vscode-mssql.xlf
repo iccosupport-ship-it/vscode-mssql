@@ -1524,6 +1524,9 @@
     <trans-unit id="++CODE++e3a67d9540e9a204f7dc4aa9d44a0ec652856cfa932a21196bf9df23aa0e4cd1">
       <source xml:lang="en">Execute</source>
     </trans-unit>
+    <trans-unit id="++CODE++32864c326ce8bd2455043be58fdac2f486b8c1ed24d0d9a8bfc298cb26ce6622">
+      <source xml:lang="en">Execute with parameters</source>
+    </trans-unit>
     <trans-unit id="++CODE++0a716f1cfed3e0da68a8eee920bd5ca51a470c790800d878429da7ab9ecf0d56">
       <source xml:lang="en">Executing query...</source>
     </trans-unit>
@@ -4960,6 +4963,9 @@
     </trans-unit>
     <trans-unit id="mssql.scriptExecute">
       <source xml:lang="en">Script as Execute</source>
+    </trans-unit>
+    <trans-unit id="mssql.scriptExecuteWithParams">
+      <source xml:lang="en">Script as Execute with Parameters</source>
     </trans-unit>
     <trans-unit id="mssql.scriptSelect">
       <source xml:lang="en">Select Top 1000</source>
