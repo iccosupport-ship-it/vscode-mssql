@@ -31,6 +31,7 @@ import StatusView from "../views/statusView";
 import { Logger } from "../models/logger";
 import VscodeWrapper from "../controllers/vscodeWrapper";
 import { UserSurvey } from "../nps/userSurvey";
+import { RequestType } from "vscode-languageclient";
 
 export const SCRIPT_OPERATION_CANCELED_ERROR = "Scripting operation cancelled by user.";
 
@@ -54,6 +55,7 @@ export class ScriptingService {
         private _sqlOutputContentProvider: SqlOutputContentProvider,
         private _statusview: StatusView,
         private _objectExplorerTree: vscode.TreeView<TreeNodeInfo>,
+        private _mainController?: any, // Optional reference to MainController
     ) {
         this._client = this._connectionManager.client;
         this._logger = Logger.create(this._vscodeWrapper.outputChannel, "ObjectExplorerService");
@@ -117,6 +119,17 @@ export class ScriptingService {
                 },
             ),
         );
+
+// Script Execute with Parameters command for stored procedures
+pushDisposable(
+            vscode.commands.registerCommand(
+                Constants.cmdScriptExecuteWithParams,
+                async (node: TreeNodeInfo) => {
+                    await this.runScriptingCommand(ScriptOperation.ExecuteWithParams, node);
+                },
+            ),
+);
+
 
         // Handle scripting progress notifications
         this._client.onNotification(ScriptingProgressNotification.type, (params) => {
@@ -255,6 +268,59 @@ export class ScriptingService {
             if (!generatedScript) {
                 throw new Error(LocalizedConstants.msgScriptingFailed);
             }
+
+    // if Execute with Parameters we add the parameters now
+            if (operation === ScriptOperation.ExecuteWithParams) {
+
+
+            // Get stored procedure information from the node
+            const objectName = node.metadata.name;
+            const schema = node.metadata.schema;
+            
+            
+            // Helper function to execute the query
+            const executeQuery = async (ownerUri: string, queryString: string) => {
+                return await SqlToolsServiceClient.instance.sendRequest(
+                    new RequestType<
+                        { ownerUri: string; queryString: string },
+                        { rowCount: number; columnInfo: any[]; rows: any[][] },
+                        void,
+                        void
+                    >('query/simpleexecute'),
+                    {
+                        ownerUri: ownerUri,
+                        queryString: queryString
+                    }
+                );
+            };
+            
+            try {
+                // Get the parameters string using the helper function
+                const paramList = await this._mainController.GetSPParametersString(
+                    objectName,
+                    nodeUri,
+                    connectionCreds,
+                    executeQuery
+                );
+                
+                if (paramList === null) {
+                    vscode.window.showInformationMessage(`No parameters found for stored procedure: ${objectName}`);
+                    return;
+                }
+                
+                // Create an EXEC statement with the parameters
+                const execStatement = `EXEC ${schema}.${objectName}${paramList}`;
+                generatedScript = execStatement;
+                
+            } catch (error) {
+                vscode.window.showErrorMessage(`Error generating execute statement: ${error instanceof Error ? error.message : String(error)}`);
+            }
+
+// End of Execute with Parameters
+
+
+            }
+
 
             let title = `${scriptingObject.schema}.${scriptingObject.name}`;
             const editor = await this._sqlDocumentService.newQuery({
@@ -452,6 +518,12 @@ export class ScriptingService {
         uri: string,
         operation: ScriptOperation,
     ): Promise<string> {
+
+        if (operation == ScriptOperation.ExecuteWithParams) {
+            // For Execute with Parameters, we need to set the operation to Execute
+            operation = ScriptOperation.Execute;
+        }
+
         const scriptingParams = this.createScriptingRequestParamsFromTreeNode(node, uri, operation);
         return this.script(scriptingParams);
     }

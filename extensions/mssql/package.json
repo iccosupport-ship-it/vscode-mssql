@@ -627,6 +627,11 @@
                     "group": "3_MSSQL_script@5"
                 },
                 {
+    "command": "mssql.scriptExecuteWithParams",
+    "when": "view == objectExplorer && viewItem =~ /\\btype=(StoredProcedure)\\b/",
+    "group": "3_MSSQL_script@6"
+},
+                {
                     "command": "mssql.newTable",
                     "when": "view == objectExplorer && viewItem =~ /\\bsubType=(Tables)\\b/",
                     "group": "4_MSSQL_object@1"
@@ -1080,6 +1085,11 @@
                 "category": "MS SQL"
             },
             {
+    "command": "mssql.scriptExecuteWithParams",
+    "title": "%mssql.scriptExecuteWithParams%",
+    "category": "MS SQL"
+},
+            {
                 "command": "mssql.newTable",
                 "title": "%mssql.newTable%",
                 "category": "MS SQL",
@@ -1315,9 +1325,20 @@
                 "command": "mssql.openChangelog",
                 "title": "%mssql.openChangelog%",
                 "category": "MS SQL"
-            }
+            },
+                {
+      "command": "mssql.scriptParameters",
+      "title": "%mssql.scriptParameters%",
+      "category": "MS SQL"
+    }
         ],
         "keybindings": [
+                {
+      "command": "mssql.scriptParameters",
+      "key": "ctrl+alt+p",
+      "mac": "cmd+alt+p",
+      "when": "editorTextFocus && editorLangId == 'sql'"
+    },
             {
                 "command": "mssql.runQuery",
                 "key": "ctrl+shift+e",

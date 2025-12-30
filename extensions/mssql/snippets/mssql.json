@@ -320,5 +320,46 @@
             "GO"
         ],
         "description": "Get Space Used by Tables"
-    }
+    },
+"Generate stored procedure parameters": {
+  "prefix": "sqlGenerateStoredProcParams",
+  "description": "Generate EXEC template with all parameters for the selected stored procedure",
+  "body": [
+    "-- Generate EXEC template for stored procedure parameters",
+    "DECLARE @ProcName sysname = N'${1:${TM_SELECTED_TEXT}}';",
+    "IF OBJECT_ID(@ProcName) IS NULL",
+    "BEGIN",
+    "    THROW 50000, 'Stored procedure not found: ' + ISNULL(@ProcName,'<null>'), 1;",
+    "END;",
+    "",
+    "WITH P AS (",
+    "    SELECT p.parameter_id,",
+    "           p.name AS ParamName,",
+    "           t.name AS TypeName,",
+    "           p.max_length,",
+    "           p.precision,",
+    "           p.scale,",
+    "           p.is_output",
+    "    FROM sys.parameters p",
+    "    JOIN sys.types t ON p.user_type_id = t.user_type_id",
+    "    WHERE p.object_id = OBJECT_ID(@ProcName)",
+    ")",
+    "SELECT 'EXEC ' + @ProcName + CHAR(13) +",
+    "       STRING_AGG(",
+    "           '    ' + '@' + ParamName + ' = ' +",
+    "           CASE",
+    "               WHEN TypeName IN ('varchar','char','nvarchar','nchar','text','ntext','varbinary') THEN ''''''",
+    "               WHEN TypeName IN ('uniqueidentifier') THEN '''00000000-0000-0000-0000-000000000000'''",
+    "               WHEN TypeName IN ('bit') THEN '0'",
+    "               WHEN TypeName IN ('int','smallint','tinyint','bigint') THEN '0'",
+    "               WHEN TypeName IN ('decimal','numeric','money','smallmoney','float','real') THEN '0'",
+    "               WHEN TypeName IN ('date','datetime','datetime2','smalldatetime','datetimeoffset','time') THEN '''1900-01-01'''",
+    "               ELSE 'NULL'",
+    "           END + CASE WHEN is_output = 1 THEN ' OUTPUT' ELSE '' END,",
+    "           ',' + CHAR(13)",
+    "       ) WITHIN GROUP (ORDER BY parameter_id) AS ExecTemplate",
+    "FROM P;"
+  ]
+}
+
 }

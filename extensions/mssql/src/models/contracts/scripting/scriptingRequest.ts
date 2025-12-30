@@ -18,6 +18,7 @@ export enum ScriptOperation {
     Delete = 4,
     Execute = 5,
     Alter = 6,
+    ExecuteWithParams = 7
 }
 
 export interface IScriptOptions {

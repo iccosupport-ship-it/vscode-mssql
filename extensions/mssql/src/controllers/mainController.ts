@@ -8,6 +8,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 import { IConnectionInfo, IScriptingObject, SchemaCompareEndpointInfo } from "vscode-mssql";
+import { RequestType } from "vscode-languageclient";
 import { AzureResourceController } from "../azure/azureResourceController";
 import * as Constants from "../constants/constants";
 import * as LocalizedConstants from "../constants/locConstants";
@@ -103,6 +104,7 @@ import { TableExplorerWebViewController } from "../tableExplorer/tableExplorerWe
 import { ChangelogWebviewController } from "./changelogWebviewController";
 import { HttpHelper } from "../http/httpHelper";
 import { Logger } from "../models/logger";
+
 
 /**
  * The main controller class that initializes the extension
@@ -531,6 +533,84 @@ export default class MainController implements vscode.Disposable {
                     },
                 ),
             );
+
+            // -- Script Parameters  --
+            this._context.subscriptions.push(
+                // Register the command
+vscode.commands.registerCommand(Constants.cmdScriptParameters, async () => {
+    // Get the active text editor
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        return; // No active editor
+    }
+
+    // Get the current cursor position
+    const position = editor.selection.active;
+
+    // Get the word at the cursor position
+    const wordRange = editor.document.getWordRangeAtPosition(position);
+    
+    if (wordRange) {
+        // Get the actual word text (stored procedure name)
+        const SQLObjectName = editor.document.getText(wordRange);
+        
+        // Get the connection URI for the active editor
+        const uri = editor.document.uri.toString();
+        
+        // Check if the editor has an active connection
+        if (!this._connectionMgr.isConnected(uri)) {
+            vscode.window.showErrorMessage(`No active connection for this editor. Please connect to a database first.`);
+            return;
+        }
+        
+        // Get connection info
+        const connectionInfo = this._connectionMgr.getConnectionInfo(uri);
+        if (!connectionInfo || !connectionInfo.credentials) {
+            vscode.window.showErrorMessage('Unable to retrieve connection information.');
+            return;
+        }
+        
+        // Helper function to execute the query
+        const executeQuery = async (ownerUri: string, queryString: string) => {
+            return await SqlToolsServerClient.instance.sendRequest(
+                new RequestType<
+                    { ownerUri: string; queryString: string },
+                    { rowCount: number; columnInfo: any[]; rows: any[][] },
+                    void,
+                    void
+                >('query/simpleexecute'),
+                {
+                    ownerUri: ownerUri,
+                    queryString: queryString
+                }
+            );
+        };
+
+        try {
+            // Call the helper function to get the parameter string
+            const paramList = await this.GetSPParametersString(SQLObjectName, uri, connectionInfo, executeQuery);
+            
+            if (paramList === null) {
+                vscode.window.showInformationMessage(`No parameters found for stored procedure: ${SQLObjectName}`);
+            } else {
+                // Insert the parameter list into the editor after the selected word
+                await editor.edit((editBuilder) => {
+                    editBuilder.insert(wordRange.end, paramList);
+                });
+            }
+        } catch (error) {
+            vscode.window.showErrorMessage(`Error retrieving parameters: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        
+        // Select the word
+        //editor.selection = new vscode.Selection(wordRange.start, wordRange.end);
+    } else {
+        vscode.window.showInformationMessage('No word at cursor position');
+    }
+}),
+            );
+
+
 
             // -- EXPLAIN QUERY --
             this._context.subscriptions.push(
@@ -1659,6 +1739,7 @@ export default class MainController implements vscode.Disposable {
             this._outputContentProvider,
             this._statusview,
             this.objectExplorerTree,
+            this,
         );
 
         /**
@@ -2667,6 +2748,294 @@ export default class MainController implements vscode.Disposable {
      * Check if the extension launched file exists.
      * This is to detect when we are running in a clean install scenario.
      */
+    /**
+     * Helper function to get stored procedure parameters string
+     * @param SQLObjectName The name of the stored procedure
+     * @param uri The connection URI
+     * @param connectionInfo The connection information (ConnectionInfo class from ConnectionManager)
+     * @param executeQuery The query execution function
+     * @returns A formatted string of parameters or null if no parameters found
+     */
+    public async GetSPParametersString(
+        SQLObjectName: string,
+        uri: string,
+        connectionInfo: any, // Using any to support both ConnectionInfo and direct IConnectionInfo usage
+        executeQuery: (ownerUri: string, queryString: string) => Promise<{ rowCount: number; columnInfo: any[]; rows: any[][] }>
+    ): Promise<string | null> {
+        // Validate the SQL object name
+        if (!SQLObjectName) { return null; }
+        if (SQLObjectName.length === 0) { return null; }
+        if (SQLObjectName.startsWith('@')) { return null; } // likely a parameter, not a procedure name
+        if (SQLObjectName.indexOf(' ') >= 0) { return null; } // likely not a valid procedure name
+        if (SQLObjectName.indexOf('.') >= 0) { return null; } // skip if schema is included
+        if (SQLObjectName.indexOf('(') >= 0) { return null; } // skip if it looks like a call
+        if (SQLObjectName.indexOf(';') >= 0) { return null; } // skip if it looks like multiple statements
+        if (SQLObjectName.indexOf('-') >= 0) { return null; } // skip if it looks like a comment
+        if (SQLObjectName.indexOf('/') >= 0) { return null; } // skip if it looks like a comment
+        if (SQLObjectName.indexOf('\\') >= 0) { return null; } // skip if it looks like a comment
+        if (SQLObjectName.indexOf(',') >= 0) { return null; } // skip if it looks like multiple names
+        if (SQLObjectName.indexOf('[') >= 0 || SQLObjectName.indexOf(']') >= 0) { return null; } // skip if it includes brackets
+        if (SQLObjectName.indexOf('"') >= 0 || SQLObjectName.indexOf('\'') >= 0) { return null; } // skip if it includes quotes
+        if (SQLObjectName.length > 128) { return null; } // skip if too long to be a valid object name
+        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(SQLObjectName)) { return null; } // skip if it contains invalid characters
+
+        // Query to get stored procedure parameters
+        let query = `
+
+DECLARE @ProcName NVARCHAR(128) = {SQLObjectName}
+DECLARE @ParamDefaults TABLE 
+(
+	ParameterID INT,
+    ParameterName NVARCHAR(128),
+	DataType NVARCHAR(100),
+	IsOutput BIT,
+    HasDefault BIT,
+    DefaultValue NVARCHAR(MAX),
+    Comments NVARCHAR(MAX)
+)
+
+    DECLARE @ObjectId INT = OBJECT_ID('dbo.' + QUOTENAME(@ProcName));
+    DECLARE @Definition NVARCHAR(MAX) = OBJECT_DEFINITION(@ObjectId);
+    
+    IF @Definition IS NULL RETURN;
+
+    DECLARE @ParamName NVARCHAR(128);
+    DECLARE @ParamID INT;
+    DECLARE @NextParamName NVARCHAR(128);
+    
+    DECLARE @CurrPos INT = 1;
+    DECLARE @NextPos INT;
+    DECLARE @Chunk NVARCHAR(MAX);
+    DECLARE @DefValue NVARCHAR(MAX);
+    DECLARE @EqPos INT;
+    DECLARE @CommentPos INT;
+    DECLARE @CommentEnd INT;
+    DECLARE @ParamComments NVARCHAR(MAX);
+
+    -- Iterate through parameters in order to find their location in the text
+    DECLARE cur CURSOR LOCAL FAST_FORWARD FOR 
+        SELECT name, parameter_id 
+        FROM sys.parameters 
+        WHERE object_id = @ObjectId 
+        ORDER BY parameter_id;
+
+    OPEN cur;
+    FETCH NEXT FROM cur INTO @ParamName, @ParamID;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @ParamComments = '';
+
+        -- Find start of this parameter in the definition
+        SET @CurrPos = CHARINDEX(@ParamName, @Definition, @CurrPos);
+        
+        -- Find start of the NEXT parameter to define the end of the current parameter's definition
+        SELECT @NextParamName = name FROM sys.parameters WHERE object_id = @ObjectId AND parameter_id = @ParamID + 1;
+        
+        IF @NextParamName IS NOT NULL
+        BEGIN
+            SET @NextPos = CHARINDEX(@NextParamName, @Definition, @CurrPos + 1);
+        END
+        ELSE
+        BEGIN
+            -- If it's the last parameter, look for the 'AS' keyword which starts the procedure body
+            -- We search for 'AS' surrounded by non-alphanumeric characters (e.g. whitespace)
+            SET @NextPos = PATINDEX('%[^a-zA-Z0-9]AS[^a-zA-Z0-9]%', UPPER(SUBSTRING(@Definition, @CurrPos, LEN(@Definition))));
+            IF @NextPos > 0 SET @NextPos = @NextPos + @CurrPos - 1;
+            ELSE SET @NextPos = LEN(@Definition);
+        END
+
+        -- Extract the text chunk for this parameter (e.g., "@p1 int = 1,")
+        SET @Chunk = SUBSTRING(@Definition, @CurrPos, @NextPos - @CurrPos);
+        
+        -- Remove block comments from Chunk to avoid false positives on '='
+        SET @CommentPos = CHARINDEX('/*', @Chunk);
+        WHILE @CommentPos > 0
+        BEGIN
+            SET @CommentEnd = CHARINDEX('*/', @Chunk, @CommentPos);
+            IF @CommentEnd > 0
+            BEGIN
+                SET @ParamComments = @ParamComments + SUBSTRING(@Chunk, @CommentPos, @CommentEnd - @CommentPos + 2) + ' ';
+                SET @Chunk = STUFF(@Chunk, @CommentPos, @CommentEnd - @CommentPos + 2, '');
+            END
+            ELSE
+            BEGIN
+                SET @ParamComments = @ParamComments + SUBSTRING(@Chunk, @CommentPos, LEN(@Chunk)) + ' ';
+                SET @Chunk = LEFT(@Chunk, @CommentPos - 1);
+            END
+            SET @CommentPos = CHARINDEX('/*', @Chunk);
+        END
+
+        -- Remove line comments from Chunk
+        SET @CommentPos = CHARINDEX('--', @Chunk);
+        WHILE @CommentPos > 0
+        BEGIN
+            SET @CommentEnd = CHARINDEX(CHAR(10), @Chunk, @CommentPos);
+            IF @CommentEnd = 0 SET @CommentEnd = CHARINDEX(CHAR(13), @Chunk, @CommentPos);
+            IF @CommentEnd > 0
+            BEGIN
+                SET @ParamComments = @ParamComments + SUBSTRING(@Chunk, @CommentPos, @CommentEnd - @CommentPos) + ' ';
+                SET @Chunk = STUFF(@Chunk, @CommentPos, @CommentEnd - @CommentPos, '');
+            END
+            ELSE
+            BEGIN
+                SET @ParamComments = @ParamComments + SUBSTRING(@Chunk, @CommentPos, LEN(@Chunk)) + ' ';
+                SET @Chunk = LEFT(@Chunk, @CommentPos - 1);
+            END
+            SET @CommentPos = CHARINDEX('--', @Chunk);
+        END
+
+        -- Check for '=' indicating a default value
+        SET @EqPos = CHARINDEX('=', @Chunk);
+        
+        IF @EqPos > 0
+        BEGIN
+            SET @DefValue = LTRIM(SUBSTRING(@Chunk, @EqPos + 1, LEN(@Chunk)));
+            
+            -- Handle string literals to preserve spaces within them
+            IF LEFT(@DefValue, 1) = ''''
+            BEGIN
+                SET @EqPos = 2;
+                WHILE @EqPos <= LEN(@DefValue)
+                BEGIN
+                    IF SUBSTRING(@DefValue, @EqPos, 1) = ''''
+                    BEGIN
+                        IF SUBSTRING(@DefValue, @EqPos + 1, 1) = ''''
+                            SET @EqPos = @EqPos + 2;
+                        ELSE
+                            BREAK;
+                    END
+                    ELSE
+                        SET @EqPos = @EqPos + 1;
+                END
+                IF @EqPos <= LEN(@DefValue) SET @DefValue = LEFT(@DefValue, @EqPos);
+            END
+            ELSE
+            BEGIN
+                -- Strip anything after the first whitespace or comma
+                SET @EqPos = PATINDEX('%[ ,'+CHAR(10)+CHAR(13)+']%', @DefValue);
+                IF @EqPos > 0 SET @DefValue = LEFT(@DefValue, @EqPos - 1);
+            END
+            
+            INSERT INTO @ParamDefaults(ParameterID, ParameterName, HasDefault, DefaultValue, Comments) VALUES (@ParamID, @ParamName, 1, @DefValue, NULLIF(RTRIM(@ParamComments), ''));
+        END
+        ELSE
+        BEGIN
+            INSERT INTO @ParamDefaults(ParameterID, ParameterName, HasDefault, DefaultValue, Comments) VALUES (@ParamID, @ParamName, 0, NULL, NULLIF(RTRIM(@ParamComments), ''));
+        END
+
+        -- Move current position forward
+        SET @CurrPos = @NextPos;
+        
+        FETCH NEXT FROM cur INTO @ParamName, @ParamID;
+    END
+
+    CLOSE cur;
+    DEALLOCATE cur;
+
+	UPDATE @ParamDefaults 
+	SET IsOutput = p.is_output,
+	DataType = CASE 
+		WHEN TYPE_NAME(p.user_type_id) IN ('decimal', 'numeric') THEN 
+			TYPE_NAME(p.user_type_id) + '(' + CAST(p.precision AS VARCHAR(10)) + ',' + CAST(p.scale AS VARCHAR(10)) + ')'
+		WHEN TYPE_NAME(p.user_type_id) IN ('char', 'varchar', 'binary', 'varbinary') THEN 
+			TYPE_NAME(p.user_type_id) + '(' + CASE WHEN p.max_length = -1 THEN 'MAX' ELSE CAST(p.max_length AS VARCHAR(10)) END + ')'
+		WHEN TYPE_NAME(p.user_type_id) IN ('nchar', 'nvarchar') THEN 
+			TYPE_NAME(p.user_type_id) + '(' + CASE WHEN p.max_length = -1 THEN 'MAX' ELSE CAST(p.max_length / 2 AS VARCHAR(10)) END + ')'
+		WHEN TYPE_NAME(p.user_type_id) IN ('datetime2', 'time', 'datetimeoffset') THEN 
+			TYPE_NAME(p.user_type_id) + '(' + CAST(p.scale AS VARCHAR(10)) + ')'
+		ELSE 
+			TYPE_NAME(p.user_type_id)
+		END
+	FROM @ParamDefaults pdef
+	INNER JOIN sys.parameters p ON pdef.ParameterName = p.name
+	INNER JOIN sys.objects o ON p.object_id = o.object_id
+	WHERE o.name = @ProcName
+
+	SELECT * FROM @ParamDefaults ORDER BY ParameterID
+
+
+            `.trim();
+        
+        console.log('Executing parameter retrieval query for procedure:', SQLObjectName);
+        console.log('Query:', query);
+        
+        // Safely replace the placeholder with the procedure name
+        query = query.replace(`{SQLObjectName}`, `'${SQLObjectName}'`);
+
+        // Execute the query using the SQL Tools Service
+        let result;
+        try {
+            result = await executeQuery(uri, query);
+        } catch (queryError: any) {
+            // Check if the error is related to invalid ownerUri
+            const errorMessage = queryError?.message || String(queryError);
+            if (errorMessage.toLowerCase().includes('invalid owneruri') || 
+                errorMessage.toLowerCase().includes('invalid owner uri')) {
+                
+                // Try to reconnect once
+                vscode.window.showInformationMessage('Connection lost. Attempting to reconnect...');
+                
+                try {
+                    // Disconnect and reconnect
+                    await this._connectionMgr.disconnect(uri);
+                    // Get the credentials (handle both ConnectionInfo and IConnectionInfo)
+                    const credentials = connectionInfo.credentials || connectionInfo;
+                    const reconnected = await this._connectionMgr.connect(uri, credentials);
+                    
+                    if (reconnected) {
+                        // Retry the query after successful reconnection
+                        result = await executeQuery(uri, query);
+                    } else {
+                        throw new Error('Failed to reconnect to the database');
+                    }
+                } catch (reconnectError) {
+                    vscode.window.showErrorMessage(`Failed to reconnect: ${reconnectError instanceof Error ? reconnectError.message : String(reconnectError)}`);
+                    throw reconnectError;
+                }
+            } else {
+                // If it's not an ownerUri error, just rethrow it
+                throw queryError;
+            }
+        }
+        
+        // Check if we got any results
+        if (result.rowCount === 0) {
+            return null;
+        }
+        
+        // Format the parameters as a readable string
+        let paramList = `\n`;
+        let i = 0;
+        for (const row of result.rows) {
+            i++;
+            const [, ParameterName, DataType, IsOutput, HasDefault, DefaultValue, Comments] = row;
+            const direction = IsOutput.displayValue === 'True' ? 'OUTPUT' : 'INPUT';
+            const separatorcomma = ',';
+
+            // Get the default value or use NULL if no default
+            let defaultText = '';
+            if (HasDefault.displayValue === '1' && DefaultValue.displayValue) {
+                defaultText = ` = ${DefaultValue.displayValue}`;
+            } else {
+                defaultText = ' = NULL';
+            }
+            
+            if (Comments && Comments.displayValue && Comments.displayValue !== 'NULL') {
+                paramList += `${Comments.displayValue}\n`;
+            }
+            paramList += `   ${ParameterName.displayValue}${defaultText} `;
+            if (i < result.rowCount) {
+                paramList += separatorcomma;
+            }
+            paramList += ` -- ${DataType.displayValue} (${direction})\n`;
+        }
+        
+        paramList += '';
+        
+        return paramList;
+    }
+
     private doesExtensionLaunchedFileExist(): boolean {
         // check if file already exists on disk
         let filePath = this._context.asAbsolutePath("extensionlaunched.dat");
