@@ -2830,6 +2830,7 @@ DECLARE @ParamDefaults TABLE
         SET @CurrPos = CHARINDEX(@ParamName, @Definition, @CurrPos);
         
         -- Find start of the NEXT parameter to define the end of the current parameter's definition
+        set @NextParamName = NULL;
         SELECT @NextParamName = name FROM sys.parameters WHERE object_id = @ObjectId AND parameter_id = @ParamID + 1;
         
         IF @NextParamName IS NOT NULL
@@ -3010,7 +3011,7 @@ DECLARE @ParamDefaults TABLE
         for (const row of result.rows) {
             i++;
             const [, ParameterName, DataType, IsOutput, HasDefault, DefaultValue, Comments] = row;
-            const direction = IsOutput.displayValue === 'True' ? 'OUTPUT' : 'INPUT';
+            const direction = IsOutput.displayValue === '1' ? 'OUTPUT' : 'INPUT';
             const separatorcomma = ',';
 
             // Get the default value or use NULL if no default
